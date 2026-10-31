@@ -15,7 +15,7 @@
 #   format         - Auto-format with ruff (backend) and prettier (frontend)
 #   clean          - Remove caches and build artifacts
 
-.PHONY: setup dev dev-backend dev-frontend test validate validate-after export fuzz redteam lint format clean
+.PHONY: setup dev dev-backend dev-frontend test test-all validate validate-after export fuzz redteam lint format clean
 
 setup:
 	cd backend && python -m venv venv && venv\Scripts\pip install -r requirements.txt
@@ -30,7 +30,10 @@ dev-frontend:
 dev: dev-backend
 
 test:
-	cd backend && venv\Scripts\pytest tests/ -v
+	cd backend && venv\Scripts\pytest tests/ -v -m "not slow" --durations=10
+
+test-all:
+	cd backend && venv\Scripts\pytest tests/ -v --durations=10
 
 validate:
 	python validator/validator.py --data data/cit_public.json --schedule exports/schedule.json --json exports/report.json

@@ -24,18 +24,18 @@ flowchart TD
 | Component | Technology | Version |
 |-----------|------------|---------|
 | Backend | FastAPI | 0.115.0 |
-| Solver | OR-Tools CP-SAT | 9.11.4210 |
-| Frontend | Next.js | 14.x |
-| Styling | Tailwind CSS | 3.x |
+| Solver | OR-Tools CP-SAT | 9.15.6755 |
+| Frontend | Next.js | 14.2.18 |
+| Styling | Tailwind CSS | 3.4.1 |
 | Database | SQLite | 3.x |
-| Language (backend) | Python | 3.11+ |
+| Language (backend) | Python | 3.13.7 |
 | Language (frontend) | Node.js | 20+ |
 
 ## Setup
 
 ### Prerequisites
 
-Python 3.11 or newer, Node.js 20 or newer, Git.
+Python 3.13 or newer, Node.js 20 or newer, Git.
 
 ### Clone and configure
 
@@ -75,34 +75,56 @@ cd backend
 python -m scripts.seed_demo
 ```
 
-This loads the CIT dataset (dataset_id: cit-public-v1) and creates the four demo accounts listed below.
+This loads the CIT dataset (`cit_public.json`) and initializes the demo accounts listed below.
 
 ## Demo accounts
 
-| Email | Password | Role |
-|-------|----------|------|
-| admin@cit.edu | admin123 | Admin |
-| coordinator@cit.edu | coord123 | Department coordinator |
-| faculty@cit.edu | faculty123 | Faculty |
-| club@cit.edu | club123 | Club representative |
+| Email | Password | Role | Profile Mapping |
+|-------|----------|------|-----------------|
+| `admin@cit.edu` | `admin123` | Admin | System Administrator |
+| `dean@cit.edu` | `dean123` | Admin | Dean of Academic Affairs |
+| `coordinator@cit.edu` | `coord123` | Department coordinator | Department: CSE |
+| `faculty@cit.edu` | `faculty123` | Faculty | Faculty ID: F01 |
+| `club@cit.edu` | `club123` | Club representative | Club: Coding Club |
 
 ## Running the validator
 
-The organiser-provided validator lives in `validator/validator.py`. Run it against a generated schedule:
+The organiser-provided validator lives in `validator/validator.py`. Run it against the generated schedule:
 
 ```bash
-python validator/validator.py data/cit_public.json exports/schedule.json
+python validator/validator.py --data data/cit_public.json --schedule exports/schedule.json
 ```
 
 For the post-disruption schedule:
 
 ```bash
-python validator/validator.py data/cit_public.json exports/schedule_after.json
+python validator/validator.py --data data/cit_public.json --schedule exports/schedule_after.json --disruption data/sample_disruption.json --baseline exports/schedule.json
 ```
 
-Both commands should report zero hard-constraint violations.
+Both commands report zero hard-constraint violations.
+
+## Testing and Verification
+
+Run fast tests (excludes CP-SAT tests taking > 5 seconds):
+```bash
+make test
+```
+
+Run all tests including CP-SAT solver tests with duration timings:
+```bash
+make test-all
+```
 
 ## Deployment
+
+### Backend via Docker
+
+```bash
+docker build -t cit-backend -f backend/Dockerfile .
+docker run -p 8000:8000 -e PORT=8000 cit-backend
+```
+
+Container healthcheck verifies `GET /api/health` every 30 seconds.
 
 ### Frontend on Vercel
 
@@ -112,19 +134,14 @@ When importing this repository into Vercel:
 3. Set the environment variable `NEXT_PUBLIC_API_URL` to your backend URL (e.g. your deployed FastAPI server).
 4. Click **Deploy**.
 
-Because the repository separates `frontend` and `backend`, Vercel must be pointed at the `frontend` directory where `package.json` lives.
-
 ## Judge quick start
 
-1. **Find a free room.** Log in as admin@cit.edu. Go to Rooms, pick a date and period. The list shows which rooms are open and their capacity.
-2. **Read a timetable.** Go to Timetable. Filter by student group (e.g. Y1-A) or faculty name. Each cell shows course, room, and faculty.
-3. **Approve a change.** Go to Pending Changes. Click on a proposed schedule change, review the diff (what moves, what stays), and click Approve or Reject.
+1. **Find a free room.** Log in as `admin@cit.edu`. Go to Rooms, pick a date and period. The list shows which rooms are open and their capacity.
+2. **Read a timetable.** Go to Timetable. Filter by student group (e.g. `Y1-A`) or faculty name. Each cell shows course, room, and faculty.
+3. **Approve a change.** Go to Pending Changes. Click on a proposed schedule change, review the diff (what moves, what stays), and click Approve or Reject. Proposals uploaded from a disruption file have `proposed_by = "system"` and can be approved by any Admin; self-approval on direct user requests is blocked (`SELF_APPROVAL`).
 
 ## Known limitations
 
-- Solver (CP-SAT integration) is stubbed. It returns a placeholder schedule, not an optimized one.
-- AI layer (LLM-based natural language booking parsing) is not yet connected. The manual booking form works without an API key.
-- Frontend views for exam scheduling and disruption recovery are not built yet.
-- Auth is a simple in-memory dict for demo purposes. Not suitable for production.
-- No WebSocket or real-time updates. Users must refresh to see changes.
-- Export to PDF/ICS is not implemented.
+- AI parsing of natural language booking prompts requires a valid `GEMINI_API_KEY` or `OPENAI_API_KEY`. If unconfigured, the system automatically falls back to deterministic regex pattern extraction without failing.
+- Real-time updates use polling; WebSockets are not enabled.
+- PDF and ICS calendar file exports are not implemented.

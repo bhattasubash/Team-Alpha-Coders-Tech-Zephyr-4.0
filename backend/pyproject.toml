@@ -21,3 +21,6 @@ target-version = ["py311"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "slow: marks tests as slow (CP-SAT > 5s) (deselect with '-m \"not slow\"')",
+]

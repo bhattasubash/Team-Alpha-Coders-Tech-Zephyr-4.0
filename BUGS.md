@@ -67,3 +67,19 @@ No invented bugs. Only real issues found and fixed during development.
 - Root cause: Single-stage weighted objective violated the problem definition ("fewest moved" scored lexicographically) and prevented proving true optimality of minimal moves. Furthermore, Stage A is the primary branch-and-bound search phase needing sufficient time budget, while Stages B and C are warm-started and take < 5s.
 - Fix: Converted reschedule solver to a 3-stage lexicographic CP-SAT pipeline: Stage A minimizes moves only (no soft terms), Stage B fixes moves $\le$ Stage A minimum and minimizes time changes, Stage C fixes both and minimizes soft penalties (S1–S6). Updated `limit_a` allocation to `max(10.0, total_limit - 12.0)` and default `SOLVER_TIME_LIMIT` to 45.0s. Added `forced_moves` (baseline sessions directly invalidated by disruption) and `knock_on_moves = moved - forced_moves`.
 - Confirmation: Ran `pytest backend/tests/test_reschedule.py`; all 4 tests passed. Ran official `validator.py` on `exports/after_disruption.json` with `--baseline exports/schedule.json`; reports 0 hard violations and `Stability: 7 sessions moved (0 changed time, 7 room only)` with `proven_minimum: True`.
+
+---
+
+### 2026-10-31 23:45 IST: Booking approval score varied across random timetable solver seeds
+- Symptom: Running `BookingEngine.decide_all()` on timetables generated with different solver random seeds yielded inconsistent booking scores (e.g. 65.5 on seed 7 vs 67.0 on seed 42).
+- Root cause: In seed 7, elective basket sessions (`OEB-1` with group `ECE-3`) were scheduled during teaching period `THU P8`, which clashed with mandatory group attendance for approved booking `BR-08`, downgrading `BR-08` from approved to alternative and reducing the score.
+- Fix: Implemented `reservations_for_bookings(data)` to pre-calculate all 22 approved bookings against an empty schedule, extracting 33 teaching-hour room slots and 5 mandatory group slots ($P \le 9$). Passed these as `blocked_room_slots` and `blocked_group_slots` into `TimetableSolver` and `RescheduleSolver`, pruning session domains and constraining `sum(grp_period_vars[(g, d, p)]) == 0` and `sum(room_period_vars[(r, d, p)]) == 0`.
+- Confirmation: Added `test_booking_reservations_consistency_across_seeds` generating timetables across seeds 7, 42, and 99. Verified that booking score is exactly 67.0 (22 approved, 1 alternative BR-17, 0 priority inversions) on all three seeds.
+
+---
+
+### 2026-11-01 00:20 IST: Exam solver test timeout returned intermediate soft penalty 35
+- Symptom: `test_exam_solver_all_constraints` failed with `AssertionError: Expected 0 soft penalty, got 35` when run with `time_limit_override=15.0`.
+- Root cause: 15.0 seconds was insufficient for the CP-SAT branch-and-bound search to prove 0 same-day exam overload, returning an intermediate feasible solution with soft penalty 35. With a 45s-50s budget, the solver reaches 0 soft penalty.
+- Fix: Updated `time_limit_override` in `test_exam_solver_all_constraints` to 50.0s and decorated the test with `@pytest.mark.slow`. Fast test suite (`pytest -m "not slow"`) skips slow CP-SAT tests and passes in under 7 seconds.
+- Confirmation: Ran `ExamSolver.solve()` standalone (0 soft penalty in 45.81s) and verified fast test suite `pytest -m "not slow"` (50 passed in 6.75s).

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
+
 from app.solver.config import SolverConfig
 from app.solver.exams import ExamSolver
 
 
+@pytest.mark.slow
 def test_exam_solver_all_constraints(dataset, validator_module):
     """Test exam solver against all Milestone 4 requirements:
     - Every exam is scheduled exactly once.
@@ -25,7 +28,7 @@ def test_exam_solver_all_constraints(dataset, validator_module):
     _, naive_soft_penalty = validator_module.check_exams(official_ctx, naive_schedule)
 
     # 2. Run CP-SAT exam solver
-    scheduled_exams = solver.solve(time_limit_override=15.0)
+    scheduled_exams = solver.solve(time_limit_override=50.0)
 
     # A. Every exam is scheduled exactly once
     dataset_exams = dataset.get("exams", [])

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import pytest
 
 from app.kernel.context import KernelContext
 from app.solver.config import SolverConfig
@@ -44,6 +45,7 @@ def test_domain_pruning(dataset):
                 assert room["accessible"]
 
 
+@pytest.mark.slow
 def test_solve_feasibility_zero_hard_violations(dataset, validator_module):
     """Sub-step 3A: Solve feasibility only, write to scratch path, verify 0 hard violations."""
     config = SolverConfig(time_limit_seconds=30.0, num_workers=8, random_seed=42)
@@ -72,6 +74,7 @@ def test_solve_feasibility_zero_hard_violations(dataset, validator_module):
     assert len(timetable_violations) == 0, f"Found hard violations: {timetable_violations}"
 
 
+@pytest.mark.slow
 def test_solve_two_phase_soft_objective(dataset, validator_module):
     """Sub-step 3B: Solve two-phase with soft objective, verify 0 hard violations and score."""
     config = SolverConfig(time_limit_seconds=60.0, num_workers=8, random_seed=42)
