@@ -1,8 +1,32 @@
 # Project progress
 
-Last updated: 2026-10-31 22:10 IST
+Last updated: 2026-10-31 22:50 IST
 
 ## 1. What is done
+
+### Milestone 6: Controlled Visual Redesign & 5-Colour Semantic Accent System
+- Established institutional 5-colour semantic palette across CSS custom properties, Tailwind tokens, Button, Chip, Input, SessionCard, and Rail:
+  - Slate Blue / Violet (`#7D5DFF`): Primary interaction, navigation active line, filter pills, focus rings, and lecture indicator pips.
+  - Violet / Pink (`#EA6DF8`): AI provenance, natural language inferred input fields (`border-b-pink`), parser helper pips.
+  - Coral (`#EF8869`): Attention & conflict, hard violations (H1–H14), destructive actions, rejected bookings, and >90% heatmap overload.
+  - Maize Yellow (`#FBE64D`): Spectra fest events, evening schedule strips (P10–P13), and 3h lab indicators.
+  - Emerald Green (`#63CC79`): Validity, approved booking status chips, legal slot markers, and available room markers.
+  - Retained neutral paper foundations: Shell/Paper (`#E8E6DD`), Conch/Surface (`#F3F1E9`), Raised Surface (`#F9F8F3`), and Lagoon Ink (`#12292B`).
+- Cleaned interface of tracked uppercase micro-labels and prototype "anti-AI tells" across all 12 views.
+- Converted mathematical objective and booking formulas on `/admin/proof` to Instrument Serif Italic typography.
+- Relocated developer state inspector controls from page headers to discrete floating bottom-right docks (`aside`) on Dashboard, Exams, and Priority Hierarchy.
+- Redesigned and rebalanced screens:
+  - **Dashboard (`/dashboard`)**: Rebalanced 8/4 grid, enlarged campus wayfinder line-art crop (420x200), added Evening Festivities strip.
+  - **Venues & Rooms (`/rooms`)**: Removed artificial glowing green radial gradients; implemented flat SVG line-art with Violet selection feedback; expanded heatmap cell height to `h-8` with Coral overload highlight; enhanced venue directory typography and row rhythm.
+  - **Bookings (`/bookings`)**: Enlarged title column (`min-w-[240px] max-w-[320px]`), 48px row rhythm, sentence-case status chips, Violet active filter pills, calmed decision panel tags.
+  - **Disruption Simulation (`/disruption`)**: Docked sticky action bar to `bottom-14 sm:bottom-0 z-30` above mobile nav; container bottom padding expanded to `pb-44 sm:pb-36` to prevent ledger overlap.
+  - **Design System Kit (`/kit`)**: Updated component demonstrations to showcase the 5-colour semantic accent system alongside paper foundations; converted typography scale to sentence-case.
+  - **Login (`/login`)**: Replaced particle dots with architectural line illustration of Chilika lagoon, campus dome, and pier.
+- **Verification**:
+  - `cd frontend; npx tsc --noEmit`: 0 errors.
+  - `cd frontend; npm run lint`: 0 warnings, 0 errors.
+  - `cd frontend; npm run build`: 16/16 static pages generated successfully.
+  - Backend: 56/56 pytest tests passing.
 
 ### Fix F1: Lexicographic 3-stage reschedule objective & forced moves tracking
 - Refactored `backend/app/solver/reschedule.py` to replace weighted sum `9*time_changed + moved` with a 3-stage lexicographic CP-SAT optimization pipeline:

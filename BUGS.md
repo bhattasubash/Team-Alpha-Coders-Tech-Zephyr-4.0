@@ -38,6 +38,30 @@ No invented bugs. Only real issues found and fixed during development.
 
 ---
 
+### 2026-10-31 22:02 IST: Duplicate progress bar markup in dashboard/page.tsx broke Next.js AST compilation
+- Symptom: `npm run build` failed during Next.js compilation with `Unexpected token AppShell. Expected jsx identifier` pointing to line 130 of `frontend/src/app/dashboard/page.tsx`.
+- Root cause: An unclosed duplicate block of the campus room utilisation bar around line 376 with an extra closing `</div>` tag unbalanced the JSX element tree inside the `viewState === 'normal'` fragment.
+- Fix: Removed the duplicate DOM snippet and restored matching JSX closing tags.
+- Confirmation: Executed `cd frontend; npx tsc --noEmit; npm run lint; npm run build`. All 16 static routes compiled successfully with 0 type errors and 0 lint warnings.
+
+---
+
+### 2026-10-31 22:15 IST: Two-phase timetable solver timed out in Phase 1 and discarded feasibility hint
+- Symptom: `backend/tests/test_solver.py::test_solve_two_phase_soft_objective` failed with `AssertionError: assert 'UNKNOWN' in ('FEASIBLE', 'OPTIMAL')`.
+- Root cause: Cold-start feasibility search for the complete 189-session timetable takes ~28 seconds on CP-SAT with 8 workers. `solve_two_phase()` had `feasibility_limit=20.0s`, causing Phase 1 to terminate early with `UNKNOWN`. Furthermore, if Phase 2 timed out before improving the soft objective, `solve_two_phase()` returned `p2_res` (`UNKNOWN`) rather than preserving Phase 1's valid feasible assignment.
+- Fix: Increased default `feasibility_limit` to 35.0s in `backend/app/solver/model.py`, updated test timeout configuration to 60.0s, and added a fallback returning `p1_res` if Phase 2 does not yield an improved solution.
+- Confirmation: Executed `pytest backend/tests/test_solver.py`; all 3 solver tests passed in 62.12s. Executed full test suite `pytest -q`; all 56 tests passed.
+
+---
+
+### 2026-10-31 22:20 IST: Disruption sticky action bar collided with mobile bottom navigation rail
+- Symptom: On mobile viewports (< 640px), the sticky bottom action bar ("Approve and commit") collided directly with the fixed `h-14` mobile navigation bar (`Rail.tsx`), obscuring relocation ledger entries and blocking approval clicks.
+- Root cause: Bottom rail was `fixed bottom-0 h-14 z-40`, while disruption bar had `bottom-0 z-30`.
+- Fix: Docked the disruption sticky bar to `bottom-14 sm:bottom-0 z-30` and expanded container bottom padding to `pb-44 sm:pb-36` to ensure the detailed change ledger scrolls completely clear of the action bar.
+- Confirmation: Verified responsive layout and z-index ordering across desktop and mobile breakpoints.
+
+---
+
 ### 2026-10-31 22:05 IST: Reschedule solver combined objective and insufficient stage timeout
 - Symptom: In `backend/app/solver/reschedule.py`, the objective was formulated as `9 * time_changed + moved`, and during disruptions preview, Stage A CP-SAT timeout was capped at 15s (`total_limit * 0.5`), returning `UNKNOWN` and triggering false `status: rejected` on feasible disruption proposals.
 - Root cause: Single-stage weighted objective violated the problem definition ("fewest moved" scored lexicographically) and prevented proving true optimality of minimal moves. Furthermore, Stage A is the primary branch-and-bound search phase needing sufficient time budget, while Stages B and C are warm-started and take < 5s.

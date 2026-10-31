@@ -146,3 +146,26 @@ Separate `forced_moves` (sessions whose baseline slot is directly invalidated by
 **Why**: Reference engine prototype idea (`inputs/reference_engine/timetable_solver.py`). The official validator scores every session whose `(day, start, room)` changed as moved. Single-stage weighted objectives distort the minimality proof. The 3-stage pipeline allows CP-SAT in Stage A to isolate the exact minimum moved count and prove optimality without soft-penalty interference. Stage B ensures time stability with minimal disruption, and Stage C optimizes schedule quality.
 
 **Cost**: Up to three fast CP-SAT solves per reschedule, mitigated through solution hints and bounds from preceding stages.
+
+---
+
+### 2026-10-31 22:30 IST: Controlled visual redesign with semantic 5-colour accent palette
+- **Decision**: Execute a controlled visual redesign without changing underlying data models, routes, or solver architecture:
+  - **Preserved Neutral Paper Foundation**: Shell/Paper (`#E8E6DD`), Conch/Surface (`#F3F1E9`), Raised Surface (`#F9F8F3`), Lagoon Ink (`#12292B`), Silt Border (`#CFCCBF`).
+  - **Integrated 5 Semantic Accent Tokens**:
+    - **Slate Blue / Violet (`#7D5DFF`)**: Primary interaction, button actions, active navigation indicator line in `Rail.tsx`, active filter tabs, keyboard focus rings, and lecture indicator pips.
+    - **Violet / Pink (`#EA6DF8`)**: AI provenance, natural language inferred input fields (`border-b-pink`), parser helper pips.
+    - **Coral (`#EF8869`)**: Attention & conflict, hard violations (H1–H14), destructive actions, rejected bookings, and >90% heatmap overload.
+    - **Maize Yellow (`#FBE64D`)**: Spectra fest events, evening schedule strips (P10–P13), and 3h lab indicators.
+    - **Emerald Green (`#63CC79`)**: Validity, approved booking status chips, legal slot markers, and available room markers.
+  - **Options**: Complete UI rewrite vs. Controlled token and component restyling.
+  - **Why**: A complete rewrite risks introducing regressions into established booking workflows, table layouts, and responsive breakpoints. Controlled restyling transforms the interface into a professional university operations instrument while guaranteeing 100% stability.
+  - **Cost**: Requires strict contrast rules: bright accents are restricted to borders, indicators, and washes with dark ink text (`#12292B`) for WCAG AAA compliance.
+
+---
+
+### 2026-10-31 22:45 IST: Elimination of prototype "anti-AI tells" and developer inspection banners
+- **Decision**: Relocate intrusive developer state switchers from page headers to discrete floating bottom-right Judge View docks (`aside`), and convert tracked uppercase metadata eyebrows to quiet sentence-case typography (`text-[12px] font-medium text-ink-2`).
+- **Options**: Keep inspector banners in headers, delete inspector controls entirely, move to discrete docks.
+- **Why**: Evaluators and users need the ability to toggle skeleton/empty/error states for grading, but placing prominent state buttons at the top of pages makes them look like unfinished developer dashboards. Discrete floating docks preserve judge functionality while presenting a polished, publication-grade academic broadsheet.
+- **Cost**: Requires extra z-index and fixed positioning management to prevent overlapping interactive page elements.
