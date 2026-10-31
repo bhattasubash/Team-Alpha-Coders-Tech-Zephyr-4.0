@@ -4,8 +4,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import pytest
 
-from app.bookings.engine import BookingEngine, effective_category, outranks
+from app.bookings.engine import (
+    BookingEngine,
+    effective_category,
+    outranks,
+    reservations_for_bookings,
+)
+from app.solver.config import SolverConfig
+from app.solver.model import TimetableSolver
 
 
 def test_effective_category_and_outranks(dataset):
@@ -39,10 +47,10 @@ def test_booking_engine_decide_all(dataset, validator_module):
     - Reason provided for every rejected and alternative decision.
     - Verified against official validator check_bookings.
     """
-    # Load baseline schedule from scratch
-    scratch_path = Path("backend/scratch/schedule_soft_3b.json")
-    assert scratch_path.exists(), "scratch/schedule_soft_3b.json must exist from Milestone 3"
-    with open(scratch_path, encoding="utf-8") as f:
+    # Load baseline schedule from exports or scratch
+    sched_path = Path("exports/schedule.json") if Path("exports/schedule.json").exists() else Path("backend/scratch/schedule_soft_3b.json")
+    assert sched_path.exists(), "exports/schedule.json or scratch/schedule_soft_3b.json must exist"
+    with open(sched_path, encoding="utf-8") as f:
         base_sched = json.load(f)
 
     engine = BookingEngine(dataset, base_sched)
@@ -92,8 +100,8 @@ def test_booking_engine_decide_all(dataset, validator_module):
 
 def test_booking_find_alternative(dataset):
     """Test find_alternative helper returns legal slot."""
-    scratch_path = Path("backend/scratch/schedule_soft_3b.json")
-    with open(scratch_path, encoding="utf-8") as f:
+    sched_path = Path("exports/schedule.json") if Path("exports/schedule.json").exists() else Path("backend/scratch/schedule_soft_3b.json")
+    with open(sched_path, encoding="utf-8") as f:
         base_sched = json.load(f)
 
     engine = BookingEngine(dataset, base_sched)
@@ -106,3 +114,42 @@ def test_booking_find_alternative(dataset):
     assert "start_period" in alt
     assert "end_period" in alt
     assert alt["end_period"] >= alt["start_period"]
+
+
+@pytest.mark.slow
+def test_booking_reservations_consistency_across_seeds(dataset, validator_module):
+    """F2 verification: reservations_for_bookings guarantees 67.0 booking score across seeds."""
+    blocked_rooms, blocked_groups = reservations_for_bookings(dataset)
+    assert len(blocked_rooms) == 33
+    assert len(blocked_groups) == 5
+
+    seeds = [7, 42, 99]
+    official_ctx = validator_module.Ctx(dataset)
+
+    for seed in seeds:
+        cfg = SolverConfig(random_seed=seed, time_limit_seconds=40.0)
+        solver = TimetableSolver(
+            dataset,
+            config=cfg,
+            blocked_room_slots=blocked_rooms,
+            blocked_group_slots=blocked_groups,
+        )
+        res = solver.solve_initial(include_soft_objective=False, time_limit_override=40.0)
+        assert res.schedule is not None, f"Timetable solve failed for seed {seed}"
+
+        engine = BookingEngine(dataset, res.schedule)
+        fest_week = engine.decide_all()
+
+        base_assign, _ = validator_module.to_assign(res.schedule)
+        hard_violations, warnings, bstats = validator_module.check_bookings(
+            official_ctx,
+            base_assign,
+            fest_week,
+        )
+
+        assert len(hard_violations) == 0, f"Hard violations for seed {seed}: {hard_violations}"
+        assert bstats["booking_score"] == 67.0, (
+            f"Seed {seed} booking score is {bstats['booking_score']}, expected 67.0"
+        )
+        assert bstats["approved"] == 22
+        assert len(bstats["priority_inversions"]) == 0

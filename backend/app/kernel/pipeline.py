@@ -17,6 +17,7 @@ from app.kernel.types import (
     Violation,
 )
 from app.kernel.validate import validate_timetable
+from app.bookings.engine import reservations_for_bookings
 from app.solver.reschedule import RescheduleSolver
 
 Assign = dict[str, tuple[str, int, str]]
@@ -127,7 +128,13 @@ def propose_reschedule(
     disruption = {"changes": changes}
     disrupted_data = apply_disruption_dict(base_data, disruption)
 
-    solver = RescheduleSolver(disrupted_data, base_schedule)
+    b_rooms, b_groups = reservations_for_bookings(disrupted_data)
+    solver = RescheduleSolver(
+        disrupted_data,
+        base_schedule,
+        blocked_room_slots=b_rooms,
+        blocked_group_slots=b_groups,
+    )
     result = solver.solve()
 
     if result.infeasible or result.assignments is None:

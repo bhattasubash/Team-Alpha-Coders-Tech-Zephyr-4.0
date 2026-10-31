@@ -18,6 +18,39 @@ from app.kernel.context import KernelContext
 from app.kernel.validate import check_timetable
 
 
+def reservations_for_bookings(
+    data: dict[str, Any],
+) -> tuple[set[tuple[str, str, int]], set[tuple[str, str, int]]]:
+    """Decide all booking requests against an EMPTY timetable.
+
+    Takes the approved ones and returns:
+    - blocked_room_slots: set of (room_id, day, period) for teaching periods P1..P9
+    - blocked_group_slots: set of (group_id, day, period) for teaching periods P1..P9
+    """
+    engine = BookingEngine(data, {})
+    res = engine.decide_all()
+    approved = [b for b in res["bookings"] if b["status"] == "approved"]
+
+    blocked_rooms: set[tuple[str, str, int]] = set()
+    blocked_groups: set[tuple[str, str, int]] = set()
+
+    req_by_id = {r["id"]: r for r in data.get("booking_requests", [])}
+
+    for b in approved:
+        room_id = b["room_id"]
+        day = b["day"]
+        req = req_by_id.get(b["request_id"], {})
+        mand_groups = req.get("mandatory_for_groups", [])
+
+        for p in range(b["start_period"], b["end_period"] + 1):
+            if 1 <= p <= 9:
+                blocked_rooms.add((room_id, day, p))
+                for g in mand_groups:
+                    blocked_groups.add((g, day, p))
+
+    return blocked_rooms, blocked_groups
+
+
 def block(start: int, dur: int) -> range:
     """Return range of periods occupied by a session starting at start."""
     return range(start, start + dur)

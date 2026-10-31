@@ -44,12 +44,21 @@ class TimetableSolver:
         self,
         data: dict[str, Any],
         config: SolverConfig | None = None,
+        blocked_room_slots: set[tuple[str, str, int]] | None = None,
+        blocked_group_slots: set[tuple[str, str, int]] | None = None,
     ) -> None:
-        """Store dataset and solver configuration."""
+        """Store dataset, solver configuration, and optional booking reservations."""
         self.data = data
         self.config = config or SolverConfig()
         self.ctx = KernelContext(data)
-        self.domains = prune_session_domains(data, self.ctx)
+        self.blocked_room_slots: set[tuple[str, str, int]] = set(blocked_room_slots or set())
+        self.blocked_group_slots: set[tuple[str, str, int]] = set(blocked_group_slots or set())
+        self.domains = prune_session_domains(
+            data,
+            self.ctx,
+            blocked_room_slots=self.blocked_room_slots,
+            blocked_group_slots=self.blocked_group_slots,
+        )
 
     def solve_initial(
         self,
@@ -113,6 +122,11 @@ class TimetableSolver:
             if len(v) > 1:
                 model.Add(sum(v) <= 1)
 
+        # Enforce reserved room slots for bookings (BR-01..BR-25)
+        for r_slot in self.blocked_room_slots:
+            if r_slot in room_period_vars and room_period_vars[r_slot]:
+                model.Add(sum(room_period_vars[r_slot]) == 0)
+
         # 4. Faculty non-overlap and daily hours limit
         fac_period_vars: dict[tuple[str, str, int], list[cp_model.IntVar]] = defaultdict(list)
         fac_day_terms: dict[tuple[str, str], list[Any]] = defaultdict(list)
@@ -164,6 +178,11 @@ class TimetableSolver:
         for k, v in grp_period_vars.items():
             if len(v) > 1:
                 model.Add(sum(v) <= 1)
+
+        # Enforce reserved mandatory group slots for bookings
+        for g_slot in self.blocked_group_slots:
+            if g_slot in grp_period_vars and grp_period_vars[g_slot]:
+                model.Add(sum(grp_period_vars[g_slot]) == 0)
 
         # 6. Optional soft objective
         if include_soft_objective:

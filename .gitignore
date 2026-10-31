@@ -14,3 +14,4 @@ exports/*_report.json
 .pytest_cache/
 *.tsbuildinfo
 CrunchWeek_StarterPack/
+backend/scratch/

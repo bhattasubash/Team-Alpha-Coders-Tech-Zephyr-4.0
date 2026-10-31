@@ -53,12 +53,21 @@ class RescheduleSolver:
         data: dict[str, Any],
         baseline_schedule: dict[str, Any] | dict[str, tuple[str, int, str]],
         config: SolverConfig | None = None,
+        blocked_room_slots: set[tuple[str, str, int]] | None = None,
+        blocked_group_slots: set[tuple[str, str, int]] | None = None,
     ) -> None:
-        """Initialize with disrupted dataset, baseline schedule, and solver config."""
+        """Initialize with disrupted dataset, baseline schedule, solver config, and reservations."""
         self.data = data
         self.config = config or SolverConfig()
         self.ctx = KernelContext(data)
-        self.domains = prune_session_domains(data, self.ctx)
+        self.blocked_room_slots: set[tuple[str, str, int]] = set(blocked_room_slots or set())
+        self.blocked_group_slots: set[tuple[str, str, int]] = set(blocked_group_slots or set())
+        self.domains = prune_session_domains(
+            data,
+            self.ctx,
+            blocked_room_slots=self.blocked_room_slots,
+            blocked_group_slots=self.blocked_group_slots,
+        )
 
         # Normalize baseline
         if isinstance(baseline_schedule, dict) and "sessions" in baseline_schedule:
@@ -133,6 +142,11 @@ class RescheduleSolver:
             if len(v) > 1:
                 model.Add(sum(v) <= 1)
 
+        # Enforce reserved room slots for bookings
+        for r_slot in self.blocked_room_slots:
+            if r_slot in room_period_vars and room_period_vars[r_slot]:
+                model.Add(sum(room_period_vars[r_slot]) == 0)
+
         # 4. Faculty non-overlap and daily hours limit
         fac_period_vars: dict[tuple[str, str, int], list[cp_model.IntVar]] = defaultdict(list)
         fac_day_terms: dict[tuple[str, str], list[Any]] = defaultdict(list)
@@ -177,6 +191,11 @@ class RescheduleSolver:
         for k, v in grp_period_vars.items():
             if len(v) > 1:
                 model.Add(sum(v) <= 1)
+
+        # Enforce reserved mandatory group slots for bookings
+        for g_slot in self.blocked_group_slots:
+            if g_slot in grp_period_vars and grp_period_vars[g_slot]:
+                model.Add(sum(grp_period_vars[g_slot]) == 0)
 
         # 6. Moved and time changed tracking
         moved_var_map: dict[str, cp_model.IntVar] = {}
