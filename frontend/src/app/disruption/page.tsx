@@ -86,29 +86,51 @@ export default function DisruptionPage() {
     try {
       const changes: any[] = [];
       if (roomId) {
+        const days = roomClosureWindow.includes('MON-FRI')
+          ? ['MON', 'TUE', 'WED', 'THU', 'FRI']
+          : [facultyLeaveDays || 'MON'];
         changes.push({
           type: 'room_unavailable',
           room_id: roomId,
-          day: facultyLeaveDays,
+          days: days,
           periods: [1, 2, 3, 4, 5, 6, 7, 8, 9],
-          reason: roomClosureReason,
+          reason: roomClosureReason || 'Room maintenance closure',
         });
       }
       if (facultyId) {
         changes.push({
-          type: 'faculty_leave',
+          type: 'faculty_unavailable',
           faculty_id: facultyId,
-          day: facultyLeaveDays,
-          reason: facultyLeaveReason,
+          days: [facultyLeaveDays || 'MON'],
+          periods: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+          reason: facultyLeaveReason || 'Faculty leave',
+        });
+      }
+      if (emergencyCourse) {
+        changes.push({
+          type: 'add_session',
+          session: {
+            id: emergencyCourse,
+            course_id: emergencyCourse.split('-')[0] || 'CS202',
+            kind: 'tutorial',
+            groups: [emergencyGroup || 'CSE-2'],
+            faculty_id: emergencyFaculty || 'F06',
+            size: 80,
+            duration: 1,
+            room_types: ['classroom', 'lecture_hall', 'auditorium'],
+            needs_accessible: false,
+            basket_slot: null,
+            fixed_slot: null,
+          },
         });
       }
       const res = await api.previewDisruption({ changes });
       setProposal(res);
       setIsCalculated(true);
-      setIsInfeasible(res.infeasible);
+      setIsInfeasible(Boolean(res.infeasible));
       setToastMessage(`Minimal moves computed: ${res.moved_count} sessions moved.${res.proven_minimum ? ' (Proven minimal)' : ''}`);
     } catch (err: any) {
-      setApiError({ code: err.code || 'ERROR', message: err.message || 'Solver failed' });
+      setApiError({ code: err.code || 'ERROR', message: err.message || 'Solver failed to compute minimal moves.' });
     } finally {
       setIsCalculating(false);
     }
