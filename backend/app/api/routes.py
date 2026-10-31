@@ -638,7 +638,11 @@ def get_validation_report(
 
     rep = validate_schedule(data, sched)
     violations = [
-        ViolationItem(rule=v.rule, where=v.where, detail=v.detail)
+        ViolationItem(
+            rule=v.get("rule", "") if isinstance(v, dict) else getattr(v, "rule", ""),
+            where=v.get("where", "") if isinstance(v, dict) else getattr(v, "where", ""),
+            detail=v.get("detail", "") if isinstance(v, dict) else getattr(v, "detail", ""),
+        )
         for v in rep.get("hard_violations", [])
     ]
     return ValidationReportResponse(
