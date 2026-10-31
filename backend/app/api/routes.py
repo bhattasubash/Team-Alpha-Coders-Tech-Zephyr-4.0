@@ -69,7 +69,13 @@ from app.api.schemas import (
     ValidatorRunSummary,
     ViolationItem,
 )
-from app.auth.users import authenticate_user, create_access_token, get_current_user, require_role
+from app.auth.users import (
+    authenticate_user,
+    create_access_token,
+    get_current_user,
+    get_optional_user,
+    require_role,
+)
 from app.ai.provider import LLMProvider
 from app.bookings.engine import BookingEngine
 from app.db.connection import get_connection
@@ -1466,7 +1472,7 @@ def explain_booking(
 )
 def ask_assistant(
     req: AssistantRequest,
-    user: dict[str, Any] = Depends(get_current_user),
+    user: dict[str, Any] = Depends(get_optional_user),
 ) -> AssistantResponse:
     """Query scheduling assistant with grounding against current schedule and constraints."""
     res = llm_provider.ask_assistant(req.message, user.get("role", "guest"))

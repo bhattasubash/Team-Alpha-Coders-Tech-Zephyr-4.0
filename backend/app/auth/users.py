@@ -111,6 +111,20 @@ def get_current_user(token: str | None = Depends(oauth2_scheme)) -> dict[str, An
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 
+def get_optional_user(token: str | None = Depends(oauth2_scheme)) -> dict[str, Any]:
+    """Decode JWT if provided, otherwise return a default guest user dict."""
+    if token is None:
+        return {"email": "guest@cit.edu", "name": "Guest User", "role": "guest"}
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str | None = payload.get("sub")
+        if email is not None and email in DEMO_USERS:
+            return DEMO_USERS[email]
+    except Exception:
+        pass
+    return {"email": "guest@cit.edu", "name": "Guest User", "role": "guest"}
+
+
 def require_role(*allowed_roles: str):
     """Dependency that checks the user has one of the allowed roles."""
 
