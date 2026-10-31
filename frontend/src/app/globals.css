@@ -1,14 +1,175 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Prevent layout shift from scrollbar appearance */
-html {
-  overflow-y: scroll;
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('/fonts/InstrumentSerif-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
-/* Default focus ring for accessibility */
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('/fonts/InstrumentSerif-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+:root {
+  --paper: #E8E6DD;
+  --surface: #F3F1E9;
+  --raised: #F9F8F3;
+  --line: #CFCCBF;
+  --line-strong: #A9A89B;
+  --ink: #12292B;
+  --ink-2: #4A5F60;
+  /* 5-Colour Semantic Palette */
+  --violet: #7D5DFF;
+  --pink: #EA6DF8;
+  --coral: #EF8869;
+  --yellow: #FBE64D;
+  --green: #63CC79;
+  /* Semantic Mappings */
+  --lecture: #7D5DFF;
+  --tutorial: #2F7A78;
+  --lab: #8A6A1E;
+  --event: #FBE64D;
+  --bad: #EF8869;
+  --good: #63CC79;
+  --t-lecture: #F4F2EB;
+  --t-tutorial: #F4F2EB;
+  --t-lab: #F4F2EB;
+  --t-event: rgba(251, 230, 77, 0.20);
+  --t-bad: rgba(239, 136, 105, 0.15);
+  --t-good: rgba(99, 204, 121, 0.15);
+  --t-violet: rgba(125, 93, 255, 0.12);
+  --t-pink: rgba(234, 109, 248, 0.12);
+  --rail: #12292B;
+  --r-cell: 2px;
+  --r-card: 4px;
+  --r-panel: 8px;
+  --r-pill: 999px;
+  --font-display: "Instrument Serif", Georgia, serif;
+  --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+[data-theme="dark"],
+.dark {
+  --paper: #0E1F21;
+  --surface: #152C2E;
+  --raised: #1C3739;
+  --line: #2B4547;
+  --line-strong: #3E5E60;
+  --ink: #EDEBE0;
+  --ink-2: #9DB0AE;
+  /* 5-Colour Semantic Palette (Dark Mode) */
+  --violet: #9B82FF;
+  --pink: #F08CFA;
+  --coral: #EF8869;
+  --yellow: #FBE64D;
+  --green: #63CC79;
+  /* Semantic Mappings */
+  --lecture: #9B82FF;
+  --tutorial: #6FC0BC;
+  --lab: #D8B35A;
+  --event: #FBE64D;
+  --bad: #EF8869;
+  --good: #63CC79;
+  --t-lecture: #1C3739;
+  --t-tutorial: #1C3739;
+  --t-lab: #1C3739;
+  --t-event: rgba(251, 230, 77, 0.22);
+  --t-bad: rgba(239, 136, 105, 0.22);
+  --t-good: rgba(99, 204, 121, 0.22);
+  --t-violet: rgba(125, 93, 255, 0.22);
+  --t-pink: rgba(234, 109, 248, 0.22);
+  --rail: #0A1718;
+}
+
+html {
+  overflow-y: scroll;
+  background-color: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-ui);
+  font-feature-settings: "tnum" 1, "cv11" 1, "ss03" 1;
+  background-color: var(--paper);
+  color: var(--ink);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Headings in Instrument Serif */
+h1, h2, h3, .font-serif, .display-serif {
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+
+/* Focus styles: 2px ink outline with 2px paper gap */
 *:focus-visible {
-  outline: 2px solid #4f46e5;
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
+}
+
+/* Hatch pattern for closed/maintenance/lunch */
+.hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--line-strong) 0,
+    var(--line-strong) 1px,
+    transparent 1px,
+    transparent 6px
+  );
+}
+
+.hatch-subtle {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--line) 0,
+    var(--line) 1px,
+    transparent 1px,
+    transparent 6px
+  );
+}
+
+.hatch-bad {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--bad) 0,
+    var(--bad) 1px,
+    transparent 1px,
+    transparent 6px
+  );
+}
+
+/* Dotted pattern for under 40% filled sessions */
+.dots-pattern {
+  background-image: radial-gradient(var(--ink-2) 1px, transparent 1px);
+  background-size: 4px 4px;
+}
+
+/* Double rule for kernel stamp */
+.border-double-hingula {
+  border: 1px solid var(--bad);
+  outline: 1px solid var(--bad);
+  outline-offset: 1px;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

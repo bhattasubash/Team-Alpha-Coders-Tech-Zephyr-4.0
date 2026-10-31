@@ -1,133 +1,157 @@
-# API endpoints
+# API documentation
 
-All endpoints are prefixed with the backend base URL (default: `http://localhost:8000`).
+Specification for the CIT Campus Scheduling HTTP API contract.
 
-Auth-protected endpoints require a Bearer token in the Authorization header. Get one from POST /api/auth/login.
+Base URL: `http://localhost:8000`
+OpenAPI specification: `/openapi.json`
+Interactive documentation: `/docs`
 
-## Status
+## 1. Authentication and authorization
 
-| Status | Meaning |
-|--------|---------|
-| Implemented | Working, tested |
-| Stub | Route exists, returns 501 Not Implemented |
-| Planned | Not yet created |
+Protected endpoints require a Bearer token in the `Authorization` header:
+`Authorization: Bearer <access_token>`
 
-## Endpoints
+Roles:
+- `admin`: Full administrative access, solver triggering, approvals, resets.
+- `department_coordinator`: Manual moves, booking reviews.
+- `faculty`: View access and personal schedule tracking.
+- `club`: Student club event booking submissions and status tracking.
+
+Demo credentials:
+| Email | Password | Role |
+|-------|----------|------|
+| `admin@cit.edu` | `admin123` | admin |
+| `coordinator@cit.edu` | `coord123` | department_coordinator |
+| `faculty@cit.edu` | `faculty123` | faculty |
+| `club@cit.edu` | `club123` | club |
+
+## 2. Standardized error format
+
+Every error response adheres strictly to the following envelope:
+
+```json
+{
+  "error": {
+    "code": "...",
+    "message": "...",
+    "details": [...]
+  }
+}
+```
+
+Allowed error codes:
+- Validator rule IDs: `H1` to `H14`, `B1` to `B3`, `E1`, `E2`, `S1` to `S6`
+- System and domain codes:
+  - `NOT_FOUND`: Resource does not exist (HTTP 404).
+  - `FORBIDDEN`: User role lacks required permission (HTTP 403).
+  - `UNAUTHENTICATED`: Missing or invalid token (HTTP 401).
+  - `NOT_IMPLEMENTED`: Endpoint logic not yet implemented (HTTP 501).
+  - `INVALID_INPUT`: Request payload or parameter validation error (HTTP 422).
+  - `SELF_APPROVAL`: Admin cannot approve their own submitted proposal (HTTP 400).
+  - `INFEASIBLE`: Requested schedule modification cannot satisfy hard constraints (HTTP 409).
+
+## 3. Response conventions
+
+1. Every list response includes a concrete integer `count` field.
+2. Every Proposal and Decision carries machine-readable `reason_codes` plus a human-readable `reason` string generated from deterministic templates (never from a generative model).
+3. Endpoints without backend business logic return HTTP 501 with code `NOT_IMPLEMENTED`.
+
+## 4. Endpoints list
 
 ### Health
 
-| Method | Path | Description | Status |
-|--------|------|-------------|--------|
-| GET | `/health` | Returns `{"status": "ok"}` | Planned |
+| Method | Path | Role | Description | Response |
+|--------|------|------|-------------|----------|
+| GET | `/api/health` | Public | Application health status | `HealthResponse` |
 
 ### Auth
 
-| Method | Path | Description | Auth | Status |
-|--------|------|-------------|------|--------|
-| POST | `/api/auth/login` | Accepts `{"email", "password"}`. Returns `{"access_token", "role"}`. | None | Planned |
+| Method | Path | Role | Request | Response |
+|--------|------|------|---------|----------|
+| POST | `/api/auth/login` | Public | `LoginRequest` | `TokenResponse` |
+| GET | `/api/auth/me` | Authenticated | None | `UserProfileResponse` |
+
+### Meta
+
+| Method | Path | Role | Request | Response |
+|--------|------|------|---------|----------|
+| GET | `/api/meta` | Public | None | `MetaResponse` (calendar, rooms, faculty, groups, courses, kinds, period times, counts) |
 
 ### Timetable
 
-| Method | Path | Description | Auth | Status |
-|--------|------|-------------|------|--------|
-| GET | `/api/timetable` | Returns the full committed timetable for the current week. | Any | Planned |
-| POST | `/api/timetable/generate` | Triggers the solver to generate a new timetable. Returns a proposal ID. | Admin | Planned |
-| GET | `/api/timetable/{group_id}` | Returns the timetable filtered for a specific student group. | Any | Planned |
-
-### Schedule changes
-
-| Method | Path | Description | Auth | Status |
-|--------|------|-------------|------|--------|
-| POST | `/api/schedule/propose` | Submit a proposed schedule change. Kernel validates it. Returns violations or a proposal ID. | Admin, Coordinator | Planned |
-| POST | `/api/schedule/approve/{id}` | Approve or reject a proposed change by ID. Body: `{"action": "approve"|"reject", "reason": "..."}`. | Admin | Planned |
-
-### Bookings
-
-| Method | Path | Description | Auth | Status |
-|--------|------|-------------|------|--------|
-| GET | `/api/bookings` | List all booking requests with their status. | Any | Planned |
-| POST | `/api/bookings/request` | Submit a new booking request. Body includes room, date, periods, purpose, event type. Also accepts a `natural_language` field for AI parsing. | Any | Planned |
-| POST | `/api/bookings/decide/{id}` | Approve or reject a booking request. Priority order enforced: exam > regular_session > institute_event > guest_lecture > department_event > club_event. | Admin, Coordinator | Planned |
-
-### Rooms
-
-| Method | Path | Description | Auth | Status |
-|--------|------|-------------|------|--------|
-| GET | `/api/rooms/available` | Query params: `date`, `period`. Returns rooms that are free at the given slot with capacity and type info. | Any | Planned |
-
-### Disruption
-
-| Method | Path | Description | Auth | Status |
-|--------|------|-------------|------|--------|
-| POST | `/api/disruption/apply` | Apply a disruption scenario (e.g., faculty sick, room closed). Kernel reschedules affected sessions with minimal moves. Returns diff. | Admin | Planned |
+| Method | Path | Role | Request | Response |
+|--------|------|------|---------|----------|
+| GET | `/api/timetable` | Authenticated | Query: `view=group\|faculty\|room`, `id=<str>` | `TimetableViewResponse` |
+| GET | `/api/timetable/all` | Authenticated | None | `TimetableAllResponse` |
+| POST | `/api/timetable/generate` | admin | `GenerateTimetableRequest` | `JobStatusResponse` (returns job ID) |
+| POST | `/api/timetable/optimise` | admin | `OptimiseTimetableRequest` | `JobStatusResponse` (continues from best) |
+| GET | `/api/jobs/{id}` | Authenticated | None | `JobStatusResponse` (status, progress, best soft penalty, solver status, seconds) |
 
 ### Validation
 
-| Method | Path | Description | Auth | Status |
-|--------|------|-------------|------|--------|
-| GET | `/api/validate` | Runs the kernel validator on the current committed schedule. Returns hard violations, soft penalty score, and per-rule results. | Admin | Planned |
+| Method | Path | Role | Request | Response |
+|--------|------|------|---------|----------|
+| GET | `/api/validation` | Authenticated | None | `ValidationReportResponse` (kernel report: hard violations with rule IDs, soft by S1-S6, bookings, exams) |
+| GET | `/api/validation/official` | admin | None | `OfficialValidationResponse` (runs official validator as subprocess and returns report) |
 
-### Export
+### Manual scheduling
 
-| Method | Path | Description | Auth | Status |
-|--------|------|-------------|------|--------|
-| POST | `/api/export` | Exports the current schedule as JSON to `exports/schedule.json`. For post-disruption, exports to `exports/schedule_after.json`. | Admin | Planned |
+| Method | Path | Role | Request | Response |
+|--------|------|------|---------|----------|
+| GET | `/api/sessions/{id}/legal-slots` | Authenticated | None | `LegalSlotsResponse` (every day, start period, room with legal bool and reason codes) |
+| POST | `/api/sessions/{id}/move` | admin, department_coordinator | `SessionMoveRequest` | `Proposal` with diff, or error with reason codes |
 
-## Request/response examples
+### Rooms
 
-### POST /api/auth/login
+| Method | Path | Role | Request | Response |
+|--------|------|------|---------|----------|
+| GET | `/api/rooms/free` | Authenticated | Query: `day`, `period`, `duration`, `type`, `min_capacity`, `accessible` | `FreeRoomsResponse` (count, room list) |
 
-Request:
-```json
-{
-  "email": "admin@cit.edu",
-  "password": "admin123"
-}
-```
+### Exams
 
-Response:
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIs...",
-  "role": "admin"
-}
-```
+| Method | Path | Role | Request | Response |
+|--------|------|------|---------|----------|
+| GET | `/api/exams` | Authenticated | None | `ExamsResponse` (count, exam list) |
+| POST | `/api/exams/generate` | admin | `GenerateExamsRequest` | `ExamsResponse` (generated exam placements) |
 
-### GET /api/rooms/available?date=2026-11-02&period=3
+### Bookings
 
-Response:
-```json
-{
-  "available_rooms": [
-    {
-      "room_id": "CR-01",
-      "name": "Classroom 1",
-      "capacity": 60,
-      "type": "classroom",
-      "accessible": true
-    }
-  ]
-}
-```
+| Method | Path | Role | Request | Response |
+|--------|------|------|---------|----------|
+| GET | `/api/bookings` | Authenticated | None | `BookingsListResponse` (count, booking list) |
+| POST | `/api/bookings/parse` | Authenticated | `ParseBookingTextRequest` (`text`) | `ParseBookingResponse` (`draft`, provenance per field, `follow_up_questions`, `source: "llm"\|"fallback"`) |
+| POST | `/api/bookings` | Authenticated | `CreateBookingRequest` | `BookingPrecheckResult` (structured request with kernel pre-check) |
+| POST | `/api/bookings/{id}/cancel` | Authenticated | None | `BookingCancelResponse` (marks rejected with reason "Withdrawn by requester") |
+| POST | `/api/bookings/decide` | admin | None | `BookingDecideResponse` (runs Spectra week priority decision engine) |
+| GET | `/api/bookings/{id}/decision` | Authenticated | None | `BookingDecision` (decision, reason codes, plain text reason, alternative offered) |
 
-### POST /api/bookings/request
+### Disruptions and Proposals
 
-Request (structured):
-```json
-{
-  "room_id": "AUD-01",
-  "date": "2026-11-05",
-  "periods": [10, 11, 12],
-  "purpose": "Spectra opening ceremony",
-  "event_type": "institute_event",
-  "requested_by": "club@cit.edu"
-}
-```
+| Method | Path | Role | Request | Response |
+|--------|------|------|---------|----------|
+| POST | `/api/disruptions/preview` | admin | `DisruptionsPreviewRequest` | `Proposal` (`id`, `status`, `moves: [{session_id, from, to, kind: time\|room_only}]`, `moved_count`, `proven_minimum: bool`, `infeasible: bool`, `conflicts: [...]`) |
+| GET | `/api/proposals` | Authenticated | None | `ProposalListResponse` (count, list of proposals) |
+| POST | `/api/proposals/{id}/approve` | admin | None | `ApproveProposalResponse` (admin approval, forbidden if admin is proposer) |
+| POST | `/api/proposals/{id}/reject` | admin | `RejectProposalRequest` | `ApproveProposalResponse` |
 
-Request (natural language, AI-parsed):
-```json
-{
-  "natural_language": "Book the auditorium for Spectra opening ceremony on Nov 5, periods 10 to 12",
-  "requested_by": "club@cit.edu"
-}
-```
+### Explain
+
+| Method | Path | Role | Request | Response |
+|--------|------|------|---------|----------|
+| GET | `/api/explain/session/{id}` | Authenticated | None | `ExplainSessionResponse` (counterfactual explanation with reason codes) |
+| GET | `/api/explain/booking/{id}` | Authenticated | None | `ExplainBookingResponse` (counterfactual explanation with reason codes) |
+| POST | `/api/assistant` | Authenticated | `AssistantRequest` | `AssistantResponse` |
+
+### Dashboard
+
+| Method | Path | Role | Request | Response |
+|--------|------|------|---------|----------|
+| GET | `/api/dashboard` | Authenticated | None | `DashboardResponse` (conflict count, pending approvals, room utilisation by room/day/period, booking board) |
+
+### Admin
+
+| Method | Path | Role | Request | Response |
+|--------|------|------|---------|----------|
+| POST | `/api/admin/reset` | admin | None | `AdminResetResponse` |
+| POST | `/api/admin/dataset` | admin | Multipart: `dataset_file`, optional `change_file` | `AdminResetResponse` |
+| GET | `/api/export/schedule.json` | admin | None | File export / schedule JSON |

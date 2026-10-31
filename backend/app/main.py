@@ -1,24 +1,105 @@
-"""FastAPI application entry point."""
+"""FastAPI application entry point.
 
-from fastapi import FastAPI
+Exposes /openapi.json, configures CORS from environment, and normalizes
+all error responses to {"error": {"code": "...", "message": "...", "details": [...]}}.
+"""
+
+from __future__ import annotations
+
+import os
+from typing import Any
+
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api.health import router as health_router
-from app.api.timetable import router as timetable_router
+from app.api.routes import router as api_router
+
+# Read CORS origins from environment variable, comma-separated
+cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+allow_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
 
 app = FastAPI(
-    title="CIT Schedule",
-    description="Scheduling and venue management for Chilika Institute of Technology",
-    version="0.1.0",
+    title="CIT Campus Scheduling API",
+    description="Scheduling, venue management, and constraint validation engine for Chilika Institute of Technology",
+    version="1.0.0",
+    openapi_url="/openapi.json",
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(health_router)
-app.include_router(timetable_router)
+
+@app.exception_handler(NotImplementedError)
+async def not_implemented_handler(request: Request, exc: NotImplementedError) -> JSONResponse:
+    """Handle unimplemented endpoints with HTTP 501 and standardized error envelope."""
+    msg = str(exc) if str(exc) else "Endpoint not implemented yet."
+    return JSONResponse(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        content={
+            "error": {
+                "code": "NOT_IMPLEMENTED",
+                "message": msg,
+                "details": [],
+            }
+        },
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    """Standardize Starlette and FastAPI HTTP exceptions into error envelope."""
+    code = "ERROR"
+    message = str(exc.detail)
+    details: list[Any] = []
+
+    if isinstance(exc.detail, dict):
+        code = str(exc.detail.get("code", "ERROR"))
+        message = str(exc.detail.get("message", str(exc.detail)))
+        details = list(exc.detail.get("details", []))
+    elif exc.status_code == status.HTTP_401_UNAUTHORIZED:
+        code = "UNAUTHENTICATED"
+    elif exc.status_code == status.HTTP_403_FORBIDDEN:
+        code = "FORBIDDEN"
+    elif exc.status_code == status.HTTP_404_NOT_FOUND:
+        code = "NOT_FOUND"
+    elif exc.status_code == status.HTTP_501_NOT_IMPLEMENTED:
+        code = "NOT_IMPLEMENTED"
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": code,
+                "message": message,
+                "details": details,
+            }
+        },
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Standardize Pydantic validation errors into INVALID_INPUT error envelope."""
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "error": {
+                "code": "INVALID_INPUT",
+                "message": "Request validation failed",
+                "details": exc.errors(),
+            }
+        },
+    )
+
+
+app.include_router(api_router)

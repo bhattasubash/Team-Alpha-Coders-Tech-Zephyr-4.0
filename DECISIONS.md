@@ -128,3 +128,21 @@ Each entry: date/time, decision, options considered, why this one, cost/trade-of
 **Why**: Moving frontend files to the root violates the required repository layout (`/backend`, `/frontend`, `/docs`). Adding root npm workspaces requires maintaining synchronized dependencies across two levels. Setting Root Directory to `frontend` in Vercel is the official zero-overhead solution for polyglot monorepos.
 
 **Cost**: Requires setting one field in the Vercel project UI before the first deployment. Documented in README.md and submission checklist.
+
+---
+
+### 2026-10-31 21:55 IST: Fix F1 - Lexicographic 3-stage reschedule objective & forced moves
+
+**Decision**: Replace the weighted objective `9*time_changed + moved` in `backend/app/solver/reschedule.py` with a 3-stage lexicographic CP-SAT optimization pipeline:
+1. **Stage A**: Minimise moved sessions only (no soft terms). `proven_minimum = True` strictly if Stage A returns `OPTIMAL`.
+2. **Stage B**: Fix `moved <= min_moves` from Stage A, and minimise sessions whose day or start period changed (`time_changed`).
+3. **Stage C**: Fix both `moved` and `time_changed`, and minimise soft penalties (S1 through S6 mirroring validator weights).
+Separate `forced_moves` (sessions whose baseline slot is directly invalidated by disruption constraints) and `knock_on_moves = moved - forced_moves`, surfacing both in proposals.
+
+**Options**:
+1. Single-stage weighted sum (e.g. `9*time_changed + moved` or large coefficient multipliers).
+2. Pure 3-stage lexicographic solve.
+
+**Why**: Reference engine prototype idea (`inputs/reference_engine/timetable_solver.py`). The official validator scores every session whose `(day, start, room)` changed as moved. Single-stage weighted objectives distort the minimality proof. The 3-stage pipeline allows CP-SAT in Stage A to isolate the exact minimum moved count and prove optimality without soft-penalty interference. Stage B ensures time stability with minimal disruption, and Stage C optimizes schedule quality.
+
+**Cost**: Up to three fast CP-SAT solves per reschedule, mitigated through solution hints and bounds from preceding stages.

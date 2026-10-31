@@ -12,4 +12,5 @@ exports/*_report.json
 .ruff_cache/
 .mypy_cache/
 .pytest_cache/
+*.tsbuildinfo
 CrunchWeek_StarterPack/

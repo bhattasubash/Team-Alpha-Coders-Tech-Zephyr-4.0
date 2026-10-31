@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { AppProvider } from '@/context/AppContext';
 
 export const metadata: Metadata = {
-  title: 'CIT Schedule',
-  description: 'Campus scheduling system for CIT',
+  title: 'CIT Scheduler - Chilika Institute of Technology',
+  description:
+    'Campus timetable and venue-booking working instrument for Chilika Institute of Technology.',
 };
 
 export default function RootLayout({
@@ -12,9 +14,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
-        {children}
+    <html lang="en" data-theme="light">
+      <body>
+        <AppProvider>{children}</AppProvider>
       </body>
     </html>
   );

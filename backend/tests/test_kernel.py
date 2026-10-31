@@ -16,7 +16,17 @@ from app.kernel.validate import (
     check_accessibility,
     check_all_scheduled,
     check_basket_slots,
+    check_booking_b1,
+    check_booking_b2,
+    check_booking_b3,
+    check_bookings,
     check_capacity,
+    check_exam_e1,
+    check_exam_e2,
+    check_exam_h3,
+    check_exam_h4,
+    check_exam_h5,
+    check_exam_soft,
     check_faculty_availability,
     check_faculty_conflicts,
     check_faculty_daily_limit,
@@ -501,3 +511,434 @@ def test_differential_validator_agreement(dataset, validator_module):
     assert (
         kernel_total == official_total
     ), f"Soft total mismatch: kernel={kernel_total}, official={official_total}"
+
+
+# ---------- B1: booking status and duplicate decisions ----------
+
+
+def test_b1_booking_status(dataset, validator_module):
+    """Test duplicate decisions and unknown status values violate B1."""
+    official_ctx = validator_module.Ctx(dataset)
+    base = _make_simple_assign(dataset)
+
+    # 1. Duplicate decision for BR-01
+    fest_dup = {
+        "bookings": [
+            {"request_id": "BR-01", "status": "rejected", "reason": "No space"},
+            {"request_id": "BR-01", "status": "rejected", "reason": "Duplicate decision"},
+        ],
+        "session_overrides": [],
+    }
+    b1_dup_kernel = check_booking_b1(fest_dup["bookings"])
+    assert any(v.rule == "B1" and "Two decisions for BR-01" in v.detail for v in b1_dup_kernel)
+
+    val_v, _, _ = validator_module.check_bookings(official_ctx, base, fest_dup)
+    assert any(x["rule"] == "B1" and "Two decisions for BR-01" in x["detail"] for x in val_v)
+
+    # 2. Unknown status value
+    fest_unk = {
+        "bookings": [
+            {"request_id": "BR-02", "status": "maybe_approved", "reason": "Testing unknown"},
+        ],
+        "session_overrides": [],
+    }
+    b1_unk_kernel = check_booking_b1(fest_unk["bookings"])
+    assert any(v.rule == "B1" and "unknown status maybe_approved" in v.detail for v in b1_unk_kernel)
+
+    val_v2, _, _ = validator_module.check_bookings(official_ctx, base, fest_unk)
+    assert any(x["rule"] == "B1" and "unknown status maybe_approved" in x["detail"] for x in val_v2)
+
+
+# ---------- B2: session overrides in fest week ----------
+
+
+def test_b2_booking_override(dataset, validator_module):
+    """Test session override validations: unknown session, non-approved displaced_by, and non-institute event."""
+    ctx = KernelContext(dataset)
+    official_ctx = validator_module.Ctx(dataset)
+    base = _make_simple_assign(dataset)
+
+    # 1. Unknown session id
+    fest_unk_sid = {
+        "bookings": [
+            {"request_id": "BR-01", "status": "approved", "room_id": "CR-01", "day": "Monday", "start_period": 10, "end_period": 11, "reason": "ok"}
+        ],
+        "session_overrides": [
+            {"session_id": "NONEXISTENT_SESSION", "day": "Monday", "start_period": 1, "room_id": "CR-01", "displaced_by": "BR-01"}
+        ],
+    }
+    b2_unk_kernel, _ = check_booking_b2(ctx, base, fest_unk_sid)
+    assert any(v.rule == "B2" and "Override for unknown session NONEXISTENT_SESSION" in v.detail for v in b2_unk_kernel)
+
+    val_v, _, _ = validator_module.check_bookings(official_ctx, base, fest_unk_sid)
+    assert any(x["rule"] == "B2" and "Override for unknown session NONEXISTENT_SESSION" in x["detail"] for x in val_v)
+
+    # 2. Displaced by non-approved booking
+    real_sid = dataset["sessions"][0]["id"]
+    fest_disp_rejected = {
+        "bookings": [
+            {"request_id": "BR-01", "status": "rejected", "reason": "rejected"}
+        ],
+        "session_overrides": [
+            {"session_id": real_sid, "day": "Monday", "start_period": 1, "room_id": "CR-01", "displaced_by": "BR-01"}
+        ],
+    }
+    b2_disp_kernel, _ = check_booking_b2(ctx, base, fest_disp_rejected)
+    assert any(v.rule == "B2" and "is not an approved booking" in v.detail for v in b2_disp_kernel)
+
+    val_v2, _, _ = validator_module.check_bookings(official_ctx, base, fest_disp_rejected)
+    assert any(x["rule"] == "B2" and "is not an approved booking" in x["detail"] for x in val_v2)
+
+
+# ---------- B3: cancelled request handling ----------
+
+
+def test_b3_cancelled_approved(dataset, validator_module):
+    """Test that an approved or alternative status for a cancelled request triggers B3."""
+    ctx = KernelContext(dataset)
+    official_ctx = validator_module.Ctx(dataset)
+    base = _make_simple_assign(dataset)
+    cancelled_id = list(ctx.cancelled)[0]
+
+    fest = {
+        "bookings": [
+            {
+                "request_id": cancelled_id,
+                "status": "approved",
+                "room_id": "CR-01",
+                "day": "Monday",
+                "start_period": 10,
+                "end_period": 11,
+                "reason": "should not approve cancelled",
+            }
+        ],
+        "session_overrides": [],
+    }
+    b3_kernel = check_booking_b3(ctx, fest["bookings"])
+    assert any(v.rule == "B3" and f"{cancelled_id} was cancelled but is approved" in v.detail for v in b3_kernel)
+
+    val_v, _, _ = validator_module.check_bookings(official_ctx, base, fest)
+    assert any(x["rule"] == "B3" and f"{cancelled_id} was cancelled but is approved" in x["detail"] for x in val_v)
+
+
+# ---------- H13: booking placement checks ----------
+
+
+def test_h13_booking_checks(dataset, validator_module):
+    """Test that H13 fires on room not found, invalid time, duration mismatch, and unallowed uses."""
+    ctx = KernelContext(dataset)
+    official_ctx = validator_module.Ctx(dataset)
+    base = _make_simple_assign(dataset)
+
+    # Find a non-cancelled request
+    req_id = [r["id"] for r in dataset["booking_requests"] if r["id"] not in ctx.cancelled][0]
+
+    # Test unknown room
+    fest_bad_room = {
+        "bookings": [
+            {
+                "request_id": req_id,
+                "status": "approved",
+                "room_id": "NONEXISTENT_ROOM",
+                "day": "Monday",
+                "start_period": 10,
+                "end_period": 11,
+                "reason": "bad room",
+            }
+        ],
+        "session_overrides": [],
+    }
+    kv, _, _ = check_bookings(ctx, base, fest_bad_room)
+    ov, _, _ = validator_module.check_bookings(official_ctx, base, fest_bad_room)
+    assert any(v.rule == "H13" and "unknown room NONEXISTENT_ROOM" in v.detail for v in kv)
+    assert any(x["rule"] == "H13" and "unknown room NONEXISTENT_ROOM" in x["detail"] for x in ov)
+
+    # Test invalid time (period > 13)
+    fest_bad_time = {
+        "bookings": [
+            {
+                "request_id": req_id,
+                "status": "approved",
+                "room_id": dataset["rooms"][0]["id"],
+                "day": "Monday",
+                "start_period": 12,
+                "end_period": 14,
+                "reason": "bad time",
+            }
+        ],
+        "session_overrides": [],
+    }
+    kv2, _, _ = check_bookings(ctx, base, fest_bad_time)
+    ov2, _, _ = validator_module.check_bookings(official_ctx, base, fest_bad_time)
+    assert any(v.rule == "H13" and "invalid time" in v.detail for v in kv2)
+    assert any(x["rule"] == "H13" and "invalid time" in x["detail"] for x in ov2)
+
+
+# ---------- Priority inversion detection ----------
+
+
+def test_priority_inversion_detection(dataset, validator_module):
+    """Test priority inversion detection when lower priority booking takes a slot a higher priority request could use."""
+    ctx = KernelContext(dataset)
+    official_ctx = validator_module.Ctx(dataset)
+    base = _make_simple_assign(dataset)
+
+    # We build a scenario with two non-cancelled requests where r1 outranks r2
+    # but r1 is rejected and r2 is approved in a slot r1 could use.
+    active_reqs = [r for r in dataset["booking_requests"] if r["id"] not in ctx.cancelled]
+    r1 = active_reqs[0]
+    r2 = active_reqs[1]
+    from app.kernel.validate import outranks
+    if not outranks(dataset, r1, r2):
+        r1, r2 = r2, r1
+
+    # Place r2 inside r1's requested window, matching r1's duration and attendance
+    w = r1["windows"][0]
+    day = w["day"]
+    a = w["from_period"]
+    dur = r1["duration_periods"]
+    b = a + dur - 1
+
+    # Find a room matching r1's needs and capacity
+    cand_rooms = [
+        r for r in dataset["rooms"]
+        if "event" in r["allowed_uses"]
+        and r["type"] in r1["room_types"]
+        and r["capacity"] >= r1["attendance"]
+    ]
+    if cand_rooms and b <= 13:
+        target_room = cand_rooms[0]["id"]
+        fest = {
+            "bookings": [
+                {"request_id": r1["id"], "status": "rejected", "reason": "No space"},
+                {
+                    "request_id": r2["id"],
+                    "status": "approved",
+                    "room_id": target_room,
+                    "day": day,
+                    "start_period": a,
+                    "end_period": b,
+                    "reason": "approved lower priority",
+                },
+            ],
+            "session_overrides": [],
+        }
+        _, _, kstats = check_bookings(ctx, base, fest)
+        _, _, ostats = validator_module.check_bookings(official_ctx, base, fest)
+        assert len(kstats["priority_inversions"]) == len(ostats["priority_inversions"])
+
+
+# ---------- E1: exam scheduled constraints ----------
+
+
+def test_e1_exam_scheduled(dataset, validator_module):
+    """Test E1 fires on unknown exam id, exam scheduled twice, and invalid exam slot."""
+    ctx = KernelContext(dataset)
+    official_ctx = validator_module.Ctx(dataset)
+
+    # 1. Unknown exam id
+    bad_exam = [{"exam_id": "UNKNOWN_EXAM_999", "day": "Monday", "session": "S1", "rooms": ["LH-01"]}]
+    kv = check_exam_e1(ctx, bad_exam)
+    ov, _ = validator_module.check_exams(official_ctx, bad_exam)
+    assert any(v.rule == "E1" and "Unknown exam UNKNOWN_EXAM_999" in v.detail for v in kv)
+    assert any(x["rule"] == "E1" and "Unknown exam UNKNOWN_EXAM_999" in x["detail"] for x in ov)
+
+    # 2. Duplicate exam
+    real_eid = dataset["exams"][0]["id"]
+    dup_exam = [
+        {"exam_id": real_eid, "day": "Monday", "session": "S1", "rooms": ["LH-01"]},
+        {"exam_id": real_eid, "day": "Tuesday", "session": "S1", "rooms": ["LH-01"]},
+    ]
+    kv2 = check_exam_e1(ctx, dup_exam)
+    ov2, _ = validator_module.check_exams(official_ctx, dup_exam)
+    assert any(v.rule == "E1" and f"{real_eid} scheduled twice" in v.detail for v in kv2)
+    assert any(x["rule"] == "E1" and f"{real_eid} scheduled twice" in x["detail"] for x in ov2)
+
+
+# ---------- E2: exam room allowed uses ----------
+
+
+def test_e2_exam_room(dataset, validator_module):
+    """Test E2 triggers when an exam room lacks 'exam' in allowed_uses."""
+    ctx = KernelContext(dataset)
+    official_ctx = validator_module.Ctx(dataset)
+
+    # Find a room without 'exam' allowed use
+    non_exam_rooms = [r for r in dataset["rooms"] if "exam" not in r["allowed_uses"]]
+    if non_exam_rooms:
+        bad_rid = non_exam_rooms[0]["id"]
+        eid = dataset["exams"][0]["id"]
+        exams_list = [{"exam_id": eid, "day": "MON", "session": "AM", "rooms": [bad_rid]}]
+        kv = check_exam_e2(ctx, exams_list)
+        ov, _ = validator_module.check_exams(official_ctx, exams_list)
+        assert any(v.rule == "E2" and f"{bad_rid} cannot host exams" in v.detail for v in kv)
+        assert any(x["rule"] == "E2" and f"{bad_rid} cannot host exams" in x["detail"] for x in ov)
+
+
+# ---------- Exam H3: group double-booking ----------
+
+
+def test_exam_h3_group_conflict(dataset, validator_module):
+    """Test H3 triggers when a student group has two exams in the same slot."""
+    ctx = KernelContext(dataset)
+    official_ctx = validator_module.Ctx(dataset)
+
+    # Find two exams sharing a group
+    e1 = dataset["exams"][0]
+    e2 = None
+    for cand in dataset["exams"][1:]:
+        if set(cand["groups"]) & set(e1["groups"]):
+            e2 = cand
+            break
+    if e2 is not None:
+        exams_list = [
+            {"exam_id": e1["id"], "day": "MON", "session": "AM", "rooms": ["LH-01"]},
+            {"exam_id": e2["id"], "day": "MON", "session": "AM", "rooms": ["LH-02"]},
+        ]
+        kv = check_exam_h3(ctx, exams_list)
+        ov, _ = validator_module.check_exams(official_ctx, exams_list)
+        assert any(v.rule == "H3" and "double-booked" not in v.detail and "in MON AM" in v.detail for v in kv)
+        assert any(x["rule"] == "H3" and "in MON AM" in x["detail"] for x in ov)
+
+
+# ---------- Exam H4: room double-booking ----------
+
+
+def test_exam_h4_room_conflict(dataset, validator_module):
+    """Test H4 triggers when a room is used for two exams in the same slot."""
+    ctx = KernelContext(dataset)
+    official_ctx = validator_module.Ctx(dataset)
+    exam_rooms = [r["id"] for r in dataset["rooms"] if "exam" in r["allowed_uses"]]
+    if len(dataset["exams"]) >= 2 and exam_rooms:
+        rid = exam_rooms[0]
+        e1 = dataset["exams"][0]["id"]
+        e2 = dataset["exams"][1]["id"]
+        exams_list = [
+            {"exam_id": e1, "day": "MON", "session": "AM", "rooms": [rid]},
+            {"exam_id": e2, "day": "MON", "session": "AM", "rooms": [rid]},
+        ]
+        kv = check_exam_h4(ctx, exams_list)
+        ov, _ = validator_module.check_exams(official_ctx, exams_list)
+        assert any(v.rule == "H4" and f"{rid} has" in v.detail for v in kv)
+        assert any(x["rule"] == "H4" and f"{rid} has" in x["detail"] for x in ov)
+
+
+# ---------- Exam H5: half-capacity check ----------
+
+
+def test_exam_h5_half_capacity(dataset, validator_module):
+    """Test H5 triggers when total seats (capacity // 2) are less than exam size."""
+    ctx = KernelContext(dataset)
+    official_ctx = validator_module.Ctx(dataset)
+    exam_rooms = [r for r in dataset["rooms"] if "exam" in r["allowed_uses"]]
+    if exam_rooms:
+        # Pick smallest room
+        small_room = sorted(exam_rooms, key=lambda r: r["capacity"])[0]
+        # Find an exam larger than small_room["capacity"] // 2
+        for ex in dataset["exams"]:
+            if ex["size"] > small_room["capacity"] // 2:
+                exams_list = [{"exam_id": ex["id"], "day": "MON", "session": "AM", "rooms": [small_room["id"]]}]
+                kv = check_exam_h5(ctx, exams_list)
+                ov, _ = validator_module.check_exams(official_ctx, exams_list)
+                assert any(v.rule == "H5" and "at half capacity" in v.detail for v in kv)
+                assert any(x["rule"] == "H5" and "at half capacity" in x["detail"] for x in ov)
+                break
+
+
+# ---------- Exam soft penalty ----------
+
+
+def test_exam_soft_penalty(dataset, validator_module):
+    """Test soft penalty of 5 per extra same-day exam for a student group."""
+    ctx = KernelContext(dataset)
+    official_ctx = validator_module.Ctx(dataset)
+    # Find two exams sharing a group and place on same day but different sessions
+    e1 = dataset["exams"][0]
+    e2 = None
+    for cand in dataset["exams"][1:]:
+        if set(cand["groups"]) & set(e1["groups"]):
+            e2 = cand
+            break
+    if e2 is not None:
+        exams_list = [
+            {"exam_id": e1["id"], "day": "MON", "session": "AM", "rooms": ["LH-01"]},
+            {"exam_id": e2["id"], "day": "MON", "session": "PM", "rooms": ["LH-02"]},
+        ]
+        kpen = check_exam_soft(ctx, exams_list)
+        _, open_ = validator_module.check_exams(official_ctx, exams_list)
+        assert kpen == open_
+        assert kpen >= 5
+
+
+# ---------- S2: student group gaps ----------
+
+
+def test_soft_s2_group_gaps(dataset, validator_module):
+    """Test S2 gap penalties for idle periods between first and last class."""
+    ctx = KernelContext(dataset)
+    official_ctx = validator_module.Ctx(dataset)
+    assign = _make_simple_assign(dataset)
+
+    # Force a session to period 1 and another session of same group to period 5 on Monday
+    group_sessions = [s["id"] for s in dataset["sessions"] if "G-01" in s["groups"] and s["duration"] == 1]
+    if len(group_sessions) >= 2:
+        room_id = dataset["rooms"][0]["id"]
+        assign[group_sessions[0]] = ("Monday", 1, room_id)
+        assign[group_sessions[1]] = ("Monday", 5, room_id)
+
+        kpen, ktotal = soft_score(ctx, assign)
+        open_, ototal = validator_module.soft_score(official_ctx, assign)
+        assert kpen["S2"] == open_["S2"]
+
+
+# ---------- S3: student group daily overload ----------
+
+
+def test_soft_s3_group_overload(dataset, validator_module):
+    """Test S3 overload penalty: 3 points per hour above 6 hours per day per group."""
+    ctx = KernelContext(dataset)
+    official_ctx = validator_module.Ctx(dataset)
+    assign = _make_simple_assign(dataset)
+
+    kpen, _ = soft_score(ctx, assign)
+    open_, _ = validator_module.soft_score(official_ctx, assign)
+    assert kpen["S3"] == open_["S3"]
+
+
+# ---------- S4: same course lectures in a day ----------
+
+
+def test_soft_s4_same_course_lectures(dataset, validator_module):
+    """Test S4 penalty for multiple non-basket lectures of same course in a day."""
+    ctx = KernelContext(dataset)
+    official_ctx = validator_module.Ctx(dataset)
+    assign = _make_simple_assign(dataset)
+
+    kpen, _ = soft_score(ctx, assign)
+    open_, _ = validator_module.soft_score(official_ctx, assign)
+    assert kpen["S4"] == open_["S4"]
+
+
+# ---------- S4: basket lectures of same course ----------
+
+
+def test_soft_s4_basket_lectures(dataset, validator_module):
+    """Test S4 basket lecture counting across all groups on the same day."""
+    ctx = KernelContext(dataset)
+    official_ctx = validator_module.Ctx(dataset)
+    assign = _make_simple_assign(dataset)
+
+    # Move two basket sessions of same course to Monday
+    basket_sessions = [s for s in dataset["sessions"] if s.get("basket_slot")]
+    if len(basket_sessions) >= 2:
+        cid = basket_sessions[0]["course_id"]
+        same_c_baskets = [s["id"] for s in basket_sessions if s["course_id"] == cid]
+        if len(same_c_baskets) >= 2:
+            rid = dataset["rooms"][0]["id"]
+            assign[same_c_baskets[0]] = ("Monday", 2, rid)
+            assign[same_c_baskets[1]] = ("Monday", 4, rid)
+
+    kpen, _ = soft_score(ctx, assign)
+    open_, _ = validator_module.soft_score(official_ctx, assign)
+    assert kpen["S4"] == open_["S4"]
+

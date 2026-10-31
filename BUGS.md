@@ -27,3 +27,19 @@ No invented bugs. Only real issues found and fixed during development.
 - Root cause: Vercel defaults its build root to `./`. In this repo, Next.js code and `package.json` live inside `frontend/`, while the root contains project docs, data, and the backend. Vercel looked at the repository root and found no Next.js dependency.
 - Fix: Set Vercel Project Settings -> General -> Root Directory to `frontend`. Updated `frontend/next.config.mjs` to read backend API destination dynamically from `process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"`. Added deployment documentation to `README.md` and `docs/submission-checklist.md`.
 - Confirmation: Executed `npm run build` inside `frontend/`. Next.js 14.2.18 compiled successfully with zero type or lint errors.
+
+---
+
+### 2026-10-31 19:56 IST: check_exam_* kernel functions did not guard invalid slot before room/capacity checks
+- Symptom: Differential comparison between `validator.py` and kernel `check_exam_*` diverged when invalid exam days or sessions were evaluated.
+- Root cause: `validator.py` lines 385-386 checks `e.get("day") not in cal["days"] or e.get("session") not in sess_ids` and continues early. The initial kernel exam helper functions did not guard invalid slots before evaluating room double-booking, group double-booking, half-capacity, and soft penalties.
+- Fix: Added exam slot and duplication guards matching `validator.py` lines 381-386 across all `check_exam_*` helper functions.
+- Confirmation: Ran differential fuzzing `scripts/fuzz_kernel.py` for 2000 random mutations; all 2000 cases passed with 0 mismatches. Ran `pytest backend/tests/test_kernel.py`; all 35 tests passed.
+
+---
+
+### 2026-10-31 22:05 IST: Reschedule solver combined objective and insufficient stage timeout
+- Symptom: In `backend/app/solver/reschedule.py`, the objective was formulated as `9 * time_changed + moved`, and during disruptions preview, Stage A CP-SAT timeout was capped at 15s (`total_limit * 0.5`), returning `UNKNOWN` and triggering false `status: rejected` on feasible disruption proposals.
+- Root cause: Single-stage weighted objective violated the problem definition ("fewest moved" scored lexicographically) and prevented proving true optimality of minimal moves. Furthermore, Stage A is the primary branch-and-bound search phase needing sufficient time budget, while Stages B and C are warm-started and take < 5s.
+- Fix: Converted reschedule solver to a 3-stage lexicographic CP-SAT pipeline: Stage A minimizes moves only (no soft terms), Stage B fixes moves $\le$ Stage A minimum and minimizes time changes, Stage C fixes both and minimizes soft penalties (S1–S6). Updated `limit_a` allocation to `max(10.0, total_limit - 12.0)` and default `SOLVER_TIME_LIMIT` to 45.0s. Added `forced_moves` (baseline sessions directly invalidated by disruption) and `knock_on_moves = moved - forced_moves`.
+- Confirmation: Ran `pytest backend/tests/test_reschedule.py`; all 4 tests passed. Ran official `validator.py` on `exports/after_disruption.json` with `--baseline exports/schedule.json`; reports 0 hard violations and `Stability: 7 sessions moved (0 changed time, 7 room only)` with `proven_minimum: True`.
