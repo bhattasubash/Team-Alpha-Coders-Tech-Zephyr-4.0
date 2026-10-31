@@ -4,7 +4,7 @@ Each entry: date/time, decision, options considered, why this one, cost/trade-of
 
 ---
 
-### 2026-10-31 13:10 IST -- Stack choice
+### 2026-10-31 13:10 IST: Stack choice
 
 **Decision**: FastAPI + OR-Tools CP-SAT + Next.js + Tailwind CSS.
 
@@ -16,19 +16,19 @@ Each entry: date/time, decision, options considered, why this one, cost/trade-of
 
 ---
 
-### 2026-10-31 13:15 IST -- Auth approach
+### 2026-10-31 13:15 IST: Auth approach
 
 **Decision**: Simple dict-based auth with hardcoded demo accounts. JWT tokens for session management.
 
 **Options**: Full auth service (Supabase, Auth0), database-backed user table, dict-based demo auth.
 
-**Why**: This is a hackathon demo. We need four accounts that judges can log into immediately. A full auth service adds setup friction and failure modes we do not need for a 48-hour build.
+**Why**: This is a hackathon demo. We need four accounts that judges can log into immediately. A full auth service adds setup friction and failure modes we do not need for a 24-hour build.
 
 **Cost**: Not production-safe. Passwords are hardcoded. No registration, no password reset, no rate limiting on login.
 
 ---
 
-### 2026-10-31 13:20 IST -- Database choice
+### 2026-10-31 13:20 IST: Database choice
 
 **Decision**: SQLite for all data storage.
 
@@ -40,7 +40,7 @@ Each entry: date/time, decision, options considered, why this one, cost/trade-of
 
 ---
 
-### 2026-10-31 13:25 IST -- Kernel mirrors validator rule by rule
+### 2026-10-31 13:25 IST: Kernel mirrors validator rule by rule
 
 **Decision**: The kernel implements every constraint (H1 through H14, S1 through S6, B1 through B3, E1 through E2) as a separate function that matches the organiser validator logic.
 
@@ -52,19 +52,19 @@ Each entry: date/time, decision, options considered, why this one, cost/trade-of
 
 ---
 
-### 2026-10-31 13:30 IST -- Validator is ground truth where PS and validator disagree
+### 2026-10-31 13:30 IST: Validator ground truth and exact semantics
 
-**Decision**: When the problem statement (PS) text and validator.py code disagree on a rule, we follow validator.py.
+**Decision**: The official validator defines ground truth runtime checks. Rather than assuming vague disagreements between the problem statement and validator code, exact validator semantics are documented in docs/validator-semantics.md (integer floor division for exam room capacity, role category caps, cancellation handling, and S4 basket counting). Only true textual contradictions are logged as disagreements.
 
-**Options**: Follow the PS text, follow the validator code, ask the organisers.
+**Options**: Assume loose interpretations, follow informal text, follow validator code strictly.
 
-**Why**: The validator is what actually checks our output. If our schedule passes validator.py, we pass. If it matches the PS text but fails the validator, we fail. Asking the organisers may not get a timely answer during the hackathon.
+**Why**: The official validator evaluates the submission. Following exact validator logic guarantees compliance.
 
-**Cost**: We may implement something that contradicts the written PS, which could confuse judges reading the code. We document each known discrepancy in docs/constraints-map.md.
+**Cost**: We must carefully check and test edge cases to mirror validator logic exactly.
 
 ---
 
-### 2026-10-31 13:35 IST -- Stubs raise NotImplementedError
+### 2026-10-31 13:35 IST: Stubs raise NotImplementedError
 
 **Decision**: All stub functions raise NotImplementedError with a message describing what they will do.
 
@@ -76,7 +76,7 @@ Each entry: date/time, decision, options considered, why this one, cost/trade-of
 
 ---
 
-### 2026-10-31 13:40 IST -- Organiser files copied unchanged
+### 2026-10-31 13:40 IST: Organiser files copied unchanged
 
 **Decision**: The organiser-provided validator.py and cit_public.json are copied unchanged into validator/ and data/ respectively.
 
@@ -88,17 +88,22 @@ Each entry: date/time, decision, options considered, why this one, cost/trade-of
 
 ---
 
-### 2026-10-31 14:12 IST -- Python 3.13 runtime environment and OR-Tools version
+### 2026-10-31 14:12 IST: Python 3.13 runtime environment and OR-Tools version
+
 **Decision**: Use Python 3.13.7 (located at `C:\Users\SUBASH\AppData\Local\Programs\Python\Python313`) for the backend venv and set ortools dependency to `>=9.12.4544`.
+
 **Options**: MSYS2 Python 3.14 preview, Python 3.13.7.
 
 **Why**: MSYS2 Python 3.14 lacked pip and pre-built wheels for `pydantic-core` and `ortools`. Python 3.13.7 is fully supported with official binary wheels on PyPI. `ortools==9.11.4210` does not publish wheels for Python 3.13 on Windows; 9.12+ (specifically 9.15.6755) provides binary wheels and identical CP-SAT APIs.
+
 **Cost**: OR-Tools minor version bump from 9.11 to 9.15. The CP-SAT solver model and constraint interfaces remain identical.
 
 ---
 
-### 2026-10-31 14:20 IST -- Status of Pending Components
+### 2026-10-31 14:20 IST: Status of Pending Components
+
 **Decision**: Explicitly mark all unbuilt components as PENDING in documentation and code with `NotImplementedError`.
+
 **Components Pending**:
 - `backend/app/solver/model.py`: Initial schedule CP-SAT solver, minimal-move reschedule solver, unsat core explanation.
 - `backend/app/kernel/pipeline.py`: `commit()` pending SQLite database persistence schema.
@@ -106,4 +111,5 @@ Each entry: date/time, decision, options considered, why this one, cost/trade-of
 - `backend/app/explain/engine.py`: Counterfactual reason explanation engine.
 - `backend/app/ai/provider.py`: Live LLM API calling (fallback parser is ready; manual booking form requires no LLM key).
 - `scripts/export_schedule.py`: Export generation pipeline awaiting solver completion.
+
 **Why**: Rule requirement: stubs must never silently pass. They must fail explicitly with `NotImplementedError`.
