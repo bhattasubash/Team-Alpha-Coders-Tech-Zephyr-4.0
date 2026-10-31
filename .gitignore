@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.env
+*.db
+node_modules/
+.next/
+dist/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+venv/
+.venv/
+CrunchWeek_StarterPack/
