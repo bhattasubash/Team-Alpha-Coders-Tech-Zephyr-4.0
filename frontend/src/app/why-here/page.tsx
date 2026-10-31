@@ -2,17 +2,23 @@
 
 import React, { useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { SCHEDULED_SESSIONS, ROOMS_BY_ID } from '@/data/mockData';
+import { api } from '@/lib/api';
 import { Chip } from '@/components/ui/Chip';
 import { KernelStamp } from '@/components/ui/KernelStamp';
 import { ScheduledSession } from '@/data/types';
 
+const SESSIONS = [
+  { id: 'CS101-L1', courseId: 'CS101', courseTitle: 'Introduction to Computing', roomId: 'LH-1', day: 'MON', startPeriod: 2, duration: 1, groups: ['Y1-A'], facultyName: 'Dr. Patnaik', facultySurname: 'Patnaik' },
+  { id: 'CS102-L2', courseId: 'CS102', courseTitle: 'Data Structures and Algorithms', roomId: 'LH-2', day: 'MON', startPeriod: 3, duration: 1, groups: ['CSE-Y2'], facultyName: 'Prof. Sen', facultySurname: 'Sen' },
+  { id: 'PHY-L2', courseId: 'PH101', courseTitle: 'Engineering Physics', roomId: 'LH-1', day: 'TUE', startPeriod: 4, duration: 1, groups: ['Y1-B'], facultyName: 'Dr. Mishra', facultySurname: 'Mishra' },
+];
+
 export default function WhyHerePage() {
-  const [selectedSessionId, setSelectedSessionId] = useState<string>(SCHEDULED_SESSIONS[0].id);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('CS101-L1');
   const [viewMode, setViewMode] = useState<'trace' | 'plain'>('trace');
 
-  const session = SCHEDULED_SESSIONS.find((s) => s.id === selectedSessionId) || SCHEDULED_SESSIONS[0];
-  const room = ROOMS_BY_ID.get(session.roomId);
+  const session: any = { id: selectedSessionId, roomId: 'LH-1', startPeriod: 2, duration: 1, groups: ['Y1-A'], facultyName: 'Faculty', courseTitle: 'Curriculum Course' };
+  const room: any = { id: session.roomId, name: 'Lecture Hall 1', capacity: 180 };
 
   // Derive realistic alternative period ledger items based on the session's constraints
   const periods = [
@@ -91,7 +97,7 @@ export default function WhyHerePage() {
               onChange={(e) => setSelectedSessionId(e.target.value)}
               className="bg-surface border border-line-strong hover:border-ink rounded-[6px] px-3 py-1.5 text-[12px] font-medium text-ink focus:outline-none transition-colors max-w-xs truncate"
             >
-              {SCHEDULED_SESSIONS.map((s) => (
+              {SESSIONS.map((s: any) => (
                 <option key={s.id} value={s.id}>
                   {s.courseId} in {s.roomId} ({s.day} P{s.startPeriod}) &middot; {s.facultySurname}
                 </option>

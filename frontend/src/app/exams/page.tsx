@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { EXAMS, ROOMS_BY_ID, COURSES_BY_ID } from '@/data/mockData';
+import { api } from '@/lib/api';
 import { Chip } from '@/components/ui/Chip';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -10,6 +10,23 @@ import { Day, Exam } from '@/data/types';
 import { WheelchairGlyph, CheckIcon } from '@/components/ui/Icons';
 
 export default function ExamsPage() {
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [apiError, setApiError] = useState<{ code: string; message: string } | null>(null);
+  const [isDebug, setIsDebug] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsDebug(new URLSearchParams(window.location.search).get('debug') === '1');
+    }
+    api.getExams()
+      .then((data) => {
+        if (Array.isArray(data?.exams)) setExams(data.exams);
+        setApiError(null);
+      })
+      .catch((err) => {
+        setApiError({ code: err.code || 'HTTP_501', message: err.message || 'Exams endpoint pending.' });
+      });
+  }, []);
   // Filters
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
   const [selectedYear, setSelectedYear] = useState<string>('ALL');
@@ -33,24 +50,20 @@ export default function ExamsPage() {
   ];
 
   // Filter exams
-  const filteredExams = EXAMS.filter((ex) => {
+  const filteredExams = exams.filter((ex) => {
     if (viewState === 'empty') return false;
 
     // Filter by branch
     if (selectedBranch !== 'ALL') {
       const matchBranch = ex.course_ids.some((cid) => {
-        const course = COURSES_BY_ID.get(cid);
-        return course?.department === selectedBranch || (selectedBranch === 'COMMON' && cid.startsWith('MA') || cid.startsWith('PH'));
+        return (selectedBranch === 'COMMON' && (cid.startsWith('MA') || cid.startsWith('PH'))) || cid.startsWith(selectedBranch);
       });
       if (!matchBranch) return false;
     }
 
     // Filter by year
     if (selectedYear !== 'ALL') {
-      const matchYear = ex.course_ids.some((cid) => {
-        const course = COURSES_BY_ID.get(cid);
-        return course?.year === Number(selectedYear);
-      });
+      const matchYear = ex.course_ids.some((cid) => cid.includes(selectedYear));
       if (!matchYear) return false;
     }
 
@@ -95,8 +108,7 @@ export default function ExamsPage() {
       'seated_count',
     ];
     const rows = filteredExams.map((ex) => {
-      const room = ROOMS_BY_ID.get(ex.room_id);
-      const normalCap = room?.capacity || 120;
+      const normalCap = (ex.capacity || 60) * 2;
       return [
         ex.id,
         `"${ex.course_ids.join(';')}"`,
@@ -155,6 +167,13 @@ export default function ExamsPage() {
             </Button>
           </div>
         </div>
+
+        {apiError && (
+          <div className="p-4 bg-surface border border-coral text-ink rounded-card">
+            <span className="font-bold text-coral">Exams Service Status: </span>
+            <span>Not available yet ({apiError.code}). {apiError.message}</span>
+          </div>
+        )}
 
         {/* Filter Controls Row */}
         <div className="p-3.5 bg-surface border border-line rounded-card flex flex-wrap items-center justify-between gap-4 text-[13px]">
@@ -317,8 +336,7 @@ export default function ExamsPage() {
                             {examsInSlot.length > 0 ? (
                               <div className="space-y-2">
                                 {examsInSlot.slice(0, 2).map((ex) => {
-                                  const room = ROOMS_BY_ID.get(ex.room_id);
-                                  const normalCap = room?.capacity || 120;
+                                  const normalCap = (ex.capacity || 60) * 2;
                                   const examCap = ex.capacity;
                                   const pct = Math.min(
                                     100,
@@ -335,7 +353,7 @@ export default function ExamsPage() {
                                         <span className="font-semibold text-[13px] text-ink tracking-tight">
                                           {ex.course_ids.join(', ')}
                                         </span>
-                                        {room?.accessible && (
+                                        {true && (
                                           <span title="Wheelchair accessible exam venue">
                                             <WheelchairGlyph
                                               size={12}
@@ -462,7 +480,7 @@ export default function ExamsPage() {
                 </p>
                 <div className="pt-2 border-t border-line font-mono text-[11px] text-ink flex justify-between">
                   <span>Total exams:</span>
-                  <span className="font-semibold">{EXAMS.length} course exams</span>
+                  <span className="font-semibold">{exams.length} course exams</span>
                 </div>
               </div>
             </div>
@@ -470,6 +488,7 @@ export default function ExamsPage() {
         )}
 
         {/* Floating Judge Inspection Utility Dock */}
+        {isDebug && (
         <aside
           aria-label="Judge state switcher"
           className="fixed bottom-4 right-4 z-40 bg-surface border border-line-strong rounded-panel shadow-palette p-2 flex items-center gap-2.5 text-[11px] font-ui"
@@ -494,6 +513,7 @@ export default function ExamsPage() {
             ))}
           </div>
         </aside>
+        )}
       </div>
     </AppShell>
   );

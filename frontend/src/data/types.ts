@@ -9,6 +9,39 @@ export interface UserAccount {
   title: string;
 }
 
+export const DEMO_USERS: Record<string, UserAccount> = {
+  admin: {
+    email: 'admin@cit.edu',
+    name: 'Dr. Suresh Patnaik',
+    role: 'admin',
+    title: "Dean's Office (Admin)",
+  },
+  department_coordinator: {
+    email: 'coordinator@cit.edu',
+    name: 'Prof. Minati Sen',
+    role: 'department_coordinator',
+    title: 'Department Coordinator (CSE)',
+  },
+  faculty: {
+    email: 'faculty@cit.edu',
+    name: 'Dr. K. S. Raman',
+    role: 'faculty',
+    title: 'Faculty Member (Physics & CS)',
+  },
+  club: {
+    email: 'club@cit.edu',
+    name: 'Rohan Jena',
+    role: 'club',
+    title: 'Spectra Fest Convener (Club)',
+  },
+  dean: {
+    email: 'dean@cit.edu',
+    name: 'Dr. Suresh Patnaik',
+    role: 'admin',
+    title: 'Dean of Academic Affairs',
+  },
+};
+
 export interface PeriodInfo {
   id: number;
   start: string;

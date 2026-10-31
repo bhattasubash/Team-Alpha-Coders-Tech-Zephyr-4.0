@@ -13,6 +13,8 @@ from typing import Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
+import os
+
 # We use python-jose for JWT tokens
 try:
     from jose import JWTError, jwt
@@ -21,7 +23,13 @@ except ImportError:
     jwt = None  # type: ignore[assignment]
     JWTError = Exception  # type: ignore[assignment,misc]
 
-SECRET_KEY = "hackathon-dev-secret-change-in-production"
+ENV = os.getenv("ENV", "development").lower()
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    if ENV == "production":
+        raise RuntimeError("SECRET_KEY environment variable must be set in production mode")
+    SECRET_KEY = "hackathon-dev-secret-change-in-production"
+
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_MINUTES = 480  # 8 hours, long enough for a demo session
 
@@ -36,24 +44,38 @@ DEMO_USERS: dict[str, dict[str, Any]] = {
         "password": "admin123",
         "name": "Admin User",
         "role": "admin",
+        "profile": {"title": "System Administrator"},
+    },
+    "dean@cit.edu": {
+        "email": "dean@cit.edu",
+        "password": "dean123",
+        "name": "Dean of Academic Affairs",
+        "role": "admin",
+        "profile": {"title": "Dean of Academic Affairs"},
     },
     "coordinator@cit.edu": {
         "email": "coordinator@cit.edu",
         "password": "coord123",
         "name": "Dept Coordinator",
         "role": "department_coordinator",
+        "department": "CSE",
+        "profile": {"department": "CSE"},
     },
     "faculty@cit.edu": {
         "email": "faculty@cit.edu",
         "password": "faculty123",
         "name": "Faculty Member",
         "role": "faculty",
+        "faculty_id": "F01",
+        "profile": {"faculty_id": "F01"},
     },
     "club@cit.edu": {
         "email": "club@cit.edu",
         "password": "club123",
         "name": "Club Representative",
         "role": "club",
+        "club_name": "Coding Club",
+        "profile": {"club_name": "Coding Club"},
     },
 }
 

@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { Role } from '@/data/types';
-import { DEMO_USERS } from '@/data/mockData';
+import { Role, DEMO_USERS } from '@/data/types';
+import { api } from '@/lib/api';
 import { CITLogo } from '@/components/ui/Icons';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -57,23 +57,37 @@ export default function LoginPage() {
       email: 'club@cit.edu',
       pass: 'club123',
     },
+    {
+      roleKey: 'admin',
+      title: 'Dean of Academic Affairs',
+      email: 'dean@cit.edu',
+      pass: 'dean123',
+    },
   ];
 
   // Quick Sign in on clicking any role row
-  const handleRoleQuickSignIn = (roleKey: Role, accEmail: string, accPass: string) => {
+  const handleRoleQuickSignIn = async (roleKey: Role, accEmail: string, accPass: string) => {
     setEmail(accEmail);
     setPassword(accPass);
     setEmailError('');
     setPasswordError('');
     setFormError('');
-    setRole(roleKey);
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      await api.login(accEmail, accPass);
+      const me = await api.getMe().catch(() => null);
+      setRole((me?.role as Role) || roleKey);
       router.push('/dashboard');
-    }, 150);
+    } catch {
+      // Fallback for offline demo mode
+      setRole(roleKey);
+      router.push('/dashboard');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleManualSubmit = (e: React.FormEvent) => {
+  const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setEmailError('');
     setPasswordError('');
@@ -101,19 +115,25 @@ export default function LoginPage() {
 
     if (hasError) return;
 
-    // Check credentials against demo accounts
-    const matched = demoAccounts.find(
-      (a) => a.email.toLowerCase() === cleanEmail.toLowerCase() && a.pass === password
-    );
-
-    if (matched) {
-      setRole(matched.roleKey);
-      setIsSubmitting(true);
-      setTimeout(() => {
+    setIsSubmitting(true);
+    try {
+      const res = await api.login(cleanEmail, password);
+      const me = await api.getMe().catch(() => null);
+      setRole((me?.role as Role) || (res.role as Role) || 'faculty');
+      router.push('/dashboard');
+    } catch (err: any) {
+      // Check credentials against demo accounts as fallback
+      const matched = demoAccounts.find(
+        (a) => a.email.toLowerCase() === cleanEmail.toLowerCase() && a.pass === password
+      );
+      if (matched) {
+        setRole(matched.roleKey);
         router.push('/dashboard');
-      }, 150);
-    } else {
-      setFormError('Invalid credentials. Use a seeded demo account below.');
+      } else {
+        setFormError(err.message || 'Invalid credentials. Use a seeded demo account below.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout/AppShell';
 import { useApp } from '@/context/AppContext';
-import { BOOKINGS as INITIAL_BOOKINGS, ROOMS_BY_ID, DEMO_USERS } from '@/data/mockData';
+import { api } from '@/lib/api';
+import { DEMO_USERS } from '@/data/types';
 import { Chip } from '@/components/ui/Chip';
 import { Button } from '@/components/ui/Button';
 import { PriorityRank } from '@/components/ui/PriorityRank';
@@ -14,7 +15,19 @@ import { BookingRequest, Day } from '@/data/types';
 export default function BookingsPage() {
   const { role, user, openDrawer } = useApp();
   const [filter, setFilter] = useState<'all' | 'approved' | 'rejected' | 'pending' | 'cancelled'>('all');
-  const [bookings, setBookings] = useState<BookingRequest[]>(INITIAL_BOOKINGS);
+  const [bookings, setBookings] = useState<BookingRequest[]>([]);
+  const [apiError, setApiError] = useState<{ code: string; message: string } | null>(null);
+
+  useEffect(() => {
+    api.getBookings()
+      .then((res) => {
+        if (Array.isArray(res?.bookings)) setBookings(res.bookings as any);
+        setApiError(null);
+      })
+      .catch((err) => {
+        setApiError({ code: err.code || 'HTTP_501', message: err.message || 'Bookings endpoint pending database integration.' });
+      });
+  }, []);
   const [expandedId, setExpandedId] = useState<string | null>('BR-01');
 
   // Overrule inline dialog state
@@ -252,7 +265,7 @@ export default function BookingsPage() {
               <tbody className="divide-y divide-line">
                 {filteredBookings.map((b) => {
                   const isExpanded = expandedId === b.id;
-                  const room = ROOMS_BY_ID.get(b.requested_room);
+                  
                   const firstWindow = b.windows?.[0];
                   const selfRequest = isSelfRequest(b);
                   const reasonCode = getReasonCode(b);
@@ -281,7 +294,7 @@ export default function BookingsPage() {
                         <td className="py-3.5 px-3">
                           <span className="font-semibold text-ink">{b.requested_room}</span>
                           <span className="text-[11px] text-ink-2 ml-1 hidden lg:inline">
-                            ({room?.name})
+                            
                           </span>
                         </td>
                         <td className="py-3.5 px-3 text-ink-2 font-mono text-[12px] min-w-[120px]">

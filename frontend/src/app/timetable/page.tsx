@@ -3,19 +3,38 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useApp } from '@/context/AppContext';
-import {
-  STUDENT_GROUPS,
-  FACULTY,
-  ROOMS,
-  SCHEDULED_SESSIONS,
-  ROOMS_BY_ID,
-  FACULTY_BY_ID,
-} from '@/data/mockData';
+import { api } from '@/lib/api';
 import { SessionCard } from '@/components/ui/SessionCard';
 import { Chip } from '@/components/ui/Chip';
 import { Button } from '@/components/ui/Button';
 import { WheelchairGlyph, CloseIcon } from '@/components/ui/Icons';
 import { Day, ScheduledSession } from '@/data/types';
+
+const STUDENT_GROUPS = [
+  { id: 'Y1-A', name: 'First Year Section A', size: 60 },
+  { id: 'Y1-B', name: 'First Year Section B', size: 60 },
+  { id: 'CSE-Y2', name: 'CSE Second Year', size: 65 },
+  { id: 'CSE-Y3', name: 'CSE Third Year', size: 60 },
+  { id: 'ECE-Y2', name: 'ECE Second Year', size: 60 },
+  { id: 'ME-Y2', name: 'Mech Second Year', size: 60 },
+  { id: 'CE-Y2', name: 'Civil Second Year', size: 50 },
+];
+
+const FACULTY = [
+  { id: 'F01', name: 'Dr. Mishra', department: 'Physics', max_hours_per_day: 4, unavailable: [] as any[] },
+  { id: 'F02', name: 'Dr. Rao', department: 'Mathematics', max_hours_per_day: 4, unavailable: [] as any[] },
+  { id: 'F06', name: 'Prof. Sen', department: 'Computer Science', max_hours_per_day: 4, unavailable: [] as any[] },
+  { id: 'F07', name: 'Dr. Raman', department: 'Computer Science', max_hours_per_day: 4, unavailable: [] as any[] },
+];
+
+const ROOMS = [
+  { id: 'CR-101', name: 'Classroom 101', capacity: 90, type: 'classroom', accessible: true },
+  { id: 'CR-102', name: 'Classroom 102', capacity: 90, type: 'classroom', accessible: true },
+  { id: 'LH-1', name: 'Lecture Hall 1', capacity: 180, type: 'lecture_hall', accessible: true },
+  { id: 'LH-2', name: 'Lecture Hall 2', capacity: 180, type: 'lecture_hall', accessible: true },
+  { id: 'CS-LAB-1', name: 'Computer Lab 1', capacity: 60, type: 'lab', accessible: true },
+  { id: 'PHY-LAB', name: 'Physics Lab', capacity: 45, type: 'lab', accessible: true },
+];
 
 export default function TimetablePage() {
   const { openDrawer } = useApp();
@@ -26,7 +45,19 @@ export default function TimetablePage() {
   const [activeDayMobile, setActiveDayMobile] = useState<Day>('MON');
 
   // Local state for sessions so drag-and-drop / moves can be committed live
-  const [sessions, setSessions] = useState<ScheduledSession[]>(SCHEDULED_SESSIONS);
+  const [sessions, setSessions] = useState<ScheduledSession[]>([]);
+  const [apiError, setApiError] = useState<{ code: string; message: string } | null>(null);
+
+  useEffect(() => {
+    api.getTimetable(lens, selectedId)
+      .then((data) => {
+        if (Array.isArray(data?.sessions)) setSessions(data.sessions);
+        setApiError(null);
+      })
+      .catch((err) => {
+        setApiError({ code: err.code || 'HTTP_501', message: err.message || 'Timetable endpoint pending.' });
+      });
+  }, [lens, selectedId]);
 
   // Drag and Drop State
   const [draggedSession, setDraggedSession] = useState<ScheduledSession | null>(null);
@@ -65,8 +96,8 @@ export default function TimetablePage() {
   ];
 
   // Active room info for room lens
-  const currentRoom = lens === 'room' ? ROOMS_BY_ID.get(selectedId) : null;
-  const currentFaculty = lens === 'faculty' ? FACULTY_BY_ID.get(selectedId) : null;
+  const currentRoom = lens === 'room' ? ROOMS.find((r) => r.id === selectedId) : null;
+  const currentFaculty = lens === 'faculty' ? FACULTY.find((f) => f.id === selectedId) : null;
 
   // Filter sessions according to active lens
   const filteredSessions = sessions.filter((s) => {
@@ -130,10 +161,10 @@ export default function TimetablePage() {
     }
 
     // Rule 4: Faculty unavailability check
-    const faculty = FACULTY_BY_ID.get(session.facultyId);
+    const faculty = FACULTY.find((f) => f.id === session.facultyId);
     if (faculty) {
       const isUnavail = faculty.unavailable?.some(
-        (u) => u.day === targetDay && u.periods.includes(targetPeriod)
+        (u: any) => u.day === targetDay && u.periods.includes(targetPeriod)
       );
       if (isUnavail) {
         return {

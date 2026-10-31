@@ -14,7 +14,6 @@ import {
   NavRooms,
   NavProof,
   NavPriority,
-  NavKit,
   SignOutIcon,
 } from '@/components/ui/Icons';
 import { Chip } from '@/components/ui/Chip';
@@ -36,7 +35,6 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { label: 'Proof', href: '/admin/proof', icon: NavProof, roles: ['admin'] },
   { label: 'Priority', href: '/admin/priority', icon: NavPriority, roles: ['admin'] },
   { label: 'Why Here', href: '/why-here', icon: NavProof },
-  { label: 'Design Kit', href: '/kit', icon: NavKit },
 ];
 
 export function Rail() {

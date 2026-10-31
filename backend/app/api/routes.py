@@ -8,7 +8,10 @@ by the global exception handler into HTTP 501 with the standardized error envelo
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import subprocess
+import time
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
@@ -31,6 +34,7 @@ from app.api.schemas import (
     ExplainBookingResponse,
     ExplainSessionResponse,
     FreeRoomsResponse,
+    FuzzRunSummary,
     GenerateExamsRequest,
     GenerateTimetableRequest,
     HealthResponse,
@@ -42,6 +46,7 @@ from app.api.schemas import (
     OptimiseTimetableRequest,
     ParseBookingResponse,
     ParseBookingTextRequest,
+    ProofSummaryResponse,
     Proposal,
     ProposalListResponse,
     RejectProposalRequest,
@@ -51,6 +56,7 @@ from app.api.schemas import (
     TokenResponse,
     UserProfileResponse,
     ValidationReportResponse,
+    ValidatorRunSummary,
 )
 from app.auth.users import authenticate_user, create_access_token, get_current_user, require_role
 from app.kernel.pipeline import (
@@ -71,14 +77,166 @@ RESPONSES_501 = {
 
 
 # =============================================================================
-# Health Endpoints
+# Health & Proof Metrics State & Helpers
+# =============================================================================
+
+SERVER_START_TIME = time.time()
+GLOBAL_LAST_GENERATE_STATUS: str | None = None
+GLOBAL_LAST_VALIDATOR_RESULT: dict[str, Any] | None = None
+
+
+def get_git_commit() -> str | None:
+    """Retrieve git commit SHA from env GIT_SHA or git rev-parse."""
+    sha = os.getenv("GIT_SHA")
+    if sha:
+        return sha
+    try:
+        res = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            cwd=Path(__file__).resolve().parents[3],
+        )
+        if res.returncode == 0 and res.stdout.strip():
+            return res.stdout.strip()
+    except Exception:
+        pass
+    return None
+
+
+def is_solver_available() -> bool:
+    """Check if OR-Tools CP-SAT is available."""
+    try:
+        import ortools  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def get_ortools_version() -> str | None:
+    """Get installed ortools version."""
+    try:
+        import ortools
+        return ortools.__version__
+    except Exception:
+        return None
+
+
+def parse_fuzz_report() -> FuzzRunSummary | None:
+    """Parse latest differential fuzz run from docs/fuzz-report.md."""
+    fuzz_path = Path("docs/fuzz-report.md")
+    if not fuzz_path.exists():
+        fuzz_path = Path(__file__).resolve().parents[3] / "docs" / "fuzz-report.md"
+    if not fuzz_path.exists():
+        return None
+    try:
+        content = fuzz_path.read_text(encoding="utf-8")
+        cases = None
+        mismatches = None
+        seed = None
+        date = None
+        for line in content.splitlines():
+            s = line.strip()
+            if s.startswith("- Total cases executed:"):
+                cases = int(s.split(":")[-1].strip())
+            elif s.startswith("- Mismatches detected:"):
+                mismatches = int(s.split(":")[-1].strip())
+            elif s.startswith("- Seed:"):
+                seed = int(s.split(":")[-1].strip())
+            elif s.startswith("- Date:"):
+                date = s.split(":")[-1].strip()
+        if cases is not None and mismatches is not None:
+            return FuzzRunSummary(cases=cases, mismatches=mismatches, seed=seed, date=date)
+    except Exception:
+        pass
+    return None
+
+
+def parse_redteam_pass_rate() -> float | str | None:
+    """Parse latest red-team pass rate from docs/redteam-report.md (or None if N/A)."""
+    red_path = Path("docs/redteam-report.md")
+    if not red_path.exists():
+        red_path = Path(__file__).resolve().parents[3] / "docs" / "redteam-report.md"
+    if not red_path.exists():
+        return None
+    try:
+        content = red_path.read_text(encoding="utf-8")
+        for line in content.splitlines():
+            s = line.strip()
+            if s.startswith("Pass rate:"):
+                val = s.split(":", 1)[1].strip()
+                if "N/A" in val or "no cases executed" in val:
+                    return None
+                if "%" in val:
+                    return float(val.replace("%", "").strip())
+                try:
+                    return float(val)
+                except ValueError:
+                    return val
+    except Exception:
+        pass
+    return None
+
+
+def get_last_validator_result() -> ValidatorRunSummary | None:
+    """Retrieve last official validator result or None if never run."""
+    if GLOBAL_LAST_VALIDATOR_RESULT is not None:
+        return ValidatorRunSummary(**GLOBAL_LAST_VALIDATOR_RESULT)
+    rep_path = Path("exports/validator_report.json")
+    if not rep_path.exists():
+        rep_path = Path(__file__).resolve().parents[3] / "exports" / "validator_report.json"
+    if rep_path.exists():
+        try:
+            with open(rep_path, encoding="utf-8") as f:
+                d = json.load(f)
+                return ValidatorRunSummary(
+                    hard_violations=d.get("hard_violations", 0),
+                    soft_penalty=d.get("soft_penalty", 0),
+                    booking_score=float(d.get("booking_score", 0.0)),
+                    time_run=d.get("time_run", ""),
+                )
+        except Exception:
+            pass
+    return None
+
+
+# =============================================================================
+# Health & Proof Endpoints
 # =============================================================================
 
 @router.get("/api/health", response_model=HealthResponse, tags=["health"])
 @router.get("/health", response_model=HealthResponse, tags=["health"])
 def get_health() -> HealthResponse:
-    """Return application health status."""
-    return HealthResponse(status="ok", version="0.1.0")
+    """Return application health status with git commit, solver availability, LLM status, dataset ID, and uptime."""
+    has_llm = bool(os.getenv("GEMINI_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
+    return HealthResponse(
+        status="ok",
+        version="0.1.0",
+        git_commit=get_git_commit(),
+        solver_available=is_solver_available(),
+        llm_configured=has_llm,
+        dataset_id="cit_public",
+        uptime=round(time.time() - SERVER_START_TIME, 2),
+    )
+
+
+@router.get(
+    "/api/proof/summary",
+    response_model=ProofSummaryResponse,
+    tags=["proof"],
+)
+def get_proof_summary(
+    user: dict[str, Any] = Depends(require_role("admin")),
+) -> ProofSummaryResponse:
+    """Return proof dashboard metrics: fuzz run, red-team pass rate, ortools version, solver status, validator result."""
+    return ProofSummaryResponse(
+        latest_fuzz_run=parse_fuzz_report(),
+        latest_red_team_pass_rate=parse_redteam_pass_rate(),
+        ortools_version=get_ortools_version(),
+        last_generate_status=GLOBAL_LAST_GENERATE_STATUS,
+        last_validator_result=get_last_validator_result(),
+    )
 
 
 # =============================================================================
@@ -115,6 +273,10 @@ def get_me(user: dict[str, Any] = Depends(get_current_user)) -> UserProfileRespo
         email=user["email"],
         name=user["name"],
         role=user["role"],
+        faculty_id=user.get("faculty_id"),
+        department=user.get("department"),
+        club_name=user.get("club_name"),
+        profile=user.get("profile"),
     )
 
 

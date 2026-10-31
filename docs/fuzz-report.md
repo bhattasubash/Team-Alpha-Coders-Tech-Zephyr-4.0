@@ -1,6 +1,8 @@
 # Differential fuzzing report
 
 ## Summary
+- Date: 2026-10-31
+- Seed: 42
 - Target iterations: 2000
 - Total cases executed: 2000
 - Mismatches detected: 0

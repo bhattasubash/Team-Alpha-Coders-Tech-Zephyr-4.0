@@ -1,26 +1,51 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout/AppShell';
 import { useApp } from '@/context/AppContext';
-import { getStats, SCHEDULED_SESSIONS, BOOKINGS, DEMO_USERS } from '@/data/mockData';
+import { api } from '@/lib/api';
 import { Chip } from '@/components/ui/Chip';
 import { Button } from '@/components/ui/Button';
 import { SessionCard } from '@/components/ui/SessionCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { Role, ScheduledSession } from '@/data/types';
+import { Role, ScheduledSession, DEMO_USERS } from '@/data/types';
 
 export default function DashboardPage() {
   const { role, setRole, openDrawer } = useApp();
-  const stats = getStats();
+
+  // Real backend metrics
+  const [dashboardData, setDashboardData] = useState<any | null>(null);
+  const [apiError, setApiError] = useState<{ code: string; message: string } | null>(null);
+  const [mondaySessions, setMondaySessions] = useState<ScheduledSession[]>([]);
+  const [isDebug, setIsDebug] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsDebug(new URLSearchParams(window.location.search).get('debug') === '1');
+    }
+
+    api.getDashboard()
+      .then((data) => {
+        setDashboardData(data);
+        setApiError(null);
+      })
+      .catch((err) => {
+        setApiError({ code: err.code || 'HTTP_501', message: err.message || 'Dashboard endpoint pending.' });
+      });
+
+    api.getTimetableAll()
+      .then((data) => {
+        if (Array.isArray(data?.sessions)) {
+          setMondaySessions(data.sessions.filter((s: any) => s.day === 'MON'));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // State switcher for review: normal | skeleton | error | empty
   const [viewState, setViewState] = useState<'normal' | 'skeleton' | 'error' | 'empty'>('normal');
-
-  // Filter today's sessions (Monday of Week 7)
-  const mondaySessions = SCHEDULED_SESSIONS.filter((s) => s.day === 'MON');
 
   // Specific role action definitions (large text rows, NOT cards with icons)
   const roleActions: Record<
@@ -43,7 +68,7 @@ export default function DashboardPage() {
       },
       {
         title: 'Run official validator audit',
-        desc: 'Typeset audit of 0 hard violations, soft penalties (S1–S6), and 10,000 differential fuzzing runs.',
+        desc: 'Typeset audit of 0 hard violations, soft penalties (S1–S6), and differential invariance verification.',
         href: '/admin/proof',
         btnLabel: 'Run audit',
         variant: 'secondary',
@@ -311,6 +336,14 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* Honest Endpoint Status */}
+            {apiError && (
+              <div className="p-4 bg-surface border border-coral text-ink rounded-card">
+                <span className="font-bold text-coral">Backend Status: </span>
+                <span>Not available yet ({apiError.code}). {apiError.message}</span>
+              </div>
+            )}
+
             {/* ONE METRIC STRIP PANEL (Four hairline-divided cells + 5th utilisation line) */}
             <div className="bg-surface border border-line rounded-panel overflow-hidden shadow-sm">
               <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-line">
@@ -320,7 +353,7 @@ export default function DashboardPage() {
                     Sessions scheduled
                   </span>
                   <div className="font-serif text-[56px] leading-[56px] text-ink font-normal my-1 tabular-nums tracking-tight">
-                    {stats.sessionsScheduled}
+                    {dashboardData ? (dashboardData.sessions_scheduled ?? dashboardData.sessions_count ?? '—') : '—'}
                   </div>
                   <span className="text-[12px] text-ink-2">Total teaching slots active</span>
                 </div>
@@ -329,10 +362,10 @@ export default function DashboardPage() {
                 <div className="p-5 sm:p-6">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[13px] text-ink-2 font-medium">Hard violations</span>
-                    <Chip label="Valid" variant="valid" />
+                    <Chip label={dashboardData?.hard_violations === 0 ? 'Valid' : 'Audit'} variant={dashboardData?.hard_violations === 0 ? 'valid' : 'rejected'} />
                   </div>
                   <div className="font-serif text-[56px] leading-[56px] text-ink font-normal my-1 tabular-nums tracking-tight">
-                    {stats.hardViolations}
+                    {dashboardData ? (dashboardData.hard_violations ?? '0') : '—'}
                   </div>
                   <span className="text-[12px] text-ink-2">Rules H1–H14 satisfied</span>
                 </div>
@@ -341,7 +374,7 @@ export default function DashboardPage() {
                 <div className="p-5 sm:p-6">
                   <span className="text-[13px] text-ink-2 font-medium block mb-1">Soft penalty</span>
                   <div className="font-serif text-[56px] leading-[56px] text-ink font-normal my-1 tabular-nums tracking-tight">
-                    {stats.softPenalty}
+                    {dashboardData ? (dashboardData.soft_penalty ?? '—') : '—'}
                   </div>
                   <span className="text-[12px] text-ink-2">Minimised across preferences</span>
                 </div>
@@ -352,7 +385,7 @@ export default function DashboardPage() {
                     Pending approvals
                   </span>
                   <div className="font-serif text-[56px] leading-[56px] text-ink font-normal my-1 tabular-nums tracking-tight">
-                    {stats.pendingApprovals}
+                    {dashboardData ? (dashboardData.pending_approvals ?? dashboardData.pending_bookings ?? '—') : '—'}
                   </div>
                   <span className="text-[12px] text-ink-2">Fest & guest lecture requests</span>
                 </div>
@@ -362,13 +395,13 @@ export default function DashboardPage() {
               <div className="p-4 bg-raised border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[12px]">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-ink">Campus room utilisation:</span>
-                  <span className="font-semibold text-ink tabular-nums">{stats.campusUtilization}%</span>
-                  <span className="text-ink-2 hidden sm:inline">&middot; 27 rooms across 9 periods</span>
+                  <span className="font-semibold text-ink tabular-nums">{dashboardData?.campus_utilization ? `${dashboardData.campus_utilization}%` : '—'}</span>
+                  <span className="text-ink-2 hidden sm:inline">&middot; Live schedule capacity</span>
                 </div>
                 <div className="w-full sm:w-72 h-2 bg-line rounded-pill overflow-hidden">
                   <div
                     className="h-full bg-violet transition-all duration-300"
-                    style={{ width: `${stats.campusUtilization}%` }}
+                    style={{ width: `${dashboardData?.campus_utilization || 0}%` }}
                   />
                 </div>
               </div>
@@ -520,31 +553,33 @@ export default function DashboardPage() {
           </>
         )}
 
-        {/* Floating Judge Inspection Utility Dock - Discrete evaluation controls */}
-        <aside
-          aria-label="Judge state switcher"
-          className="fixed bottom-4 right-4 z-40 bg-surface border border-line-strong rounded-panel shadow-palette p-2 flex items-center gap-2.5 text-[11px] font-ui"
-        >
-          <span className="text-ink-2 font-medium flex items-center gap-1.5 pl-1">
-            <span className="w-2 h-2 rounded-full bg-violet" />
-            <span className="hidden sm:inline">Evaluation State:</span>
-          </span>
-          <div className="flex items-center gap-1">
-            {(['normal', 'skeleton', 'error', 'empty'] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setViewState(s)}
-                className={`px-2 py-1 rounded-[4px] capitalize text-[11px] font-medium transition-colors ${
-                  viewState === s
-                    ? 'bg-ink text-paper font-semibold shadow-xs'
-                    : 'bg-raised border border-line text-ink-2 hover:border-ink hover:text-ink'
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </aside>
+        {/* Floating Judge Inspection Utility Dock - gated behind ?debug=1 */}
+        {isDebug && (
+          <aside
+            aria-label="Judge state switcher"
+            className="fixed bottom-4 right-4 z-40 bg-surface border border-line-strong rounded-panel shadow-palette p-2 flex items-center gap-2.5 text-[11px] font-ui"
+          >
+            <span className="text-ink-2 font-medium flex items-center gap-1.5 pl-1">
+              <span className="w-2 h-2 rounded-full bg-violet" />
+              <span className="hidden sm:inline">Evaluation State:</span>
+            </span>
+            <div className="flex items-center gap-1">
+              {(['normal', 'skeleton', 'error', 'empty'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setViewState(s)}
+                  className={`px-2 py-1 rounded-[4px] capitalize text-[11px] font-medium transition-colors ${
+                    viewState === s
+                      ? 'bg-ink text-paper font-semibold shadow-xs'
+                      : 'bg-raised border border-line text-ink-2 hover:border-ink hover:text-ink'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </aside>
+        )}
       </div>
     </AppShell>
   );

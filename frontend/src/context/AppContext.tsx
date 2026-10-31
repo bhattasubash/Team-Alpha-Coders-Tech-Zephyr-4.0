@@ -1,8 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Role, UserAccount, ScheduledSession, BookingRequest, WhyHereTarget, Day } from '@/data/types';
-import { DEMO_USERS } from '@/data/mockData';
+import { Role, UserAccount, ScheduledSession, BookingRequest, WhyHereTarget, Day, DEMO_USERS } from '@/data/types';
 
 export function toWhyHereTarget(item: ScheduledSession | BookingRequest | WhyHereTarget): WhyHereTarget {
   // If already a normalized WhyHereTarget, return as-is
@@ -67,7 +66,7 @@ export function toWhyHereTarget(item: ScheduledSession | BookingRequest | WhyHer
       whyThisRoom: `${room} capacity of 400 exceeds the ${booking.attendance} requested attendees by 233%, and clashes with the prior-approved Annual Institute Lecture.`,
       plainLanguage: {
         heading: `This booking could not be accommodated in ${room} at Period P${period} due to preemption by a higher-priority institute event.`,
-        body: `The CP-SAT solver identified ${alt0?.roomId || 'OAT'} as the closest valid venue with identical timing, zero constraint violations, and full accessibility.`,
+        body: `The solver identified ${alt0?.roomId || 'OAT'} as the closest valid venue with identical timing, zero constraint violations, and full accessibility.`,
       },
     };
   }

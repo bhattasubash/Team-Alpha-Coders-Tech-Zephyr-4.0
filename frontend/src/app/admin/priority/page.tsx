@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PriorityRank } from '@/components/ui/PriorityRank';
 import { Chip } from '@/components/ui/Chip';
@@ -26,6 +26,12 @@ interface AuditEntry {
 }
 
 export default function PriorityPage() {
+  const [isDebug, setIsDebug] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsDebug(new URLSearchParams(window.location.search).get('debug') === '1');
+    }
+  }, []);
   const initialLadder: PriorityRow[] = [
     {
       id: 'exams',
@@ -480,31 +486,33 @@ export default function PriorityPage() {
           </>
         )}
 
-        {/* Floating Judge Inspection Utility Dock */}
-        <aside
-          aria-label="Judge state switcher"
-          className="fixed bottom-4 right-4 z-40 bg-surface border border-line-strong rounded-panel shadow-palette p-2 flex items-center gap-2.5 text-[11px] font-ui"
-        >
-          <span className="text-ink-2 font-medium flex items-center gap-1.5 pl-1">
-            <span className="w-2 h-2 rounded-full bg-violet" />
-            <span className="hidden sm:inline">Evaluation State:</span>
-          </span>
-          <div className="flex items-center gap-1">
-            {(['normal', 'skeleton', 'error', 'empty_audit'] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setViewState(s)}
-                className={`px-2 py-1 rounded-[4px] capitalize text-[11px] font-medium transition-colors ${
-                  viewState === s
-                    ? 'bg-ink text-paper font-semibold shadow-xs'
-                    : 'bg-raised border border-line text-ink-2 hover:border-ink hover:text-ink'
-                }`}
-              >
-                {s.replace('_', ' ')}
-              </button>
-            ))}
-          </div>
-        </aside>
+        {/* Floating Judge Inspection Utility Dock - gated behind ?debug=1 */}
+        {isDebug && (
+          <aside
+            aria-label="Judge state switcher"
+            className="fixed bottom-4 right-4 z-40 bg-surface border border-line-strong rounded-panel shadow-palette p-2 flex items-center gap-2.5 text-[11px] font-ui"
+          >
+            <span className="text-ink-2 font-medium flex items-center gap-1.5 pl-1">
+              <span className="w-2 h-2 rounded-full bg-violet" />
+              <span className="hidden sm:inline">Evaluation State:</span>
+            </span>
+            <div className="flex items-center gap-1">
+              {(['normal', 'skeleton', 'error', 'empty_audit'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setViewState(s)}
+                  className={`px-2 py-1 rounded-[4px] capitalize text-[11px] font-medium transition-colors ${
+                    viewState === s
+                      ? 'bg-ink text-paper font-semibold shadow-xs'
+                      : 'bg-raised border border-line text-ink-2 hover:border-ink hover:text-ink'
+                  }`}
+                >
+                  {s.replace('_', ' ')}
+                </button>
+              ))}
+            </div>
+          </aside>
+        )}
       </div>
     </AppShell>
   );

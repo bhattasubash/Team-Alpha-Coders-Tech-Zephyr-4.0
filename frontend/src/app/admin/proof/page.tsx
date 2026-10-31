@@ -1,21 +1,32 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { KernelStamp } from '@/components/ui/KernelStamp';
 import { Chip } from '@/components/ui/Chip';
 import { Button } from '@/components/ui/Button';
-import { SCHEDULED_SESSIONS } from '@/data/mockData';
+import { api } from '@/lib/api';
 
 export default function ProofPage() {
   const [activeTab, setActiveTab] = useState<'validator' | 'fuzzing' | 'redteam'>('validator');
   const [isRunning, setIsRunning] = useState(false);
   const [runSuccessToast, setRunSuccessToast] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<{ code: string; message: string } | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // S1 to S6 soft constraint breakdown with horizontal bar distributions
+  // Real report state from backend
+  const [report, setReport] = useState<{
+    hardViolations: number;
+    softPenalty: number;
+    bookingScore: number | null;
+    status: string;
+    sessionsCount?: number;
+    bookingsCount?: number;
+  } | null>(null);
+
+  // S1 to S6 soft constraint breakdown structure
   const softBreakdown = [
     { code: 'S1', name: 'Faculty preferred slots avoided', count: 4, weight: 2, total: 8, barPercent: 44, note: '4 faculty assigned outside primary morning window' },
     { code: 'S2', name: 'Student group idle gaps', count: 6, weight: 3, total: 18, barPercent: 100, note: '6 isolated 1-hour free windows between lectures' },
@@ -23,15 +34,6 @@ export default function ProofPage() {
     { code: 'S4', name: 'Same course scheduled twice in one day', count: 2, weight: 3, total: 6, barPercent: 33, note: '2 supplementary tutorial sessions adjacent to lectures' },
     { code: 'S5', name: 'Room underutilization (<50% capacity)', count: 12, weight: 1, total: 12, barPercent: 66, note: '12 sessions in lecture halls with excess seating' },
     { code: 'S6', name: 'Late period lecture scheduled (P9)', count: 2, weight: 2, total: 4, barPercent: 22, note: '2 elective groups scheduled at 17:00' },
-  ];
-
-  // Differential fuzzing runs (BitSet vs CP-SAT solver across 10,000 mutations)
-  const fuzzingRuns = [
-    { run: '#10000', mutations: '10,000', time: '14.2ms', seed: '42891', diff: '0 mismatches', status: 'Optimal' },
-    { run: '#9999', mutations: '5,000', time: '8.4ms', seed: '11029', diff: '0 mismatches', status: 'Optimal' },
-    { run: '#9998', mutations: '5,000', time: '8.7ms', seed: '88723', diff: '0 mismatches', status: 'Optimal' },
-    { run: '#9997', mutations: '2,500', time: '4.1ms', seed: '34102', diff: '0 mismatches', status: 'Optimal' },
-    { run: '#9996', mutations: '2,500', time: '4.0ms', seed: '77219', diff: '0 mismatches', status: 'Optimal' },
   ];
 
   // Representative attack vectors from the 80+ test suite
@@ -134,60 +136,41 @@ export default function ProofPage() {
     },
   ];
 
-  const handleRunValidator = () => {
+  const handleRunValidator = async () => {
     setIsRunning(true);
     setRunSuccessToast(null);
-    setTimeout(() => {
+    setApiError(null);
+    try {
+      const res = await api.getOfficialValidation();
+      setReport({
+        hardViolations: res.hard_violations_count ?? 0,
+        softPenalty: res.soft_penalty ?? 0,
+        bookingScore: (res as any).booking_score ?? null,
+        status: res.status || 'Verified',
+      });
+      setRunSuccessToast(`Official validator run complete. Status: ${res.status}. Hard violations: ${res.hard_violations_count ?? 0}, Soft penalty: ${res.soft_penalty ?? 0}.`);
+    } catch (err: any) {
+      setApiError({ code: err.code || 'HTTP_501', message: err.message || 'Official validator not available yet' });
+    } finally {
       setIsRunning(false);
-      setRunSuccessToast('Official validator run complete. 189 sessions and 25 bookings verified. 0 hard violations. Optimal soft penalty 48.');
-    }, 700);
+    }
   };
 
-  // Browser JSON export triggers
-  const handleDownloadSchedule = (filename: string, isAfter: boolean) => {
-    let payload = SCHEDULED_SESSIONS;
-    if (isAfter) {
-      // Apply the 3 minimal moves for disruption state
-      payload = SCHEDULED_SESSIONS.map((s) => {
-        if (s.id === 'CS101-L1') {
-          return {
-            ...s,
-            day: 'THU' as const,
-            startPeriod: 4,
-            isDiffMoved: true,
-            oldSlot: { day: s.day, period: s.startPeriod, roomId: s.roomId },
-          };
-        }
-        if (s.id === 'CS102-L2') {
-          return {
-            ...s,
-            day: 'FRI' as const,
-            startPeriod: 3,
-            isDiffMoved: true,
-            oldSlot: { day: s.day, period: s.startPeriod, roomId: s.roomId },
-          };
-        }
-        if (s.id === 'PHY-L2') {
-          return {
-            ...s,
-            day: 'TUE' as const,
-            startPeriod: 7,
-            isDiffMoved: true,
-            oldSlot: { day: s.day, period: s.startPeriod, roomId: s.roomId },
-          };
-        }
-        return s;
-      });
+  // Browser JSON export triggers - fetch real exports from backend
+  const handleDownloadSchedule = async (filename: string, isAfter: boolean) => {
+    try {
+      const payload = await api.exportSchedule();
+      const jsonStr = JSON.stringify(payload, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert(`Exporting ${filename}: schedule endpoint pending solver completion.`);
     }
-
-    const jsonStr = JSON.stringify(payload, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   const filteredVectors = redTeamCases.filter((c) => {
@@ -261,6 +244,22 @@ export default function ProofPage() {
           </div>
         )}
 
+        {/* Honest Error State if endpoint fails or 501 */}
+        {apiError && (
+          <div className="p-4 bg-surface border border-coral text-ink rounded-card flex items-center justify-between">
+            <div>
+              <span className="font-bold text-coral">Endpoint Status: </span>
+              <span>{apiError.message} ({apiError.code})</span>
+            </div>
+            <button
+              onClick={() => setApiError(null)}
+              className="text-[12px] font-semibold text-ink-2 hover:text-ink"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* THREE REPORT TABS: Validator, Differential Fuzzing, Red Team */}
         <div className="flex items-center gap-6 border-b border-line pb-2 text-[13px] font-medium">
           {[
@@ -288,14 +287,14 @@ export default function ProofPage() {
           <div className="space-y-6">
             {/* Top Metric Strip: Big Serif Numbers */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Hard Violations: Big serif number 56 with "Valid" chip */}
+              {/* Hard Violations */}
               <div className="p-5 bg-surface border border-line rounded-panel">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[12px] font-medium text-ink-2">Hard Violations</span>
-                  <Chip label="Valid" variant="valid" />
+                  <Chip label={report ? (report.hardViolations === 0 ? 'Valid' : 'Violations') : 'Unchecked'} variant={report?.hardViolations === 0 ? 'valid' : 'rejected'} />
                 </div>
                 <div className="font-serif text-[56px] leading-[56px] text-ink font-normal my-2">
-                  0
+                  {report !== null ? report.hardViolations : '—'}
                 </div>
                 <span className="text-[12px] text-ink-2">All hard rules H1 to H14 satisfied</span>
               </div>
@@ -304,10 +303,10 @@ export default function ProofPage() {
               <div className="p-5 bg-surface border border-line rounded-panel">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[12px] font-medium text-ink-2">Soft Penalty Total</span>
-                  <Chip label="Optimal" variant="approved" />
+                  <Chip label={report !== null ? report.status : 'Awaiting Run'} variant="approved" />
                 </div>
                 <div className="font-serif text-[56px] leading-[56px] text-ink font-normal my-2">
-                  48
+                  {report !== null ? report.softPenalty : '—'}
                 </div>
                 <span className="text-[12px] text-ink-2">Evaluated across S1 to S6 weights</span>
               </div>
@@ -316,12 +315,12 @@ export default function ProofPage() {
               <div className="p-5 bg-surface border border-line rounded-panel">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[12px] font-medium text-ink-2">Booking Score</span>
-                  <Chip label="88.0%" variant="valid" />
+                  <Chip label={report?.bookingScore !== null && report?.bookingScore !== undefined ? `${report.bookingScore}%` : 'Uncomputed'} variant="valid" />
                 </div>
                 <div className="font-serif text-[56px] leading-[56px] text-ink font-normal my-2">
-                  88%
+                  {report?.bookingScore !== null && report?.bookingScore !== undefined ? `${report.bookingScore}%` : '—'}
                 </div>
-                <span className="text-[12px] text-ink-2">22 of 25 Spectra bookings accepted</span>
+                <span className="text-[12px] text-ink-2">Spectra bookings fulfillment ratio</span>
               </div>
             </div>
 
@@ -336,7 +335,7 @@ export default function ProofPage() {
                     Objective function and acceptance equations minimized by the CP-SAT solver kernel.
                   </p>
                 </div>
-                <KernelStamp showProvenance provenance="Proved minimal by CP-SAT solver v9.8" />
+                <KernelStamp showProvenance provenance="Kernel formal constraint check" />
               </div>
 
               {/* Formula Cards */}
@@ -346,7 +345,7 @@ export default function ProofPage() {
                     Soft penalty objective formulation
                   </span>
                   <div className="font-serif italic text-[16px] text-ink p-3 bg-surface rounded-cell border border-line">
-                    Penalty = &sum; (Weight<sub>i</sub> &times; Count(S<sub>i</sub>)) = 48
+                    Penalty = &sum; (Weight<sub>i</sub> &times; Count(S<sub>i</sub>))
                   </div>
                   <p className="text-[12px] text-ink-2 leading-relaxed">
                     Weighted penalty summation penalizing student idle gaps (S2: wt 3), room underutilization (S5: wt 1), and late period lectures (S6: wt 2).
@@ -358,10 +357,10 @@ export default function ProofPage() {
                     Booking credit fulfillment formulation
                   </span>
                   <div className="font-serif italic text-[16px] text-ink p-3 bg-surface rounded-cell border border-line">
-                    Booking Score = (Approved Credits &divide; Requested Credits) &times; 100 = 88.0%
+                    Booking Score = (Approved Credits &divide; Requested Credits) &times; 100
                   </div>
                   <p className="text-[12px] text-ink-2 leading-relaxed">
-                    440 of 500 total priority credits fulfilled. 3 conflicting bookings offered valid alternatives with zero timetable disruption.
+                    Total priority credits fulfilled. Conflicting bookings offered valid alternatives with zero timetable disruption.
                   </p>
                 </div>
               </div>
@@ -417,47 +416,39 @@ export default function ProofPage() {
           </div>
         )}
 
-        {/* TAB 2: DIFFERENTIAL FUZZING ("10,000 mutations, 0 mismatches") */}
+        {/* TAB 2: DIFFERENTIAL INVARIANCE */}
         {activeTab === 'fuzzing' && (
           <div className="p-6 bg-surface border border-line rounded-panel space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-4">
               <div>
-                <h3 className="font-serif text-[24px] text-ink">Differential Fuzzing Verification</h3>
+                <h3 className="font-serif text-[24px] text-ink">Differential Invariance Verification</h3>
                 <p className="font-serif italic text-[15px] text-ink-2 mt-0.5">
-                  The standalone fast Python validator is cross-checked against the CP-SAT integer programming model across 10,000 random mutations with zero discrepancies.
+                  The standalone fast Python validator is cross-checked against the CP-SAT integer programming model.
                 </p>
               </div>
-              <Chip label="10,000 mutations, 0 mismatches" variant="valid" />
+              <Chip label="Dual-Engine Invariance Check" variant="valid" />
             </div>
 
             <div className="p-4 bg-raised border border-line rounded-card text-[13px] space-y-2">
               <span className="font-semibold text-ink block">Differential Invariance Principle:</span>
               <p className="text-ink-2 leading-relaxed">
-                Every mutation perturbation (random venue switch, time perturbation, group expansion) is evaluated concurrently by two independent implementations:
-                the fast BitSet validator and the complete integer programming CP-SAT formulation. If any assignment differs in feasibility verdict, the test fails immediately.
+                Every schedule assignment is evaluated concurrently by two independent implementations:
+                the fast BitSet validator and the complete integer programming CP-SAT formulation. If any assignment differs in feasibility verdict, the verification halts immediately.
               </p>
             </div>
 
-            {/* Typeset Fuzzing Runs Table */}
-            <div className="border border-line rounded-card divide-y divide-line text-[12px] font-mono bg-raised overflow-hidden">
-              <div className="p-3 bg-surface grid grid-cols-5 text-ink-2 font-semibold border-b border-line">
-                <span>Run</span>
-                <span>Mutations</span>
-                <span>Exec Time</span>
-                <span>Random Seed</span>
-                <span className="text-right">Verdict</span>
+            <div className="p-4 bg-surface border border-line rounded-card text-[13px] flex items-center justify-between">
+              <div>
+                <span className="font-semibold text-ink block">Test Suite Invariance Status</span>
+                <span className="text-[12px] text-ink-2">Run backend verification via official validator</span>
               </div>
-              {fuzzingRuns.map((r) => (
-                <div key={r.run} className="p-3 grid grid-cols-5 items-center hover:bg-surface/50 transition-colors">
-                  <span className="font-bold text-ink">{r.run}</span>
-                  <span className="text-ink-2">{r.mutations}</span>
-                  <span className="text-ink-2">{r.time}</span>
-                  <span className="text-ink-2">Seed {r.seed}</span>
-                  <div className="text-right">
-                    <Chip label="0 mismatches" variant="valid" />
-                  </div>
-                </div>
-              ))}
+              <Button
+                variant="primary"
+                disabled={isRunning}
+                onClick={handleRunValidator}
+              >
+                {isRunning ? 'Running verification...' : 'Run Differential Verification'}
+              </Button>
             </div>
           </div>
         )}
@@ -574,16 +565,16 @@ export default function ProofPage() {
               </p>
               <ul className="list-disc list-inside text-[12px] text-ink-2 space-y-1.5 pl-1">
                 <li>
-                  <strong className="text-ink">3 minimal-move disruption sessions:</strong> CS101, CS102, and PHY-L2 revert from their relocated slots back to baseline Monday periods.
+                  <strong className="text-ink">Disruption proposals:</strong> Active session relocations revert back to baseline Monday periods.
                 </li>
                 <li>
-                  <strong className="text-ink">All 25 Spectra bookings:</strong> Reverts all manual approvals, rejections, and overrules back to initial submission state (20 approved, 3 rejected, 2 pending).
+                  <strong className="text-ink">Spectra bookings:</strong> Reverts all manual approvals, rejections, and overrules back to initial submission state.
                 </li>
                 <li>
                   <strong className="text-ink">Priority ladder hierarchy:</strong> Restores default institute order (Exams &gt; Events &gt; Lectures &gt; Labs &gt; Clubs &gt; Guest).
                 </li>
                 <li>
-                  <strong className="text-ink">Room maintenance states:</strong> Restores LH-4 and CR-103 scheduled repairs to baseline windows.
+                  <strong className="text-ink">Room maintenance states:</strong> Restores scheduled repairs to baseline windows.
                 </li>
               </ul>
               <div className="flex items-center gap-3 pt-3 border-t border-bad/20">
@@ -596,9 +587,14 @@ export default function ProofPage() {
                 </Button>
                 <Button
                   variant="destructive"
-                  onClick={() => {
+                  onClick={async () => {
                     setIsResetConfirmOpen(false);
-                    alert('Demo state restored to clean baseline seed.');
+                    try {
+                      await api.resetDatabase();
+                      alert('Database reset successful.');
+                    } catch (err: any) {
+                      alert(`Reset status: ${err.message || 'Reset endpoint pending'}`);
+                    }
                   }}
                   className="h-8 text-[12px]"
                 >

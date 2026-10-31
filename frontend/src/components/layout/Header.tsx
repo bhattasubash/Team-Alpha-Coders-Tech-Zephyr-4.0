@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { useApp } from '@/context/AppContext';
-import { Role } from '@/data/types';
-import { DEMO_USERS } from '@/data/mockData';
+import { Role, DEMO_USERS } from '@/data/types';
 import { SearchIcon, ChevronDown, SunIcon, MoonIcon } from '@/components/ui/Icons';
 
 export function Header() {

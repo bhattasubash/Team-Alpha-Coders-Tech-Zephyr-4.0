@@ -1,18 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useApp } from '@/context/AppContext';
 import { KernelStamp } from '@/components/ui/KernelStamp';
 import { Chip } from '@/components/ui/Chip';
 import { Button } from '@/components/ui/Button';
-import { FACULTY, ROOMS, getDisruptionSample } from '@/data/mockData';
+import { api } from '@/lib/api';
 import { Day } from '@/data/types';
 import { AlertIcon } from '@/components/ui/Icons';
 
 export default function DisruptionPage() {
   const { role } = useApp();
-  const sampleData = getDisruptionSample();
 
   // Input Panel State
   const [facultyId, setFacultyId] = useState<string>('F07');
@@ -31,13 +30,42 @@ export default function DisruptionPage() {
   const [emergencyFaculty, setEmergencyFaculty] = useState<string>('F06');
   const [emergencyGroup, setEmergencyGroup] = useState<string>('CSE-2');
 
+  // Dynamic meta options
+  const [metaRooms, setMetaRooms] = useState<Array<{ id: string; name: string }>>([
+    { id: 'CR-101', name: 'CR-101 (Block A)' },
+    { id: 'CR-102', name: 'CR-102 (Block A)' },
+    { id: 'CR-103', name: 'CR-103 (Block A)' },
+    { id: 'LH-1', name: 'LH-1 (Lecture Complex)' },
+    { id: 'LH-2', name: 'LH-2 (Lecture Complex)' },
+    { id: 'CS-LAB-1', name: 'CS-LAB-1 (Computer Lab)' },
+    { id: 'PHY-LAB', name: 'PHY-LAB (Physics Lab)' },
+    { id: 'AUD', name: 'AUD (Auditorium)' },
+  ]);
+
+  const [metaFaculty, setMetaFaculty] = useState<Array<{ id: string; name: string; department?: string }>>([
+    { id: 'F01', name: 'Dr. Mishra', department: 'Physics' },
+    { id: 'F02', name: 'Dr. Rao', department: 'Mathematics' },
+    { id: 'F06', name: 'Prof. Sen', department: 'Computer Science' },
+    { id: 'F07', name: 'Dr. Raman', department: 'Computer Science' },
+  ]);
+
   // Solver View State
-  const [isCalculated, setIsCalculated] = useState<boolean>(true);
+  const [isCalculated, setIsCalculated] = useState<boolean>(false);
   const [isInfeasible, setIsInfeasible] = useState<boolean>(false);
   const [diffViewMode, setDiffViewMode] = useState<'before-after' | 'side-by-side'>('side-by-side');
+  const [isCalculating, setIsCalculating] = useState<boolean>(false);
+  const [proposal, setProposal] = useState<any | null>(null);
+  const [apiError, setApiError] = useState<{ code: string; message: string } | null>(null);
 
   // Toast feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.getMeta().then((meta) => {
+      if (meta?.rooms) setMetaRooms(meta.rooms);
+      if (meta?.faculty) setMetaFaculty(meta.faculty);
+    }).catch(() => {});
+  }, []);
 
   const handleLoadSample = () => {
     setFacultyId('F07');
@@ -49,50 +77,44 @@ export default function DisruptionPage() {
     setEmergencyCourse('CS202-T2');
     setEmergencyFaculty('F06');
     setEmergencyGroup('CSE-2');
-    setIsCalculated(true);
-    setIsInfeasible(false);
-    setToastMessage('Loaded sample disruption from starter pack.');
+    setToastMessage('Loaded sample disruption parameters.');
   };
 
-  const handleCalculate = () => {
-    setIsCalculated(true);
-    setToastMessage('CP-SAT solver converged in 0.42s: 3 sessions moved (proven minimal).');
+  const handleCalculate = async () => {
+    setIsCalculating(true);
+    setApiError(null);
+    try {
+      const changes: any[] = [];
+      if (roomId) {
+        changes.push({
+          type: 'room_unavailable',
+          room_id: roomId,
+          day: facultyLeaveDays,
+          periods: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+          reason: roomClosureReason,
+        });
+      }
+      if (facultyId) {
+        changes.push({
+          type: 'faculty_leave',
+          faculty_id: facultyId,
+          day: facultyLeaveDays,
+          reason: facultyLeaveReason,
+        });
+      }
+      const res = await api.previewDisruption({ changes });
+      setProposal(res);
+      setIsCalculated(true);
+      setIsInfeasible(res.infeasible);
+      setToastMessage(`Minimal moves computed: ${res.moved_count} sessions moved.${res.proven_minimum ? ' (Proven minimal)' : ''}`);
+    } catch (err: any) {
+      setApiError({ code: err.code || 'ERROR', message: err.message || 'Solver failed' });
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
-  const movedSessions = [
-    {
-      id: 'CS202-T2',
-      sessionTitle: 'Data Structures Tutorial',
-      faculty: 'Prof. Sen (F06)',
-      from: 'CR-102 Mon P4 (11:00)',
-      to: 'CR-101 Tue P6 (14:00)',
-      fromSlot: { day: 'MON' as Day, period: 4, room: 'CR-102' },
-      toSlot: { day: 'TUE' as Day, period: 6, room: 'CR-101' },
-      reason: 'Water leak in CR-102. Reallocated to nearest vacant classroom with capacity 90.',
-    },
-    {
-      id: 'MA101-AB-L1',
-      sessionTitle: 'Calculus and Linear Algebra',
-      faculty: 'Dr. Raman (F07)',
-      from: 'LH-1 Mon P2 (09:00)',
-      to: 'LH-2 Wed P3 (10:00)',
-      fromSlot: { day: 'MON' as Day, period: 2, room: 'LH-1' },
-      toSlot: { day: 'WED' as Day, period: 3, room: 'LH-2' },
-      reason: 'Dr. Raman on conference travel on Monday. Shifted to lecture hall LH-2 on Wednesday.',
-    },
-    {
-      id: 'PH191-A-P1',
-      sessionTitle: 'Physics Optics Laboratory (3h)',
-      faculty: 'Dr. Mishra (F01)',
-      from: 'PHY-LAB Mon P6-P8 (14:00 - 17:00)',
-      to: 'PHY-LAB Thu P2-P4 (09:00 - 12:00)',
-      fromSlot: { day: 'MON' as Day, period: 6, room: 'PHY-LAB' },
-      toSlot: { day: 'THU' as Day, period: 2, room: 'PHY-LAB' },
-      reason: 'Shifted to Thursday morning to preserve 3-hour continuous block without violating daily hours.',
-    },
-  ];
-
-  const miniPeriods = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const moves = proposal?.moves || [];
   const miniDays: Day[] = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
 
   return (
@@ -165,9 +187,9 @@ export default function DisruptionPage() {
                       onChange={(e) => setFacultyId(e.target.value)}
                       className="w-full h-9 px-2.5 bg-surface border border-line-strong rounded-[6px] text-[13px] font-medium text-ink focus:outline-none focus:border-ink"
                     >
-                      {FACULTY.map((f) => (
+                      {metaFaculty.map((f) => (
                         <option key={f.id} value={f.id}>
-                          {f.id} &middot; {f.name} ({f.department})
+                          {f.id} &middot; {f.name} {f.department ? `(${f.department})` : ''}
                         </option>
                       ))}
                     </select>
@@ -214,9 +236,9 @@ export default function DisruptionPage() {
                       onChange={(e) => setRoomId(e.target.value)}
                       className="w-full h-9 px-2.5 bg-surface border border-line-strong rounded-[6px] text-[13px] font-medium text-ink focus:outline-none focus:border-ink"
                     >
-                      {ROOMS.map((r) => (
+                      {metaRooms.map((r) => (
                         <option key={r.id} value={r.id}>
-                          {r.id} &middot; {r.name} (Cap {r.capacity})
+                          {r.id} &middot; {r.name}
                         </option>
                       ))}
                     </select>
@@ -357,22 +379,22 @@ export default function DisruptionPage() {
                   </Button>
                 </div>
               </div>
-            ) : isCalculated ? (
+            ) : isCalculated && proposal ? (
               /* FEASIBLE MINIMAL-MOVE RESULT */
               <div className="bg-surface border border-line rounded-panel p-6 shadow-sm space-y-6">
                 
-                {/* Header: Serif Sentence + Kernel Stamp "Proven minimal by CP-SAT" */}
+                {/* Header: Serif Sentence + Kernel Stamp */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-4">
                   <div>
                     <h2 className="font-serif text-[28px] sm:text-[32px] leading-tight text-ink font-normal">
-                      3 sessions moved. This is the minimum possible.
+                      {proposal.moved_count} sessions moved.{proposal.proven_minimum ? ' This is the proven minimum possible.' : ''}
                     </h2>
                     <p className="font-serif italic text-[15px] text-ink-2 mt-0.5">
-                      Warm-start solved in 0.42s &middot; Objective: hard=0, moved=3, soft penalty=48.
+                      Status: {proposal.status} &middot; Forced moves: {proposal.forced_moves || 0}, Knock-on: {proposal.knock_on_moves || 0}
                     </p>
                   </div>
 
-                  <KernelStamp label="Proven minimal by CP-SAT" />
+                  <KernelStamp label={proposal.proven_minimum ? "Proven minimal by solver" : "Solver Proposal"} />
                 </div>
 
                 {/* BEFORE AND AFTER MINI TIMETABLES */}
@@ -382,7 +404,7 @@ export default function DisruptionPage() {
                       Before and After Mini Timetables
                     </span>
                     <span className="text-[11px] text-ink-2 font-mono">
-                      Moved slots pulse twice &middot; Old slots struck through
+                      {moves.length} relocation{moves.length === 1 ? '' : 's'} computed
                     </span>
                   </div>
 
@@ -392,7 +414,7 @@ export default function DisruptionPage() {
                     <div className="p-3.5 bg-raised border border-line rounded-card space-y-2">
                       <div className="flex items-center justify-between text-[11px] font-mono text-ink-2 border-b border-line pb-1">
                         <span className="font-bold text-ink">BEFORE (Baseline Schedule)</span>
-                        <span className="text-bad line-through">3 old slots removed</span>
+                        <span className="text-bad line-through">{moves.length} slot{moves.length === 1 ? '' : 's'} vacated</span>
                       </div>
 
                       {/* Mini Mon-Fri Grid */}
@@ -404,26 +426,19 @@ export default function DisruptionPage() {
                         ))}
                       </div>
 
-                      {/* Sample rows representation */}
+                      {/* Slots representation */}
                       <div className="space-y-1.5 pt-1">
-                        <div className="p-2 border border-bad border-dashed rounded-cell bg-t-bad/30 text-[11px] text-bad flex items-center justify-between">
-                          <span className="line-through font-medium">CS202-T2 in CR-102 (Mon P4)</span>
-                          <span className="text-[10px] uppercase font-mono px-1 rounded-cell bg-bad text-paper">
-                            Leak
-                          </span>
-                        </div>
-                        <div className="p-2 border border-bad border-dashed rounded-cell bg-t-bad/30 text-[11px] text-bad flex items-center justify-between">
-                          <span className="line-through font-medium">MA101-AB-L1 in LH-1 (Mon P2)</span>
-                          <span className="text-[10px] uppercase font-mono px-1 rounded-cell bg-bad text-paper">
-                            Leave
-                          </span>
-                        </div>
-                        <div className="p-2 border border-bad border-dashed rounded-cell bg-t-bad/30 text-[11px] text-bad flex items-center justify-between">
-                          <span className="line-through font-medium">PH191-A-P1 in PHY-LAB (Mon P6-8)</span>
-                          <span className="text-[10px] uppercase font-mono px-1 rounded-cell bg-bad text-paper">
-                            Shift
-                          </span>
-                        </div>
+                        {moves.map((m: any) => (
+                          <div key={m.session_id} className="p-2 border border-bad border-dashed rounded-cell bg-t-bad/30 text-[11px] text-bad flex items-center justify-between">
+                            <span className="line-through font-medium">{m.session_id} in {m.from_slot?.room_id} ({m.from_slot?.day} P{m.from_slot?.start_period})</span>
+                            <span className="text-[10px] uppercase font-mono px-1 rounded-cell bg-bad text-paper">
+                              {m.is_forced ? 'Forced' : 'Shift'}
+                            </span>
+                          </div>
+                        ))}
+                        {moves.length === 0 && (
+                          <p className="text-[11px] text-ink-2 italic p-2">No baseline sessions disrupted.</p>
+                        )}
                       </div>
                     </div>
 
@@ -431,7 +446,7 @@ export default function DisruptionPage() {
                     <div className="p-3.5 bg-raised border border-line rounded-card space-y-2 relative overflow-hidden">
                       <div className="flex items-center justify-between text-[11px] font-mono text-ink-2 border-b border-line pb-1">
                         <span className="font-bold text-ink">AFTER (Minimal-Move Schedule)</span>
-                        <span className="text-event font-semibold">3 moved slots allocated</span>
+                        <span className="text-event font-semibold">{moves.length} slot{moves.length === 1 ? '' : 's'} allocated</span>
                       </div>
 
                       {/* Mini Mon-Fri Grid */}
@@ -443,31 +458,19 @@ export default function DisruptionPage() {
                         ))}
                       </div>
 
-                      {/* Moved items pulsing twice in Haritala tint with thin connector cue */}
                       <div className="space-y-1.5 pt-1">
-                        <div className="p-2 border border-event rounded-cell bg-t-lab text-[11px] text-ink animate-pulse-twice flex items-center justify-between shadow-xs">
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className="w-1.5 h-1.5 rounded-full bg-event" />
-                            <span className="font-semibold text-ink">CS202-T2 in CR-101 (Tue P6)</span>
+                        {moves.map((m: any) => (
+                          <div key={m.session_id} className="p-2 border border-event rounded-cell bg-t-lab text-[11px] text-ink animate-pulse-twice flex items-center justify-between shadow-xs">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="w-1.5 h-1.5 rounded-full bg-event" />
+                              <span className="font-semibold text-ink">{m.session_id} in {m.to_slot?.room_id} ({m.to_slot?.day} P{m.to_slot?.start_period})</span>
+                            </div>
+                            <Chip label="MOVED" variant="moved" />
                           </div>
-                          <Chip label="MOVED" variant="moved" />
-                        </div>
-
-                        <div className="p-2 border border-event rounded-cell bg-t-lab text-[11px] text-ink animate-pulse-twice flex items-center justify-between shadow-xs">
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className="w-1.5 h-1.5 rounded-full bg-event" />
-                            <span className="font-semibold text-ink">MA101-AB-L1 in LH-2 (Wed P3)</span>
-                          </div>
-                          <Chip label="MOVED" variant="moved" />
-                        </div>
-
-                        <div className="p-2 border border-event rounded-cell bg-t-lab text-[11px] text-ink animate-pulse-twice flex items-center justify-between shadow-xs">
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className="w-1.5 h-1.5 rounded-full bg-event" />
-                            <span className="font-semibold text-ink">PH191-A-P1 in PHY-LAB (Thu P2-4)</span>
-                          </div>
-                          <Chip label="MOVED" variant="moved" />
-                        </div>
+                        ))}
+                        {moves.length === 0 && (
+                          <p className="text-[11px] text-ink-2 italic p-2">No relocated sessions needed.</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -479,7 +482,7 @@ export default function DisruptionPage() {
                     <span className="text-[12px] font-semibold text-ink uppercase tracking-wide">
                       Detailed Relocation Ledger
                     </span>
-                    <span className="text-[11px] font-mono text-ink-2">3 Total Moves</span>
+                    <span className="text-[11px] font-mono text-ink-2">{moves.length} Total Moves</span>
                   </div>
 
                   <div className="overflow-x-auto border border-line rounded-card bg-surface shadow-xs">
@@ -493,23 +496,23 @@ export default function DisruptionPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-line">
-                        {movedSessions.map((row) => (
-                          <tr key={row.id} className="hover:bg-raised/50 transition-colors">
+                        {moves.map((row: any) => (
+                          <tr key={row.session_id} className="hover:bg-raised/50 transition-colors">
                             <td className="p-2.5 pl-3 font-semibold text-ink">
-                              <div>{row.id}</div>
+                              <div>{row.session_id}</div>
                               <div className="text-[10px] text-ink-2 font-normal truncate max-w-[140px]">
-                                {row.sessionTitle}
+                                {row.course_title || row.course_id}
                               </div>
                             </td>
                             <td className="p-2.5 font-mono text-bad line-through text-[11px] whitespace-nowrap">
-                              {row.from}
+                              {row.from_slot ? `${row.from_slot.room_id} ${row.from_slot.day} P${row.from_slot.start_period}` : '—'}
                             </td>
                             <td className="p-2.5 font-mono text-ink font-semibold text-[11px] whitespace-nowrap">
                               <span className="text-event mr-1">&rarr;</span>
-                              {row.to}
+                              {row.to_slot ? `${row.to_slot.room_id} ${row.to_slot.day} P${row.to_slot.start_period}` : '—'}
                             </td>
                             <td className="p-2.5 pr-3 font-serif italic text-[12px] text-ink-2 leading-snug">
-                              {row.reason}
+                              {row.reason || 'Continuity preservation.'}
                             </td>
                           </tr>
                         ))}
@@ -522,45 +525,58 @@ export default function DisruptionPage() {
           </div>
         </div>
 
-        {/* STICKY BOTTOM BAR FOR APPROVAL - Docks cleanly above mobile nav (<640px bottom-14, desktop bottom-0) */}
-        <div className="fixed bottom-14 sm:bottom-0 left-0 right-0 sm:left-16 lg:left-[232px] p-3.5 sm:p-4 bg-surface border-t border-line-strong flex flex-col sm:flex-row sm:items-center justify-between gap-3 z-30 shadow-palette">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-green flex-shrink-0" />
-            <span className="font-ui text-[13px] font-medium text-ink">
-              3 sessions moved &middot; Minimal disruption schedule ready for commit
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 self-end sm:self-auto">
-            {role === 'admin' ? (
-              <>
-                <Button
-                  variant="secondary"
-                  className="h-9 px-4 text-[13px]"
-                  onClick={() => {
-                    setIsCalculated(false);
-                    setToastMessage('Proposal rejected. Timetable reverted to baseline.');
-                  }}
-                >
-                  Reject proposal
-                </Button>
-                <Button
-                  variant="primary"
-                  className="h-9 px-5 text-[13px] bg-violet hover:bg-violet/90 text-white"
-                  onClick={() => {
-                    setToastMessage('Committed. 3 sessions moved.');
-                  }}
-                >
-                  Approve and commit
-                </Button>
-              </>
-            ) : (
-              <span className="font-serif italic text-[14px] text-ink-2">
-                Waiting for admin approval (Dean's office).
+        {/* STICKY BOTTOM BAR FOR APPROVAL */}
+        {proposal && (
+          <div className="fixed bottom-14 sm:bottom-0 left-0 right-0 sm:left-16 lg:left-[232px] p-3.5 sm:p-4 bg-surface border-t border-line-strong flex flex-col sm:flex-row sm:items-center justify-between gap-3 z-30 shadow-palette">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-green flex-shrink-0" />
+              <span className="font-ui text-[13px] font-medium text-ink">
+                {proposal.moved_count} sessions moved &middot; Minimal disruption schedule ready for commit
               </span>
-            )}
+            </div>
+
+            <div className="flex items-center gap-3 self-end sm:self-auto">
+              {role === 'admin' ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    className="h-9 px-4 text-[13px]"
+                    onClick={async () => {
+                      try {
+                        await api.rejectProposal(proposal.id, 'Rejected by Dean');
+                        setIsCalculated(false);
+                        setProposal(null);
+                        setToastMessage('Proposal rejected. Timetable reverted to baseline.');
+                      } catch (err: any) {
+                        setToastMessage(`Reject error: ${err.message}`);
+                      }
+                    }}
+                  >
+                    Reject proposal
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="h-9 px-5 text-[13px] bg-violet hover:bg-violet/90 text-white"
+                    onClick={async () => {
+                      try {
+                        await api.approveProposal(proposal.id);
+                        setToastMessage(`Proposal ${proposal.id} committed successfully.`);
+                      } catch (err: any) {
+                        setToastMessage(`Commit error: ${err.message}`);
+                      }
+                    }}
+                  >
+                    Approve and commit
+                  </Button>
+                </>
+              ) : (
+                <span className="font-serif italic text-[14px] text-ink-2">
+                  Waiting for admin approval (Dean's office).
+                </span>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </AppShell>
   );

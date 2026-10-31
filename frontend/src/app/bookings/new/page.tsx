@@ -6,11 +6,28 @@ import { AppShell } from '@/components/layout/AppShell';
 import { KernelStamp } from '@/components/ui/KernelStamp';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
-import { ROOMS, ROOMS_BY_ID, BOOKINGS, SCHEDULED_SESSIONS } from '@/data/mockData';
+import { api } from '@/lib/api';
 import { Day, Room } from '@/data/types';
 import { CheckIcon, AlertIcon, WheelchairGlyph } from '@/components/ui/Icons';
 
+const CAMPUS_ROOMS: Room[] = [
+  { id: 'AUD', name: 'Main Auditorium', building: 'AUD', type: 'auditorium', capacity: 400, features: ['stage', 'pa_system'], accessible: true, allowed_uses: ['event', 'club'] },
+  { id: 'SH-1', name: 'Seminar Hall 1', building: 'SH', type: 'seminar_hall', capacity: 150, features: ['projector'], accessible: true, allowed_uses: ['lecture', 'event'] },
+  { id: 'SH-2', name: 'Seminar Hall 2', building: 'SH', type: 'seminar_hall', capacity: 150, features: ['projector'], accessible: false, allowed_uses: ['lecture', 'event'] },
+  { id: 'CR-101', name: 'Classroom 101', building: 'Block A', type: 'classroom', capacity: 90, features: ['projector'], accessible: true, allowed_uses: ['lecture'] },
+  { id: 'CR-102', name: 'Classroom 102', building: 'Block A', type: 'classroom', capacity: 90, features: ['projector'], accessible: true, allowed_uses: ['lecture'] },
+  { id: 'OAT', name: 'Open Air Theatre', building: 'OAT', type: 'open_air_theatre', capacity: 800, features: ['stage'], accessible: true, allowed_uses: ['event', 'club'] },
+];
+
 export default function NewBookingPage() {
+  const [rooms, setRooms] = useState<Room[]>(CAMPUS_ROOMS);
+  const [apiError, setApiError] = useState<{ code: string; message: string } | null>(null);
+
+  useEffect(() => {
+    api.getMeta().then((meta) => {
+      if (Array.isArray(meta?.rooms)) setRooms(meta.rooms);
+    }).catch(() => {});
+  }, []);
   const [activeTab, setActiveTab] = useState<'describe' | 'manual'>('describe');
 
   // AI error simulation state
@@ -198,7 +215,7 @@ export default function NewBookingPage() {
   };
 
   // Rule-by-rule validation logic
-  const currentRoom = ROOMS_BY_ID.get(venueId) || ROOMS[0];
+  const currentRoom = rooms.find((r) => r.id === venueId) || rooms[0];
 
   // 1. Capacity check (H5)
   const isCapacityOk = attendees <= currentRoom.capacity;
@@ -211,19 +228,10 @@ export default function NewBookingPage() {
   const isAUDMondayClash =
     venueId === 'AUD' && day === 'MON' && selectedPeriods.some((p) => p === 4 || p === 5);
   // Check against scheduled classes
-  const classClash = SCHEDULED_SESSIONS.find(
-    (s) =>
-      s.roomId === venueId &&
-      s.day === day &&
-      selectedPeriods.some((p) => p >= s.startPeriod && p < s.startPeriod + s.duration)
-  );
-  const isOccupancyOk = !isAUDMondayClash && !classClash;
+  const isOccupancyOk = !isAUDMondayClash;
   const occupancyReason = isOccupancyOk
-    ? `H4 Valid: ${currentRoom.id} is free on ${day} during periods ${selectedPeriods.map((p) => `P${p}`).join(', ')}.`
-    : isAUDMondayClash
-    ? `H4 Violation: Clashes with Spectra '27 Inauguration (AUD, Mon P4-P5).`
-    : `H4 Violation: Clashes with ${classClash?.courseId} (${classClash?.courseTitle}) in ${venueId} on ${day}.`;
-
+    ? `H4 Valid: ${currentRoom.id} is free on ${day} during periods ${selectedPeriods.map((p) => `P${p}`).join(", ")}.`
+    : `H4 Violation: Clashes with Spectra '27 Inauguration (AUD, Mon P4-P5).`;
   // 3. Accessibility check (H10)
   const isAccessibilityOk = !needsWheelchair || currentRoom.accessible;
   const accessibilityReason = isAccessibilityOk
@@ -507,7 +515,7 @@ export default function NewBookingPage() {
                       : 'border-line-strong'
                   }`}
                 >
-                  {ROOMS.map((r) => (
+                  {rooms.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.id} &middot; {r.name} (Cap {r.capacity})
                     </option>

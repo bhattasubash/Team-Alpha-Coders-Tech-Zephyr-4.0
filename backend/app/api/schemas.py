@@ -65,6 +65,10 @@ class UserProfileResponse(BaseModel):
     email: str
     name: str
     role: Role
+    faculty_id: str | None = None
+    department: str | None = None
+    club_name: str | None = None
+    profile: dict[str, Any] | None = None
 
 
 # -----------------------------------------------------------------------------
@@ -433,3 +437,34 @@ class AdminResetResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str = "ok"
     version: str = "0.1.0"
+    git_commit: str | None = None
+    solver_available: bool = True
+    llm_configured: bool = False
+    dataset_id: str | None = None
+    uptime: float = 0.0
+
+
+# -----------------------------------------------------------------------------
+# Proof Summary Schema (N2)
+# -----------------------------------------------------------------------------
+
+class FuzzRunSummary(BaseModel):
+    cases: int
+    mismatches: int
+    seed: int | None = None
+    date: str | None = None
+
+
+class ValidatorRunSummary(BaseModel):
+    hard_violations: int
+    soft_penalty: int
+    booking_score: float
+    time_run: str
+
+
+class ProofSummaryResponse(BaseModel):
+    latest_fuzz_run: FuzzRunSummary | None = None
+    latest_red_team_pass_rate: float | str | None = None
+    ortools_version: str | None = None
+    last_generate_status: str | None = None
+    last_validator_result: ValidatorRunSummary | None = None

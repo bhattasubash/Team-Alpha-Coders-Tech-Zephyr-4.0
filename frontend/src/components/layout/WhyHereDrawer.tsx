@@ -5,15 +5,12 @@ import { useApp } from '@/context/AppContext';
 import { Drawer } from '@/components/ui/Drawer';
 import { Chip } from '@/components/ui/Chip';
 import { KernelStamp } from '@/components/ui/KernelStamp';
-import { ROOMS_BY_ID } from '@/data/mockData';
 
 export function WhyHereDrawer() {
   const { drawerTarget, closeDrawer } = useApp();
   const [viewMode, setViewMode] = useState<'trace' | 'plain'>('trace');
 
   if (!drawerTarget) return null;
-
-  const room = ROOMS_BY_ID.get(drawerTarget.room);
 
   // Footer toggle: Rule trace (default) vs Plain language
   const footerToggle = (
@@ -66,7 +63,7 @@ export function WhyHereDrawer() {
           <KernelStamp
             label="Checked by kernel"
             showProvenance
-            provenance="Constraint satisfaction verification (CP-SAT v9.8)."
+            provenance="Constraint satisfaction verification (CP-SAT solver)."
           />
           <div className="flex items-center gap-1.5">
             <Chip
@@ -166,19 +163,11 @@ export function WhyHereDrawer() {
         <div className="p-3.5 bg-raised border border-line rounded-card text-[12px] text-ink-2 space-y-2 font-mono">
           <div className="flex justify-between items-center text-ink">
             <span className="font-semibold">{drawerTarget.room}</span>
-            <span>{room?.name || 'Academic Venue'}</span>
+            <span>{drawerTarget.roomName || 'Academic Venue'}</span>
           </div>
           <div className="flex justify-between pt-1 border-t border-line text-[11px]">
-            <span>Capacity (Normal / Exam):</span>
-            <span className="font-semibold text-ink">
-              {room?.capacity || 120} / {Math.floor((room?.capacity || 120) / 2)} seats
-            </span>
-          </div>
-          <div className="flex justify-between text-[11px]">
-            <span>Wheelchair Accessibility:</span>
-            <span className={room?.accessible !== false ? 'text-good font-semibold' : 'text-ink-2'}>
-              {room?.accessible !== false ? 'Ramp & Lift Accessible' : 'Stairs Only'}
-            </span>
+            <span>Venue ID:</span>
+            <span className="font-semibold text-ink">{drawerTarget.room}</span>
           </div>
         </div>
       </div>

@@ -1,13 +1,35 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { ROOMS, SCHEDULED_SESSIONS } from '@/data/mockData';
+import { api } from '@/lib/api';
 import { Chip } from '@/components/ui/Chip';
 import { WheelchairGlyph } from '@/components/ui/Icons';
 import { Day, Room } from '@/data/types';
 
+const CAMPUS_ROOMS: Room[] = [
+  { id: 'LH-1', name: 'Lecture Hall 1', building: 'LH_COMPLEX', type: 'lecture_hall', capacity: 180, features: ['projector', 'pa_system'], accessible: true, allowed_uses: ['lecture', 'exam'] },
+  { id: 'LH-2', name: 'Lecture Hall 2', building: 'LH_COMPLEX', type: 'lecture_hall', capacity: 180, features: ['projector', 'pa_system'], accessible: true, allowed_uses: ['lecture', 'exam'] },
+  { id: 'LH-3', name: 'Lecture Hall 3', building: 'LH_COMPLEX', type: 'lecture_hall', capacity: 120, features: ['projector'], accessible: true, allowed_uses: ['lecture', 'exam'] },
+  { id: 'LH-4', name: 'Lecture Hall 4', building: 'LH_COMPLEX', type: 'lecture_hall', capacity: 120, features: ['projector'], accessible: false, allowed_uses: ['lecture', 'exam'] },
+  { id: 'CR-101', name: 'Classroom 101', building: 'BLOCK_A', type: 'classroom', capacity: 90, features: ['projector'], accessible: true, allowed_uses: ['lecture'] },
+  { id: 'CR-102', name: 'Classroom 102', building: 'BLOCK_A', type: 'classroom', capacity: 90, features: ['projector'], accessible: true, allowed_uses: ['lecture'] },
+  { id: 'CR-103', name: 'Classroom 103', building: 'BLOCK_A', type: 'classroom', capacity: 90, features: ['projector'], accessible: true, allowed_uses: ['lecture'] },
+  { id: 'CR-201', name: 'Classroom 201', building: 'BLOCK_B', type: 'classroom', capacity: 90, features: ['projector'], accessible: true, allowed_uses: ['lecture'] },
+  { id: 'CR-202', name: 'Classroom 202', building: 'BLOCK_B', type: 'classroom', capacity: 90, features: ['projector'], accessible: true, allowed_uses: ['lecture'] },
+  { id: 'CS-LAB-1', name: 'Computer Lab 1', building: 'LABS', type: 'lab', capacity: 60, features: ['computers'], accessible: true, allowed_uses: ['lab'] },
+  { id: 'CS-LAB-2', name: 'Computer Lab 2', building: 'LABS', type: 'lab', capacity: 60, features: ['computers'], accessible: true, allowed_uses: ['lab'] },
+  { id: 'PHY-LAB', name: 'Physics Lab', building: 'LABS', type: 'lab', capacity: 45, features: ['special_equipment'], accessible: true, allowed_uses: ['lab'] },
+  { id: 'SH-1', name: 'Seminar Hall 1', building: 'SH_HALLS', type: 'seminar_hall', capacity: 150, features: ['projector', 'pa_system'], accessible: true, allowed_uses: ['seminar', 'event'] },
+  { id: 'SH-2', name: 'Seminar Hall 2', building: 'SH_HALLS', type: 'seminar_hall', capacity: 150, features: ['projector'], accessible: false, allowed_uses: ['seminar', 'event'] },
+  { id: 'AUD', name: 'Main Auditorium', building: 'AUD', type: 'auditorium', capacity: 400, features: ['stage', 'pa_system'], accessible: true, allowed_uses: ['event'] },
+  { id: 'OAT', name: 'Open-Air Theatre', building: 'OAT', type: 'open_air_theatre', capacity: 800, features: ['stage'], accessible: true, allowed_uses: ['event'] },
+];
+
 export default function RoomsPage() {
+  const [rooms, setRooms] = useState<Room[]>(CAMPUS_ROOMS);
+  const [freeRooms, setFreeRooms] = useState<string[]>([]);
+  const [apiError, setApiError] = useState<{ code: string; message: string } | null>(null);
   const [selectedDay, setSelectedDay] = useState<Day>('THU');
   const [selectedPeriod, setSelectedPeriod] = useState<number>(6);
   const [minCapacity, setMinCapacity] = useState<number>(0);
@@ -16,6 +38,17 @@ export default function RoomsPage() {
   const [hoveredBuilding, setHoveredBuilding] = useState<string | null>(null);
 
   const periods = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+  useEffect(() => {
+    api.getFreeRooms(selectedDay, selectedPeriod, 1)
+      .then((res) => {
+        if (Array.isArray(res?.free_rooms)) setFreeRooms(res.free_rooms);
+        setApiError(null);
+      })
+      .catch((err) => {
+        setApiError({ code: err.code || 'HTTP_501', message: err.message || 'Free rooms search pending timetable integration.' });
+      });
+  }, [selectedDay, selectedPeriod]);
 
   // Map building to corresponding room IDs in dataset
   const buildingRooms: Record<string, string[]> = {
@@ -29,37 +62,29 @@ export default function RoomsPage() {
     OAT: ['OAT'],
   };
 
-  // Helper to determine occupancy at day + period
-  const getRoomStatus = (roomId: string, day: Day, period: number) => {
-    // Scheduled session occupying the room
-    const session = SCHEDULED_SESSIONS.find(
-      (s) =>
-        s.roomId === roomId &&
-        s.day === day &&
-        period >= s.startPeriod &&
-        period < s.startPeriod + s.duration
-    );
-    if (session) {
-      return {
-        status: 'OCCUPIED' as const,
-        label: `${session.courseId} (${session.facultySurname})`,
-        session,
-      };
-    }
+  type RoomStatusResult =
+    | { status: 'FREE'; label: string; session?: any }
+    | { status: 'OCCUPIED'; label: string; session?: any }
+    | { status: 'MAINTENANCE'; label: string; session?: any };
 
+  // Helper to determine occupancy at day + period
+  const getRoomStatus = (roomId: string, day: Day, period: number): RoomStatusResult => {
+    if (freeRooms.includes(roomId)) {
+      return { status: 'FREE', label: 'Available' };
+    }
     // Known maintenance / closure windows
     if (roomId === 'LH-4' && day === 'THU') {
-      return { status: 'MAINTENANCE' as const, label: 'HVAC repair window' };
+      return { status: 'MAINTENANCE', label: 'HVAC repair window' };
     }
     if (roomId === 'CR-103' && day === 'FRI' && period >= 6) {
-      return { status: 'MAINTENANCE' as const, label: 'Electrical rewiring' };
+      return { status: 'MAINTENANCE', label: 'Electrical rewiring' };
     }
 
-    return { status: 'FREE' as const, label: 'Available' };
+    return { status: 'OCCUPIED', label: 'Scheduled' };
   };
 
   // Finder filter
-  const filteredRooms = ROOMS.filter((r) => {
+  const filteredRooms = rooms.filter((r) => {
     if (minCapacity > 0 && r.capacity < minCapacity) return false;
     if (selectedType !== 'ALL' && r.type !== selectedType) return false;
     return true;
@@ -68,7 +93,7 @@ export default function RoomsPage() {
   // Check building status for map rendering
   const getBuildingState = (bKey: string) => {
     const rIds = buildingRooms[bKey] || [];
-    const roomsInBuilding = ROOMS.filter((r) => rIds.includes(r.id));
+    const roomsInBuilding = rooms.filter((r) => rIds.includes(r.id));
     const matchingRooms = filteredRooms.filter((r) => rIds.includes(r.id));
 
     // Is any room in this building under maintenance?
@@ -105,7 +130,7 @@ export default function RoomsPage() {
   let under40Count = 0;
   const roomLoadMatrix: Record<string, Record<number, { load: number; isClosed: boolean; isOccupied: boolean; label: string }>> = {};
 
-  ROOMS.forEach((r, rIdx) => {
+  rooms.forEach((r, rIdx) => {
     roomLoadMatrix[r.id] = {};
     periods.forEach((p) => {
       const st = getRoomStatus(r.id, selectedDay, p);
@@ -124,7 +149,7 @@ export default function RoomsPage() {
     });
   });
 
-  const selectedRoom = ROOMS.find((r) => r.id === selectedRoomId) || ROOMS[0];
+  const selectedRoom = rooms.find((r) => r.id === selectedRoomId) || rooms[0];
 
   return (
     <AppShell>
@@ -207,7 +232,7 @@ export default function RoomsPage() {
           </div>
 
           <div className="ml-auto text-[12px] text-ink-2">
-            Matches: <span className="font-semibold text-ink">{filteredRooms.length}</span> of {ROOMS.length} venues
+            Matches: <span className="font-semibold text-ink">{filteredRooms.length}</span> of {rooms.length} venues
           </div>
         </div>
 
@@ -651,7 +676,7 @@ export default function RoomsPage() {
               </div>
 
               {/* All 27 Room Rows */}
-              {ROOMS.map((r) => {
+              {rooms.map((r) => {
                 const isSelected = selectedRoomId === r.id;
                 return (
                   <div

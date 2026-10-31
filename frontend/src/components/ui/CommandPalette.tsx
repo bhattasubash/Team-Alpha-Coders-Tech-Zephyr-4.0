@@ -2,11 +2,25 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { ROOMS, FACULTY, STUDENT_GROUPS, SCHEDULED_SESSIONS } from '@/data/mockData';
+import { api } from '@/lib/api';
+import { useEffect } from 'react';
 import { SearchIcon, CloseIcon, NavRooms, NavDashboard, NavBookings } from './Icons';
 import { useRouter } from 'next/navigation';
 
 export function CommandPalette() {
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [faculty, setFaculty] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.getMeta().then((meta) => {
+      if (meta?.rooms) setRooms(meta.rooms);
+      if (meta?.faculty) setFaculty(meta.faculty);
+    }).catch(() => {});
+    api.getTimetableAll().then((tt) => {
+      if (tt?.sessions) setSessions(tt.sessions);
+    }).catch(() => {});
+  }, []);
   const { isPaletteOpen, setIsPaletteOpen, openDrawer } = useApp();
   const [query, setQuery] = useState('');
   const router = useRouter();
@@ -16,25 +30,25 @@ export function CommandPalette() {
   const q = query.toLowerCase().trim();
 
   const filteredRooms = q
-    ? ROOMS.filter(
+    ? rooms.filter(
         (r) =>
           r.id.toLowerCase().includes(q) ||
           r.name.toLowerCase().includes(q) ||
           r.building.toLowerCase().includes(q)
       ).slice(0, 4)
-    : ROOMS.slice(0, 3);
+    : rooms.slice(0, 3);
 
   const filteredFaculty = q
-    ? FACULTY.filter(
+    ? faculty.filter(
         (f) =>
           f.name.toLowerCase().includes(q) ||
           f.department.toLowerCase().includes(q) ||
           f.id.toLowerCase().includes(q)
       ).slice(0, 4)
-    : FACULTY.slice(0, 3);
+    : faculty.slice(0, 3);
 
   const filteredSessions = q
-    ? SCHEDULED_SESSIONS.filter(
+    ? sessions.filter(
         (s) =>
           s.courseId.toLowerCase().includes(q) ||
           s.courseTitle.toLowerCase().includes(q) ||
@@ -44,11 +58,11 @@ export function CommandPalette() {
 
   const isNaturalLanguageQuery = q.includes('why') || q.includes('reason') || q.includes('how');
   const nlSession =
-    SCHEDULED_SESSIONS.find((s) => {
+    sessions.find((s) => {
       const c = s.courseId.toLowerCase();
       const parts = q.replace(/[^a-z0-9]/g, ' ').split(/\s+/);
       return parts.some((p) => p && c.includes(p));
-    }) || SCHEDULED_SESSIONS[0];
+    }) || sessions[0];
 
   const handleSelect = (action: () => void) => {
     setIsPaletteOpen(false);
