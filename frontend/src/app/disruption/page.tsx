@@ -185,6 +185,21 @@ export default function DisruptionPage() {
           </div>
         )}
 
+        {/* Error Notification */}
+        {apiError && (
+          <div className="p-3 bg-t-bad border border-bad/50 rounded-panel text-[13px] text-bad flex items-center justify-between animate-fadeIn">
+            <span>
+              <strong>Error ({apiError.code}):</strong> {apiError.message}
+            </span>
+            <button
+              onClick={() => setApiError(null)}
+              className="text-[11px] underline ml-4 hover:opacity-80"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* TWO-COLUMN LAYOUT: Left Input Panel (5 cols) + Right Result Panel (7 cols) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
@@ -331,8 +346,9 @@ export default function DisruptionPage() {
                   variant="primary"
                   className="w-full h-10 text-[14px]"
                   onClick={handleCalculate}
+                  disabled={isCalculating}
                 >
-                  Calculate minimal-move schedule
+                  {isCalculating ? 'Computing minimal-move schedule (CP-SAT)...' : 'Calculate minimal-move schedule'}
                 </Button>
               </div>
             </div>

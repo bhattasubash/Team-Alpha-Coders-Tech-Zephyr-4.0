@@ -289,9 +289,9 @@ class ApiClient {
       if (req.faculty_unavailable) {
         for (const f of req.faculty_unavailable) {
           changes.push({
-            type: 'faculty_leave',
+            type: 'faculty_unavailable',
             faculty_id: f.faculty_id,
-            day: f.day,
+            days: [f.day],
             periods: f.periods,
             reason: req.reason || 'Medical / personal leave',
           });
@@ -302,7 +302,7 @@ class ApiClient {
           changes.push({
             type: 'room_unavailable',
             room_id: r.room_id,
-            day: r.day,
+            days: [r.day],
             periods: r.periods,
             reason: req.reason || 'Maintenance / repair closure',
           });
