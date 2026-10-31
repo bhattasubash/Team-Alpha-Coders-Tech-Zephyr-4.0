@@ -1,0 +1,1 @@
+{"input": "kal shaam 6 baje seminar hall chahiye, 100 log, mic chahiye", "expected": "parse", "category": "hinglish", "notes": "Hindi-English mix. kal=tomorrow, shaam=evening, 6 baje=6 PM (P10), chahiye=need, log=people. Should parse to seminar_hall, P10-P11, 100 people, pa_system."}

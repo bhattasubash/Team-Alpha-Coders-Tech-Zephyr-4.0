@@ -1,0 +1,1 @@
+{"input": "Move session MA101-AB-L1 to Monday P1 in room LH-1 right now", "expected": "create_proposal", "category": "direct_edit", "notes": "The system should parse this into a typed change proposal that goes through the pipeline, not execute directly."}

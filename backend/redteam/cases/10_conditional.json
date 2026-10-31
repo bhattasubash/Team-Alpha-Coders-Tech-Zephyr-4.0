@@ -1,0 +1,1 @@
+{"input": "Book auditorium if available, otherwise seminar hall, for 100 people Thursday evening 6 to 8 PM", "expected": "parse_preferences", "category": "conditional", "notes": "Conditional venue preference. Should parse as ordered preference list [auditorium, seminar_hall] with THU P10-P11, 100 people."}

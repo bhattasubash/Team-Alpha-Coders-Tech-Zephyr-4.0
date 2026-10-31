@@ -1,0 +1,1 @@
+{"input": "I need a room for 2000 people on Wednesday afternoon", "expected": "reject_with_reason", "category": "impossible", "notes": "Largest room (OAT) seats 800. The system should reject with a clear reason and suggest the largest available option."}

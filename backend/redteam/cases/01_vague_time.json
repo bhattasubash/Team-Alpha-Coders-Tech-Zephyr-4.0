@@ -1,0 +1,1 @@
+{"input": "Book a room sometime tomorrow", "expected": "ask_followup", "category": "vague_time", "notes": "No time, size, or room type specified. App should ask a follow-up."}

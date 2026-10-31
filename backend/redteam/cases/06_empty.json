@@ -1,0 +1,1 @@
+{"input": "", "expected": "ask_followup", "category": "empty_input", "notes": "Empty input should trigger a polite request for details, not crash."}
