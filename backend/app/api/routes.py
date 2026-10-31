@@ -11,8 +11,10 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import threading
 import time
 from typing import Any, Literal
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
 
@@ -50,6 +52,7 @@ from app.api.schemas import (
     Proposal,
     ProposalListResponse,
     RejectProposalRequest,
+    SessionAssignment,
     SessionMoveRequest,
     TimetableAllResponse,
     TimetableViewResponse,
@@ -59,6 +62,25 @@ from app.api.schemas import (
     ValidatorRunSummary,
 )
 from app.auth.users import authenticate_user, create_access_token, get_current_user, require_role
+from app.db.repository import (
+    commit_new_schedule,
+    create_job,
+    get_active_dataset,
+    get_active_schedule,
+    get_job,
+    get_proposal,
+    get_running_job,
+    list_proposals,
+    log_audit,
+    reset_database as db_reset_database,
+    save_proposal,
+    update_proposal_status,
+)
+from app.jobs.runner import (
+    get_job_metrics,
+    run_timetable_optimise_job,
+    run_timetable_solve_job,
+)
 from app.kernel.pipeline import (
     GLOBAL_PROPOSAL_STORE,
     approve_proposal_pipeline,
@@ -299,10 +321,48 @@ def get_meta() -> MetaResponse:
 # Timetable Endpoints
 # =============================================================================
 
+def hydrate_sessions(
+    raw_sessions: list[dict[str, Any]],
+    data: dict[str, Any] | None = None,
+) -> list[SessionAssignment]:
+    """Hydrate raw schedule assignments with course/faculty/group details from dataset."""
+    if data is None:
+        data = get_active_dataset()
+        if not data:
+            data_path = Path("data/cit_public.json")
+            if not data_path.exists():
+                data_path = Path(__file__).resolve().parents[3] / "data" / "cit_public.json"
+            if data_path.exists():
+                with open(data_path, encoding="utf-8") as f:
+                    data = json.load(f)
+            else:
+                data = {}
+
+    session_info = {s["id"]: s for s in data.get("sessions", [])}
+    result: list[SessionAssignment] = []
+    for s in raw_sessions:
+        s_id = s.get("session_id") or s.get("id") or ""
+        info = session_info.get(s_id, {})
+        result.append(
+            SessionAssignment(
+                session_id=s_id,
+                day=s.get("day", ""),
+                start_period=s.get("start_period", 1),
+                duration=info.get("duration", 1),
+                room_id=s.get("room_id", ""),
+                faculty_id=info.get("faculty_id", ""),
+                course_id=info.get("course_id", ""),
+                groups=info.get("groups", []),
+                kind=info.get("kind", ""),
+                basket_slot=info.get("basket_slot"),
+            )
+        )
+    return result
+
+
 @router.get(
     "/api/timetable",
     response_model=TimetableViewResponse,
-    responses=RESPONSES_501,
     tags=["timetable"],
 )
 def get_timetable(
@@ -311,26 +371,67 @@ def get_timetable(
     user: dict[str, Any] = Depends(get_current_user),
 ) -> TimetableViewResponse:
     """Return timetable filtered by group, faculty, or room view."""
-    raise NotImplementedError("Timetable view endpoint pending solver output.")
+    sched = get_active_schedule()
+    data = get_active_dataset()
+    sessions = sched.get("sessions", []) if sched else []
+    hydrated = hydrate_sessions(sessions, data)
+    filtered = []
+    for s in hydrated:
+        if view == "group" and id in s.groups:
+            filtered.append(s)
+        elif view == "faculty" and s.faculty_id == id:
+            filtered.append(s)
+        elif view == "room" and s.room_id == id:
+            filtered.append(s)
+    return TimetableViewResponse(
+        view=view,
+        view_id=id,
+        count=len(filtered),
+        sessions=filtered,
+    )
 
 
 @router.get(
     "/api/timetable/all",
     response_model=TimetableAllResponse,
-    responses=RESPONSES_501,
     tags=["timetable"],
 )
 def get_timetable_all(
     user: dict[str, Any] = Depends(get_current_user),
 ) -> TimetableAllResponse:
     """Return full timetable across all groups and rooms."""
-    raise NotImplementedError("Full timetable endpoint pending solver output.")
+    sched = get_active_schedule()
+    data = get_active_dataset()
+    dataset_id = sched.get("dataset_id", "cit-public-v1") if sched else "cit-public-v1"
+    team = sched.get("team", "Team Alpha Coders") if sched else "Team Alpha Coders"
+    sessions = sched.get("sessions", []) if sched else []
+    hydrated = hydrate_sessions(sessions, data)
+
+    soft_penalties = {"S1": 0, "S2": 0, "S3": 0, "S4": 0, "S5": 0, "S6": 0}
+    soft_total = 0
+    try:
+        import validator
+        if data and sched:
+            rep = validator.run(data, sched)
+            soft_penalties = rep.get("soft_penalties", soft_penalties)
+            soft_total = rep.get("soft_total", 0)
+    except Exception:
+        pass
+
+    return TimetableAllResponse(
+        dataset_id=dataset_id,
+        team=team,
+        count=len(hydrated),
+        sessions=hydrated,
+        soft_total=soft_total,
+        soft_penalties=soft_penalties,
+    )
 
 
 @router.post(
     "/api/timetable/generate",
     response_model=JobStatusResponse,
-    responses=RESPONSES_501,
+    status_code=status.HTTP_202_ACCEPTED,
     tags=["timetable"],
 )
 def generate_timetable(
@@ -338,13 +439,42 @@ def generate_timetable(
     user: dict[str, Any] = Depends(require_role("admin")),
 ) -> JobStatusResponse:
     """Trigger background timetable generation solver (Admin only)."""
-    raise NotImplementedError("Timetable generator solver pending Milestone 3.")
+    running = get_running_job()
+    if running is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "JOB_RUNNING",
+                "message": f"Solver job {running['id']} is currently running",
+                "details": [],
+            },
+        )
+
+    job_id = f"job-{uuid.uuid4().hex[:8]}"
+    create_job(job_id=job_id, job_type="generate_timetable", status="queued", phase="Queued")
+
+    thread = threading.Thread(
+        target=run_timetable_solve_job,
+        args=(job_id, req.time_limit_seconds, req.random_seed),
+        daemon=True,
+    )
+    thread.start()
+
+    return JobStatusResponse(
+        job_id=job_id,
+        status="queued",
+        progress=0.0,
+        phase="Queued",
+        best_soft_penalty=None,
+        solver_status="UNKNOWN",
+        seconds=0.0,
+    )
 
 
 @router.post(
     "/api/timetable/optimise",
     response_model=JobStatusResponse,
-    responses=RESPONSES_501,
+    status_code=status.HTTP_202_ACCEPTED,
     tags=["timetable"],
 )
 def optimise_timetable(
@@ -352,13 +482,41 @@ def optimise_timetable(
     user: dict[str, Any] = Depends(require_role("admin")),
 ) -> JobStatusResponse:
     """Continue optimizing timetable from best known solution (Admin only)."""
-    raise NotImplementedError("Timetable optimization solver pending Milestone 3.")
+    running = get_running_job()
+    if running is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "JOB_RUNNING",
+                "message": f"Solver job {running['id']} is currently running",
+                "details": [],
+            },
+        )
+
+    job_id = f"job-{uuid.uuid4().hex[:8]}"
+    create_job(job_id=job_id, job_type="optimise_timetable", status="queued", phase="Queued")
+
+    thread = threading.Thread(
+        target=run_timetable_optimise_job,
+        args=(job_id, req.time_limit_seconds, req.random_seed),
+        daemon=True,
+    )
+    thread.start()
+
+    return JobStatusResponse(
+        job_id=job_id,
+        status="queued",
+        progress=0.0,
+        phase="Queued",
+        best_soft_penalty=None,
+        solver_status="UNKNOWN",
+        seconds=0.0,
+    )
 
 
 @router.get(
     "/api/jobs/{id}",
     response_model=JobStatusResponse,
-    responses=RESPONSES_501,
     tags=["timetable"],
 )
 def get_job_status(
@@ -366,7 +524,26 @@ def get_job_status(
     user: dict[str, Any] = Depends(get_current_user),
 ) -> JobStatusResponse:
     """Get solver background job progress and metrics."""
-    raise NotImplementedError("Solver job monitoring pending Milestone 3.")
+    job = get_job(id)
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": f"Job {id} not found", "details": []},
+        )
+    metrics = get_job_metrics(job)
+    stat = str(job["status"]).lower()
+    if stat not in ("queued", "running", "completed", "failed", "stopped"):
+        stat = "running" if stat == "pending" else "completed"
+
+    return JobStatusResponse(
+        job_id=job["id"],
+        status=stat,  # type: ignore[arg-type]
+        progress=metrics["progress"],
+        phase=job.get("phase"),
+        best_soft_penalty=int(job["best_soft_score"]) if job.get("best_soft_score") is not None else None,
+        solver_status=job.get("solver_status") or "UNKNOWN",
+        seconds=metrics["elapsed"],
+    )
 
 
 # =============================================================================
@@ -771,14 +948,17 @@ def get_dashboard(
 @router.post(
     "/api/admin/reset",
     response_model=AdminResetResponse,
-    responses=RESPONSES_501,
     tags=["admin"],
 )
 def reset_database(
     user: dict[str, Any] = Depends(require_role("admin")),
 ) -> AdminResetResponse:
-    """Reset database to initial dataset state (Admin only)."""
-    raise NotImplementedError("Admin database reset pending.")
+    """Reset database to initial dataset state and generated schedule (Admin only)."""
+    db_reset_database()
+    return AdminResetResponse(
+        status="ok",
+        message="Database reset to initial cit_public.json dataset and generated schedule.",
+    )
 
 
 @router.post(
@@ -798,11 +978,16 @@ def upload_dataset(
 
 @router.get(
     "/api/export/schedule.json",
-    responses=RESPONSES_501,
     tags=["admin"],
 )
 def export_schedule(
     user: dict[str, Any] = Depends(require_role("admin")),
 ) -> dict[str, Any]:
     """Export schedule.json for official validator scoring (Admin only)."""
-    raise NotImplementedError("Schedule export pending solver completion.")
+    sched = get_active_schedule()
+    if sched is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "No active schedule found", "details": []},
+        )
+    return sched

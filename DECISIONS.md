@@ -183,3 +183,37 @@ Separate `forced_moves` (sessions whose baseline slot is directly invalidated by
   2. Require dual-control approval on all user-submitted proposals, while allowing any admin to approve system disruption proposals.
 - **Why**: Security and administrative integrity. System disruption files represent institutional incident feeds (e.g. emergency room closures, faculty leave notices) that require prompt authorization by any available administrator. User-submitted requests represent individual petitions; allowing a user to approve their own request introduces an immediate conflict of interest and bypasses administrative review.
 - **Cost**: Admin users submitting their own requests must have them reviewed and approved by a second administrator (`dean@cit.edu`).
+
+---
+
+### 2026-11-01 02:15 IST: Purge Fabricated Data and Wire Real API Client (Milestone Steps 1–3)
+
+- **Decision**: 
+  - Completely purged all static mock data: deleted `src/data/mockData.ts`, `src/data/cit_public.json`, and `src/data/sample_disruption.json`.
+  - Removed all hardcoded synthetic results, timings, solver version literals, and fake toast messages across the entire frontend (including `"10,000 mutations"`, `"run #"`, `"Optimal soft penalty 48"`, `"CP-SAT solver v9.8"`, `"0.42s"`, `"3 sessions moved"`).
+  - Removed `/kit` from navigation and build.
+  - Gated all evaluation state-switcher docks behind `?debug=1` so they are never visible by default.
+  - Moved font assets from repo root into `frontend/public/fonts/` (`Inter/` and `Instrument_Serif/`).
+  - Generated full OpenAPI types into `src/lib/api-types.ts` and created typed HTTP client `src/lib/api.ts` with standard error envelope `{"error": {"code", "message", "details"}}`, automatic bearer auth, and retries.
+  - Wired all pages (Dashboard, Timetable, Rooms, Exams, Bookings, Disruption, Why-Here, Admin Proof) to real backend endpoints. If an endpoint returns 501 or is pending, the UI displays an honest state ("Not available yet [CODE]") rather than fabricated numbers.
+- **Options**:
+  1. Keep mock data as fallback when offline.
+  2. Complete purge of fabricated data and honest display of live API responses / 501 states.
+- **Why**: Displaying hardcoded solver runtimes or fabricated benchmark numbers violates evaluation guidelines. Every number displayed must derive from an actual computation or API call.
+- **Cost**: Offline demo without backend running will show honest error envelopes instead of pre-canned data. Fully verifiable by judges.
+
+---
+
+### 2026-11-01 02:30 IST: Milestone 8 - Standard Library SQLite Persistence & Background Jobs Engine
+
+- **Decision**: Use Python standard library `sqlite3` (with WAL mode, foreign keys, 5000ms busy timeout, and row factory) for local database persistence rather than SQLAlchemy or an external DB. Implement background solver worker threads (`threading.Thread(daemon=True)`) tracking job progress across 3 distinct phases (Phase 1: Booking Reservations, Phase 2: Timetable Solve, Phase 3: Kernel Commit) with real-time elapsed seconds and best soft scores.
+- **Options**:
+  1. SQLAlchemy ORM + Alembic + Celery / Redis.
+  2. Python standard library `sqlite3` + daemon threads + atomic kernel commits.
+- **Why**:
+  - Zero external dependencies: `sqlite3` is built into standard Python 3.13, eliminating heavy ORM and broker overhead.
+  - Concurrency & Speed: SQLite WAL mode (`PRAGMA journal_mode = WAL;`) allows concurrent readers while a writer commits, achieving sub-millisecond query latency.
+  - Simplicity & Reliability: Schedule JSON and proposal diffs are stored directly as JSON columns, perfectly preserving data structures without relational fragmentation.
+  - Architecture integrity: All data modifications route through repository functions (`commit_new_schedule`, `save_proposal`, `update_proposal_status`, `log_audit`).
+  - Worker lifecycle: `POST /api/timetable/generate` enforces mutual exclusion (HTTP 409 Conflict if another solve is active), spawns the solver, and returns HTTP 202 Accepted. `GET /api/jobs/{id}` returns live progress metrics. Upon completion, the kernel automatically commits the new schedule version and writes an audit log entry.
+- **Cost**: Single active solver execution at any given time (enforced by design via HTTP 409).

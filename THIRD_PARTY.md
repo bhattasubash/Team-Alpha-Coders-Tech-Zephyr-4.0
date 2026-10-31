@@ -24,3 +24,10 @@
 | tailwindcss | 3.x | MIT | CSS utility framework |
 | eslint | 8.x | MIT | JS linter |
 | prettier | 3.x | MIT | JS formatter |
+
+## Typography and Assets
+
+| Asset | Source / Author | Licence | Location | Purpose |
+|-------|-----------------|---------|----------|---------|
+| Inter | Rasmus Andersson | SIL Open Font License 1.1 | `frontend/public/fonts/Inter/` | Primary interface sans-serif typeface |
+| Instrument Serif | Instrument | SIL Open Font License 1.1 | `frontend/public/fonts/Instrument_Serif/` | Editorial display serif typeface |

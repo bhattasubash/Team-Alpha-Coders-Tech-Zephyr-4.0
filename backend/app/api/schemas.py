@@ -136,6 +136,7 @@ class JobStatusResponse(BaseModel):
     job_id: str
     status: Literal["queued", "running", "completed", "failed", "stopped"]
     progress: float
+    phase: str | None = None
     best_soft_penalty: int | None = None
     solver_status: str
     seconds: float

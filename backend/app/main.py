@@ -6,6 +6,7 @@ all error responses to {"error": {"code": "...", "message": "...", "details": [.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import os
 from typing import Any
 
@@ -21,6 +22,21 @@ from app.api.routes import router as api_router
 cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
 allow_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize SQLite database and seed initial dataset and schedule if empty."""
+    from app.db.connection import get_connection
+    from app.db.repository import get_active_schedule, reset_database
+    from app.db.schema import init_db
+
+    conn = get_connection()
+    init_db(conn)
+    if get_active_schedule(conn) is None:
+        reset_database(conn)
+    yield
+
+
 app = FastAPI(
     title="CIT Campus Scheduling API",
     description="Scheduling, venue management, and constraint validation engine for Chilika Institute of Technology",
@@ -28,6 +44,7 @@ app = FastAPI(
     openapi_url="/openapi.json",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 app.add_middleware(

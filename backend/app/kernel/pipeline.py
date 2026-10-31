@@ -44,29 +44,101 @@ class ProposalStore:
         self._proposer_ids[proposal.id] = proposer_id
         if schedule_data is not None:
             self._schedules[proposal.id] = schedule_data
+        try:
+            from app.db.repository import save_proposal
+            save_proposal(proposal.model_dump(), schedule_data=schedule_data, proposer_id=proposer_id)
+        except Exception:
+            pass
 
     def get(self, proposal_id: str) -> Proposal | None:
         """Retrieve a proposal by ID."""
-        return self._proposals.get(proposal_id)
+        if proposal_id in self._proposals:
+            return self._proposals[proposal_id]
+        try:
+            from app.db.repository import get_proposal
+            p = get_proposal(proposal_id)
+            if p:
+                prop = Proposal(
+                    id=p["id"],
+                    status=p["status"],
+                    moves=p.get("moves", []),
+                    moved_count=p.get("moved_count", 0),
+                    forced_moves=p.get("forced_moves", 0),
+                    knock_on_moves=p.get("knock_on_moves", 0),
+                    proven_minimum=p.get("proven_minimum", False),
+                    infeasible=p.get("infeasible", False),
+                    conflicts=p.get("conflicts", []),
+                    reason_codes=p.get("reason_codes", []),
+                    reason=p.get("reason"),
+                )
+                self._proposals[proposal_id] = prop
+                if p.get("schedule"):
+                    self._schedules[proposal_id] = p["schedule"]
+                if p.get("proposer_id"):
+                    self._proposer_ids[proposal_id] = p["proposer_id"]
+                return prop
+        except Exception:
+            pass
+        return None
 
     def get_schedule(self, proposal_id: str) -> dict[str, Any] | None:
         """Retrieve the schedule associated with a proposal."""
+        if proposal_id in self._schedules:
+            return self._schedules[proposal_id]
+        self.get(proposal_id)
         return self._schedules.get(proposal_id)
 
     def get_proposer_id(self, proposal_id: str) -> str:
         """Get the user ID that created the proposal."""
+        if proposal_id in self._proposer_ids:
+            return self._proposer_ids[proposal_id]
+        self.get(proposal_id)
         return self._proposer_ids.get(proposal_id, "system")
 
     def list_all(self) -> list[Proposal]:
         """Return list of all proposals."""
+        try:
+            from app.db.repository import list_proposals
+            db_props = list_proposals()
+            for p in db_props:
+                if p["id"] not in self._proposals:
+                    self._proposals[p["id"]] = Proposal(
+                        id=p["id"],
+                        status=p["status"],
+                        moves=p.get("moves", []),
+                        moved_count=p.get("moved_count", 0),
+                        forced_moves=p.get("forced_moves", 0),
+                        knock_on_moves=p.get("knock_on_moves", 0),
+                        proven_minimum=p.get("proven_minimum", False),
+                        infeasible=p.get("infeasible", False),
+                        conflicts=p.get("conflicts", []),
+                        reason_codes=p.get("reason_codes", []),
+                        reason=p.get("reason"),
+                    )
+        except Exception:
+            pass
         return list(self._proposals.values())
 
     def set_active_schedule(self, schedule: dict[str, Any]) -> None:
         """Set the currently committed active schedule."""
         self._active_schedule = schedule
+        try:
+            from app.db.repository import commit_new_schedule
+            commit_new_schedule(schedule)
+        except Exception:
+            pass
 
     def get_active_schedule(self) -> dict[str, Any] | None:
         """Get the currently committed active schedule."""
+        if self._active_schedule is not None:
+            return self._active_schedule
+        try:
+            from app.db.repository import get_active_schedule
+            sched = get_active_schedule()
+            if sched:
+                self._active_schedule = sched
+        except Exception:
+            pass
         return self._active_schedule
 
     def clear(self) -> None:

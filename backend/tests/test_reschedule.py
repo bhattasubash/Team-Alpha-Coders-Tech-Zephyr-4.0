@@ -17,6 +17,7 @@ from app.kernel.pipeline import (
 from app.main import app
 from app.solver.reschedule import RescheduleSolver
 
+ROOT_DIR = Path(__file__).resolve().parents[2]
 client = TestClient(app)
 
 
@@ -36,7 +37,9 @@ def test_reschedule_solver_sample_disruption(dataset, validator_module):
     - Verifies minimal moved count (<= 10 sessions).
     - Verifies stability dictionary matches validator report.
     """
-    disruption_path = Path("CrunchWeek_StarterPack/examples/sample_disruption.json")
+    disruption_path = ROOT_DIR / "data" / "sample_disruption.json"
+    if not disruption_path.exists():
+        disruption_path = ROOT_DIR / "CrunchWeek_StarterPack" / "examples" / "sample_disruption.json"
     assert disruption_path.exists()
     with open(disruption_path, encoding="utf-8") as f:
         disruption = json.load(f)
@@ -44,7 +47,7 @@ def test_reschedule_solver_sample_disruption(dataset, validator_module):
     disrupted_data = validator_module.apply_disruption(dataset, disruption)
 
     # Load baseline schedule
-    base_path = Path("exports/schedule.json")
+    base_path = ROOT_DIR / "exports" / "schedule.json"
     assert base_path.exists()
     with open(base_path, encoding="utf-8") as f:
         base_sched = json.load(f)
@@ -57,7 +60,7 @@ def test_reschedule_solver_sample_disruption(dataset, validator_module):
     assert not result.infeasible
     assert result.assignments is not None
     assert result.is_proven_minimum is True
-    assert result.forced_moves == len(solver._forced_move_ids)
+    assert result.forced_moves == len(result.forced_move_ids or [])
     # Check moved == forced_moves or explain each knock-on session
     assert result.moved_count == result.forced_moves, (
         f"Expected moved ({result.moved_count}) == forced ({result.forced_moves}), "
@@ -92,7 +95,7 @@ def test_reschedule_infeasible_conflict_explanation(dataset):
     }
     disrupted_data = apply_disruption_dict(dataset, impossible_disruption)
 
-    base_path = Path("exports/schedule.json")
+    base_path = ROOT_DIR / "exports" / "schedule.json"
     with open(base_path, encoding="utf-8") as f:
         base_sched = json.load(f)
 
@@ -111,7 +114,7 @@ def test_proposal_pipeline_self_approval_and_admin_flow(dataset):
     """Test proposal creation, self-approval prevention, and admin approval flow."""
     GLOBAL_PROPOSAL_STORE.clear()
 
-    base_path = Path("exports/schedule.json")
+    base_path = ROOT_DIR / "exports" / "schedule.json"
     with open(base_path, encoding="utf-8") as f:
         base_sched = json.load(f)
 

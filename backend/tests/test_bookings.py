@@ -15,6 +15,8 @@ from app.bookings.engine import (
 from app.solver.config import SolverConfig
 from app.solver.model import TimetableSolver
 
+ROOT_DIR = Path(__file__).resolve().parents[2]
+
 
 def test_effective_category_and_outranks(dataset):
     """Verify effective_category caps by role and outranks comparator matches priority order."""
@@ -47,9 +49,9 @@ def test_booking_engine_decide_all(dataset, validator_module):
     - Reason provided for every rejected and alternative decision.
     - Verified against official validator check_bookings.
     """
-    # Load baseline schedule from exports or scratch
-    sched_path = Path("exports/schedule.json") if Path("exports/schedule.json").exists() else Path("backend/scratch/schedule_soft_3b.json")
-    assert sched_path.exists(), "exports/schedule.json or scratch/schedule_soft_3b.json must exist"
+    # Load baseline schedule from exports
+    sched_path = ROOT_DIR / "exports" / "schedule.json"
+    assert sched_path.exists(), "exports/schedule.json must exist"
     with open(sched_path, encoding="utf-8") as f:
         base_sched = json.load(f)
 
@@ -100,7 +102,7 @@ def test_booking_engine_decide_all(dataset, validator_module):
 
 def test_booking_find_alternative(dataset):
     """Test find_alternative helper returns legal slot."""
-    sched_path = Path("exports/schedule.json") if Path("exports/schedule.json").exists() else Path("backend/scratch/schedule_soft_3b.json")
+    sched_path = ROOT_DIR / "exports" / "schedule.json"
     with open(sched_path, encoding="utf-8") as f:
         base_sched = json.load(f)
 

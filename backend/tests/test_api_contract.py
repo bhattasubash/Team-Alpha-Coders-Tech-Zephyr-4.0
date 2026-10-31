@@ -139,12 +139,12 @@ def test_unimplemented_endpoints_return_501_with_error_envelope():
     assert meta_body["error"]["code"] == "NOT_IMPLEMENTED"
     assert isinstance(meta_body["error"]["details"], list)
 
-    # Admin generate endpoint
-    gen_resp = client.post("/api/timetable/generate", headers=headers, json={})
-    assert gen_resp.status_code == 501
-    gen_body = gen_resp.json()
-    assert "error" in gen_body
-    assert gen_body["error"]["code"] == "NOT_IMPLEMENTED"
+    # Placeholder endpoint returns 501
+    dash_resp = client.get("/api/dashboard", headers=headers)
+    assert dash_resp.status_code == 501
+    dash_body = dash_resp.json()
+    assert "error" in dash_body
+    assert dash_body["error"]["code"] == "NOT_IMPLEMENTED"
 
 
 def test_not_found_returns_404_with_error_envelope():
