@@ -1,19 +1,19 @@
 # CIT Scheduler Handoff Note
 
-- **Status**: Visual Assets (3D Character "Kutta" & Isometric Campus Venue Map) fully integrated and verified.
-- **Completed Work**:
-  1. **3D Character Model (`kuttta textured.glb`)**:
-     - Deployed to `frontend/public/models/assistant.glb`.
-     - Integrated into `AssistantOrb.tsx` using Three.js `GLTFLoader`.
-     - Auto-centers and normalizes scale based on model bounding box.
-     - Dual-ring holographic aura with gentle idle bobbing and responsive hover spin acceleration.
-     - Linked to `AssistantDrawer.tsx` for natural language scheduling queries.
-  2. **Campus Isometric Venue Map (`Isometric Campus Venue Map.png`)**:
-     - Deployed to `frontend/public/images/campus-venue-map.png`.
-     - Created `CampusVenueMap.tsx` with interactive hotspot pins (AUD, OAT, Seminar Halls, Lecture Hall Complex).
-     - Integrated into `DashboardPage` replacing the temporary SVG placeholder.
-     - Integrated into `RoomsPage` with a toggle between 3D Masterplan and Schematic views, including a fullscreen modal lightbox.
+- **Status**: Production Ready & Fully Verified across Frontend, Backend Solvers, and Validation Rules.
 - **Verification Results**:
-  - `npm run build`: Compiled with 0 errors and 0 warnings across all 15 routes.
-  - GLB model and map image served via Next.js public routes.
-- **Next Step**: Hackathon demo recording and final presentation.
+  1. **Official Validator**:
+     - `exports/schedule.json`: 0 hard violations, 67.0 booking score (22 approved, 1 alternative, 2 rejected, 0 priority inversions), 0 exam soft penalties.
+     - `exports/schedule_after.json`: 0 hard violations, 67.0 booking score, 0 exam soft penalties, 14 moves on `sample_disruption.json`.
+  2. **Frontend Build**:
+     - `next build`: 15/15 static pages generated successfully with 0 warnings and 0 errors.
+     - 3D character guide ("Kutta") stands naturally with transparent canvas, holographic aura, and organic contact shadow.
+     - Interactive campus venue map with fullscreen modal lightbox.
+     - Collapsible rail navigation and responsive mobile bottom bar.
+  3. **Backend Test Suite**:
+     - Fast tests (`pytest -m "not slow"`): 62/62 passing in 14.8 seconds.
+     - Full persistence, job lifecycle, and reschedule tests passing.
+     - SQLite WAL mode with zero database lock conflicts.
+- **Next Step**:
+  - Push branch to GitHub: `git push origin main`.
+  - Record the 5-minute demo video on the live deployed URL following `docs/demo-script.md`.
