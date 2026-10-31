@@ -113,8 +113,8 @@ def run_timetable_solve_job(
             blocked_group_slots=blocked_groups,
         )
 
-        feasibility_limit = min(35.0, max(20.0, float(time_limit_seconds) * 0.6))
-        optimize_limit = max(5.0, float(time_limit_seconds) - feasibility_limit)
+        feasibility_limit = max(35.0, float(time_limit_seconds) * 0.75)
+        optimize_limit = max(5.0, float(time_limit_seconds) * 0.25)
         res = solver.solve_two_phase(
             feasibility_limit=feasibility_limit,
             optimize_limit=optimize_limit,

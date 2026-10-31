@@ -60,8 +60,8 @@ class LLMProvider:
         """Read config from environment. Missing key means fallback mode."""
         load_dotenv()
         self.provider = os.getenv("LLM_PROVIDER", "groq")
-        self.api_key = os.getenv("LLM_API_KEY", "") or os.getenv("GROQ_API_KEY", "")
-        self.model = os.getenv("LLM_MODEL", "llama-3.1-8b-instant")
+        self.api_key = (os.getenv("LLM_API_KEY", "") or os.getenv("GROQ_API_KEY", "")).strip()
+        self.model = os.getenv("LLM_MODEL", "qwen/qwen3.8-27b").strip()
         self.available = bool(self.api_key)
         self._groq_client = None
 
