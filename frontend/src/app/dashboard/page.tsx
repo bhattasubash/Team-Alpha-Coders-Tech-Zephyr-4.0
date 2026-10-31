@@ -262,7 +262,7 @@ export default function DashboardPage() {
 
               {/* High-Resolution Interactive Isometric Campus Venue Map */}
               <div className="relative w-full md:w-[380px] lg:w-[440px] h-52 select-none flex-shrink-0">
-                <CampusVenueMap className="w-full h-full shadow-card" compact />
+                <CampusVenueMap className="w-full h-full" compact />
               </div>
             </div>
 

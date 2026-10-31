@@ -10,13 +10,13 @@ interface CampusVenueMapProps {
 
 export function CampusVenueMap({ className = '' }: CampusVenueMapProps) {
   return (
-    <div className={`relative rounded-panel overflow-hidden border border-line bg-[#0E1F21] ${className}`}>
+    <div className={`relative bg-transparent ${className}`}>
       <Image
         src="/images/campus-venue-map.png"
         alt="CIT Campus Isometric Venue Map"
         fill
         sizes="(max-width: 768px) 100vw, 50vw"
-        className="object-cover object-center"
+        className="object-contain object-center"
         priority
       />
     </div>

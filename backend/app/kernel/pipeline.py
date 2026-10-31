@@ -158,28 +158,38 @@ def apply_disruption_dict(data: dict[str, Any], disruption: dict[str, Any]) -> d
     fac = {f["id"]: f for f in d["faculty"]}
     for ch in disruption.get("changes", []):
         t = ch.get("type")
-        if t == "faculty_unavailable":
-            for day in ch.get("days", []):
-                fac[ch["faculty_id"]]["unavailable"].append({
-                    "day": day,
-                    "periods": ch.get("periods", []),
-                    "reason": ch.get("reason", ""),
-                })
+        raw_days = ch.get("days")
+        if not raw_days and ch.get("day"):
+            raw_days = [ch.get("day")]
+        days = raw_days or []
+        periods = ch.get("periods") or list(range(1, 10))
+
+        if t in ("faculty_unavailable", "faculty_leave"):
+            fid = ch.get("faculty_id")
+            if fid and fid in fac:
+                for day in days:
+                    fac[fid]["unavailable"].append({
+                        "day": day,
+                        "periods": periods,
+                        "reason": ch.get("reason", ""),
+                    })
         elif t == "room_unavailable":
-            for day in ch.get("days", []):
+            for day in days:
                 d["room_unavailability"].append({
                     "room_id": ch["room_id"],
                     "day": day,
-                    "periods": ch.get("periods", []),
+                    "periods": periods,
                     "reason": ch.get("reason", ""),
                 })
         elif t == "add_faculty":
             d["faculty"].append(ch["faculty"])
             fac[ch["faculty"]["id"]] = ch["faculty"]
         elif t == "add_session":
-            d["sessions"].append(ch["session"])
+            s_obj = ch.get("session")
+            if s_obj:
+                d["sessions"].append(s_obj)
         elif t == "remove_session":
-            d["sessions"] = [s for s in d["sessions"] if s["id"] != ch["session_id"]]
+            d["sessions"] = [s for s in d["sessions"] if s["id"] != ch.get("session_id")]
         else:
             raise ValueError(f"Unknown change type: {t}")
     return d

@@ -364,7 +364,8 @@ class BookingCancelResponse(BaseModel):
 # -----------------------------------------------------------------------------
 
 class DisruptionChange(BaseModel):
-    type: Literal["faculty_unavailable", "room_unavailable", "add_faculty", "add_session", "remove_session"]
+    type: Literal["faculty_unavailable", "faculty_leave", "room_unavailable", "add_faculty", "add_session", "remove_session"]
+    day: str | None = None
     days: list[str] | None = None
     periods: list[int] | None = None
     faculty_id: str | None = None
