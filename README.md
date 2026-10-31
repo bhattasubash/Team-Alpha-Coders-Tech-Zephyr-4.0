@@ -102,6 +102,18 @@ python validator/validator.py data/cit_public.json exports/schedule_after.json
 
 Both commands should report zero hard-constraint violations.
 
+## Deployment
+
+### Frontend on Vercel
+
+When importing this repository into Vercel:
+1. In **Project Settings** -> **General** -> **Root Directory**, click **Edit**.
+2. Set Root Directory to `frontend`.
+3. Set the environment variable `NEXT_PUBLIC_API_URL` to your backend URL (e.g. your deployed FastAPI server).
+4. Click **Deploy**.
+
+Because the repository separates `frontend` and `backend`, Vercel must be pointed at the `frontend` directory where `package.json` lives.
+
 ## Judge quick start
 
 1. **Find a free room.** Log in as admin@cit.edu. Go to Rooms, pick a date and period. The list shows which rooms are open and their capacity.

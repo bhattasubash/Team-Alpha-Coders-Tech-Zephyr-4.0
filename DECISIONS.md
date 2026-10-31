@@ -113,3 +113,18 @@ Each entry: date/time, decision, options considered, why this one, cost/trade-of
 - `scripts/export_schedule.py`: Export generation pipeline awaiting solver completion.
 
 **Why**: Rule requirement: stubs must never silently pass. They must fail explicitly with `NotImplementedError`.
+
+---
+
+### 2026-10-31 16:45 IST: Vercel deployment root directory configuration
+
+**Decision**: Configure Vercel Project Settings to set Root Directory to `frontend`.
+
+**Options**:
+1. Set Root Directory to `frontend` in Vercel settings.
+2. Add a root `package.json` with npm workspaces.
+3. Move frontend files to repository root.
+
+**Why**: Moving frontend files to the root violates the required repository layout (`/backend`, `/frontend`, `/docs`). Adding root npm workspaces requires maintaining synchronized dependencies across two levels. Setting Root Directory to `frontend` in Vercel is the official zero-overhead solution for polyglot monorepos.
+
+**Cost**: Requires setting one field in the Vercel project UI before the first deployment. Documented in README.md and submission checklist.

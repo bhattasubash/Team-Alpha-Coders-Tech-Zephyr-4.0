@@ -10,6 +10,7 @@ Go through every item before the deadline. A single unchecked box here could mea
 
 ## Deployment
 
+- [ ] Vercel Root Directory set to `frontend`
 - [ ] Live deployment link is up and working
 - [ ] Video shows the live app (not localhost)
 
