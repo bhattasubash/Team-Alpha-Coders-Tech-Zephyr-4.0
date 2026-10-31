@@ -5,6 +5,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { api } from '@/lib/api';
 import { Chip } from '@/components/ui/Chip';
 import { WheelchairGlyph } from '@/components/ui/Icons';
+import { CampusVenueMap } from '@/components/ui/CampusVenueMap';
 import { Day, Room } from '@/data/types';
 
 const CAMPUS_ROOMS: Room[] = [
@@ -36,6 +37,7 @@ export default function RoomsPage() {
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [selectedRoomId, setSelectedRoomId] = useState<string>('LH-1');
   const [hoveredBuilding, setHoveredBuilding] = useState<string | null>(null);
+  const [mapView, setMapView] = useState<'realistic' | 'schematic'>('realistic');
 
   const periods = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -300,7 +302,7 @@ export default function RoomsPage() {
           </div>
 
           {/* Isometric Campus Line-Art Map on the right (7 cols) */}
-          <div className="lg:col-span-7 bg-surface border border-line rounded-panel p-5 space-y-3">
+          <div className="lg:col-span-7 glass-panel rounded-panel p-5 space-y-3 shadow-card">
             <div className="flex items-center justify-between border-b border-line pb-2">
               <div>
                 <h2 className="font-serif text-[22px] text-ink">Campus Isometric Wayfinder</h2>
@@ -308,10 +310,36 @@ export default function RoomsPage() {
                   Line-art ink strokes on paper. Matches highlighted with leaf wash, busy venues line-only, closed ones hatched.
                 </p>
               </div>
-              <span className="text-[11px] text-ink-2 font-mono">Chilika Lagoon Campus</span>
+              <div className="inline-flex items-center bg-raised border border-line rounded-[6px] p-0.5 text-[11px] font-medium font-ui">
+                <button
+                  type="button"
+                  onClick={() => setMapView('realistic')}
+                  className={`px-2.5 py-1 rounded-[4px] transition-all ${
+                    mapView === 'realistic'
+                      ? 'bg-surface text-ink font-semibold shadow-xs'
+                      : 'text-ink-2 hover:text-ink'
+                  }`}
+                >
+                  3D Masterplan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMapView('schematic')}
+                  className={`px-2.5 py-1 rounded-[4px] transition-all ${
+                    mapView === 'schematic'
+                      ? 'bg-surface text-ink font-semibold shadow-xs'
+                      : 'text-ink-2 hover:text-ink'
+                  }`}
+                >
+                  Schematic
+                </button>
+              </div>
             </div>
 
-            {/* SVG Line Map Canvas */}
+            {mapView === 'realistic' ? (
+              <CampusVenueMap className="w-full h-[380px]" />
+            ) : (
+            /* SVG Line Map Canvas */
             <div className="relative w-full h-[360px] bg-paper border border-line-strong/50 rounded-card p-4 overflow-hidden select-none flex items-center justify-center">
               <svg
                 className="w-full h-full text-ink relative z-0"
@@ -623,6 +651,7 @@ export default function RoomsPage() {
                 </div>
               </div>
             </div>
+            )}
           </div>
         </div>
 

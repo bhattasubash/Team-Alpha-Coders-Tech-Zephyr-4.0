@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { SessionCard } from '@/components/ui/SessionCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { CampusVenueMap } from '@/components/ui/CampusVenueMap';
 import { Role, ScheduledSession, DEMO_USERS } from '@/data/types';
 
 export default function DashboardPage() {
@@ -246,7 +247,7 @@ export default function DashboardPage() {
         {viewState === 'normal' && (
           <>
             {/* FULL-WIDTH BANNER PANEL */}
-            <div className="w-full bg-surface border border-line rounded-panel p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 overflow-hidden relative shadow-sm">
+            <div className="w-full glass-panel rounded-panel p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 overflow-hidden relative shadow-card">
               <div className="max-w-xl z-10">
                 <span className="text-[13px] font-medium text-ink-2 block mb-1">
                   Week 7 Academic & Festival Operations
@@ -259,80 +260,9 @@ export default function DashboardPage() {
                 </p>
               </div>
 
-              {/* Cropped isometric line-art map of Auditorium, Seminar Halls & OAT (Enlarged 420x200) */}
-              <div className="relative w-full md:w-[380px] lg:w-[420px] h-48 bg-raised border border-line-strong rounded-card overflow-hidden select-none flex-shrink-0">
-                <svg
-                  className="w-full h-full text-ink"
-                  viewBox="0 0 420 200"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.25"
-                >
-                  {/* Subtle 6% lagoon fade ground */}
-                  <defs>
-                    <linearGradient id="mapFade" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="#2F7A78" stopOpacity="0.06" />
-                      <stop offset="100%" stopColor="#E8E6DD" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
-                  <rect width="420" height="200" fill="url(#mapFade)" />
-
-                  {/* Ground line */}
-                  <path
-                    d="M 10 165 Q 160 150 280 170 T 410 160"
-                    stroke="var(--line-strong)"
-                    strokeWidth="1"
-                    strokeDasharray="4 6"
-                  />
-
-                  {/* Main Auditorium (Largest, with stage profile) */}
-                  <g id="AUD_CROP">
-                    <polygon
-                      points="120,40 190,75 120,110 50,75"
-                      stroke="currentColor"
-                      fill="var(--t-good)"
-                    />
-                    <line x1="120" y1="110" x2="120" y2="155" />
-                    <line x1="190" y1="75" x2="190" y2="120" />
-                    <line x1="50" y1="75" x2="50" y2="120" />
-                    <polygon points="120,155 190,120 190,120 120,110" stroke="currentColor" fill="none" />
-                    <polygon points="120,155 50,120 50,120 120,110" stroke="currentColor" fill="none" />
-                  </g>
-
-                  {/* Seminar Halls SH-1 & SH-2 */}
-                  <g id="SH_CROP">
-                    <polygon
-                      points="250,55 295,75 250,95 205,75"
-                      stroke="currentColor"
-                      fill="var(--surface)"
-                    />
-                    <line x1="250" y1="95" x2="250" y2="130" />
-                    <line x1="295" y1="75" x2="295" y2="110" />
-                    <line x1="205" y1="75" x2="205" y2="110" />
-                  </g>
-
-                  {/* Open-Air Theatre OAT (Curved tiers with Maize fill) */}
-                  <g id="OAT_CROP">
-                    <path d="M 310 120 Q 355 135 385 175" stroke="currentColor" strokeWidth="1.5" />
-                    <path d="M 320 110 Q 365 125 395 165" stroke="currentColor" strokeWidth="1.5" />
-                    <path d="M 330 100 Q 375 115 405 155" stroke="currentColor" strokeWidth="1.5" />
-                    <circle cx="340" cy="135" r="16" fill="var(--t-event)" stroke="var(--event)" strokeWidth="1" />
-                  </g>
-                </svg>
-
-                {/* Ink Label Tags pinned to structures */}
-                <div className="absolute top-3 left-4 px-2 py-0.5 bg-ink text-paper text-[10px] font-semibold rounded-cell shadow-xs">
-                  AUD &middot; Main Auditorium
-                </div>
-                <div className="absolute top-2.5 right-24 px-2 py-0.5 bg-ink text-paper text-[10px] font-semibold rounded-cell shadow-xs">
-                  SH-1 & SH-2
-                </div>
-                <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-yellow text-ink text-[10px] font-bold rounded-cell shadow-xs border border-ink/20">
-                  OAT &middot; Spectra Fest
-                </div>
-                <div className="absolute bottom-2.5 left-3 px-1.5 py-0.5 bg-surface/90 border border-line text-[9px] font-ui text-ink-2 rounded-cell">
-                  Campus Wayfinder
-                </div>
+              {/* High-Resolution Interactive Isometric Campus Venue Map */}
+              <div className="relative w-full md:w-[380px] lg:w-[440px] h-52 select-none flex-shrink-0">
+                <CampusVenueMap className="w-full h-full shadow-card" compact />
               </div>
             </div>
 
