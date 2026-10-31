@@ -6,7 +6,7 @@
 |------|-------|-----------------------------|---------------------|--------------------|
 | **Antigravity (Build Agent)** | **Gemini 3.8 Flash (High)** | Nothing in runtime product. Development pair-programmer. | Core implementation: CP-SAT models, kernel validation pipeline, API routes, Next.js UI, test suites, documentation. | Interactive IDE sessions |
 | **claude.ai** | **Claude 3.5 Sonnet / Claude 3.7 Sonnet** | Nothing in runtime product. Used by team lead. | Strategy, prompt drafting, and verified single-file prototypes in `inputs/reference_engine/`. | Team lead transcripts |
-| **Groq API (Runtime AI Layer)** | **llama-3.1-8b-instant** | Natural language booking parser (`/api/bookings/parse` & `/api/assistant`). Parses human input to structured JSON; falls back to deterministic regex parser if unavailable. | Live runtime NLP. | `backend/app/ai/provider.py` & `prompts/` |
+| **Groq API (Runtime AI Layer)** | **qwen/qwen3.8-27b, openai/gpt-oss-20b, llama-3.1-8b-instant** | Natural language booking parser (`/api/bookings/parse`) & scheduling assistant (`/api/assistant`). Parses human input to structured JSON; falls back to deterministic regex parser if unavailable. | Live runtime NLP. | `backend/app/ai/provider.py` & `prompts/` |
 
 ## Prototype Provenance (`inputs/reference_engine/`)
 

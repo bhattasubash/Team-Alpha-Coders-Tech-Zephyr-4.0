@@ -20,10 +20,11 @@ export function SessionCard({
   isDiffPulse = false,
 }: SessionCardProps) {
   const state: SessionCardState = stateProp || session?.state || 'lecture';
-  const courseCode = session?.courseId || 'CS101';
-  const title = session?.courseTitle || 'Intro to Computing';
-  const faculty = session?.facultySurname || session?.facultyName || 'Dr. Raman';
-  const roomId = session?.roomId || 'CR-01';
+  const raw = session as any;
+  const courseCode = session?.courseId || raw?.course_id || 'CS101';
+  const title = session?.courseTitle || raw?.course_name || raw?.course_id || 'Intro to Computing';
+  const faculty = session?.facultySurname || session?.facultyName || raw?.faculty_name || raw?.faculty_id || 'Dr. Raman';
+  const roomId = session?.roomId || raw?.room_id || 'CR-01';
   const accessible = session?.accessible ?? false;
   const tag = session?.tag;
   const ruleCode = session?.ruleCode;

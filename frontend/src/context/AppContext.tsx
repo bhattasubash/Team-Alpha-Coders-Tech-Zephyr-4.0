@@ -102,12 +102,15 @@ interface AppContextType {
   startTour: () => void;
   isAssistantOpen: boolean;
   setIsAssistantOpen: (open: boolean) => void;
+  isMobileNavOpen: boolean;
+  setIsMobileNavOpen: (open: boolean) => void;
+  toggleMobileNav: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRole] = useState<Role>('admin');
+  const [role, setRoleState] = useState<Role>('admin');
   const [theme, setThemeState] = useState<'light' | 'dark'>('dark');
   const [isSidebarCollapsed, setIsSidebarCollapsedState] = useState<boolean>(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
@@ -116,6 +119,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(1);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  const setRole = (newRole: Role) => {
+    setRoleState(newRole);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cit-user-role', newRole);
+    }
+  };
+
+  const toggleMobileNav = () => {
+    setIsMobileNavOpen((prev) => !prev);
+  };
 
   const startTour = () => {
     setTourStep(1);
@@ -123,6 +138,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // Role initialization from localStorage
+    const savedRole = localStorage.getItem('cit-user-role') as Role | null;
+    if (savedRole && DEMO_USERS[savedRole]) {
+      setRoleState(savedRole);
+    }
+
     // Theme initialization - Default to DARK
     const savedTheme = localStorage.getItem('cit-theme') as 'light' | 'dark' | null;
     const activeTheme = savedTheme || 'dark';
@@ -301,6 +322,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         startTour,
         isAssistantOpen,
         setIsAssistantOpen,
+        isMobileNavOpen,
+        setIsMobileNavOpen,
+        toggleMobileNav,
       }}
     >
       {children}

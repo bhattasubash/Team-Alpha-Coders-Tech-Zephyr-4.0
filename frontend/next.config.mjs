@@ -1,9 +1,12 @@
 /** @type {import('next').NextConfig} */
-const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const backendUrl = process.env.NEXT_PUBLIC_API_URL;
 
 const nextConfig = {
-  // Proxy API calls to the FastAPI backend
+  // Only proxy if an external backend URL is explicitly configured
   async rewrites() {
+    if (!backendUrl) {
+      return [];
+    }
     return [
       {
         source: "/api/:path*",

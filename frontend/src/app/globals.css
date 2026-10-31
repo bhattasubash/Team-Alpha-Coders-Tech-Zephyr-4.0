@@ -20,6 +20,14 @@
   font-display: swap;
 }
 
+/* Base Layout & Mobile Viewport Constraints */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+}
+
 :root {
   --paper: #E8E6DD;
   --surface: #F3F1E9;

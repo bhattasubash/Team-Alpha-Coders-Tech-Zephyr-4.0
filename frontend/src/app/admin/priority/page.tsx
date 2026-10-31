@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
+import { useApp } from '@/context/AppContext';
 import { PriorityRank } from '@/components/ui/PriorityRank';
 import { Chip } from '@/components/ui/Chip';
 import { Button } from '@/components/ui/Button';
@@ -26,10 +28,36 @@ interface AuditEntry {
 }
 
 export default function PriorityPage() {
+  const router = useRouter();
+  const { role } = useApp();
   const [isDebug, setIsDebug] = useState(false);
+
+  // Role Guard: Admin access only
+  useEffect(() => {
+    if (role !== 'admin') {
+      router.replace('/dashboard');
+    }
+  }, [role, router]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsDebug(new URLSearchParams(window.location.search).get('debug') === '1');
+      const savedLadder = localStorage.getItem('cit-priority-ladder');
+      if (savedLadder) {
+        try {
+          setLadder(JSON.parse(savedLadder));
+        } catch {
+          // Keep initial
+        }
+      }
+      const savedAudit = localStorage.getItem('cit-priority-audit');
+      if (savedAudit) {
+        try {
+          setAuditLog(JSON.parse(savedAudit));
+        } catch {
+          // Keep default
+        }
+      }
     }
   }, []);
   const initialLadder: PriorityRow[] = [
@@ -189,8 +217,15 @@ export default function PriorityPage() {
       admin: "Dean's Office (Dean Patnaik)",
       change: `Reordered priority ladder: ${ladder.map((l) => l.name).join(' > ')}`,
     };
-    setAuditLog([newEntry, ...auditLog]);
+    const nextAudit = [newEntry, ...auditLog];
+    setAuditLog(nextAudit);
     setHasChanged(false);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cit-priority-ladder', JSON.stringify(ladder));
+      localStorage.setItem('cit-priority-audit', JSON.stringify(nextAudit));
+    }
+
     setSaveToast('Saved priority order. 4 Spectra bookings re-evaluated and committed.');
     setTimeout(() => setSaveToast(null), 4000);
   };

@@ -36,7 +36,7 @@ export function JudgeTour() {
         'Audit zero hard violations, explore soft penalty horizontal bars, and verify 80+ blocked red-team attack vectors.',
       route: '/admin/proof',
       buttonLabel: 'Go to Validator Proof',
-      positionClasses: 'top-28 right-8 left-auto',
+      positionClasses: 'top-28 left-1/2 -translate-x-1/2 sm:left-auto sm:right-8 sm:translate-x-0',
     },
   ];
 
@@ -61,16 +61,16 @@ export function JudgeTour() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 pointer-events-none select-none">
+    <div className="fixed inset-0 z-[100] pointer-events-none select-none">
       {/* Translucent Backdrop */}
       <div
-        className="fixed inset-0 bg-[#12292B]/25 pointer-events-auto transition-opacity"
+        className="fixed inset-0 bg-[#12292B]/40 pointer-events-auto transition-opacity"
         onClick={handleSkip}
       />
 
       {/* Coach Mark Card: ink tooltip with paper text, radius 6 */}
       <div
-        className={`fixed z-50 pointer-events-auto w-[90vw] max-w-[420px] bg-ink text-paper border border-line-strong rounded-[6px] shadow-2xl p-5 font-ui transition-all duration-200 animate-fade-in ${currentStep.positionClasses}`}
+        className={`fixed z-[101] pointer-events-auto w-[90vw] max-w-[420px] bg-ink text-paper border border-line-strong rounded-[6px] shadow-2xl p-5 font-ui transition-all duration-200 animate-fade-in ${currentStep.positionClasses}`}
       >
         {/* Header: Task Name + Progress */}
         <div className="flex items-center justify-between border-b border-paper/20 pb-2 mb-3">

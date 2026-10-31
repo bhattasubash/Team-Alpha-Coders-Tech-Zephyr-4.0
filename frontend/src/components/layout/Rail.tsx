@@ -20,6 +20,7 @@ import {
   SidebarExpandIcon,
   ChevronDown,
   ChevronRight,
+  CloseIcon,
 } from '@/components/ui/Icons';
 
 interface NavItem {
@@ -45,7 +46,16 @@ const ADMIN_SUB_ITEMS: NavItem[] = [
 
 export function Rail() {
   const pathname = usePathname();
-  const { role, user, isSidebarCollapsed, toggleSidebar } = useApp();
+  const {
+    role,
+    user,
+    isSidebarCollapsed,
+    toggleSidebar,
+    isMobileNavOpen,
+    setIsMobileNavOpen,
+    toggleMobileNav,
+    startTour,
+  } = useApp();
   const [isAdminOpen, setIsAdminOpen] = useState(true);
   const [showAdminFlyout, setShowAdminFlyout] = useState(false);
 
@@ -276,9 +286,143 @@ export function Rail() {
         </div>
       </aside>
 
+      {/* Mobile Navigation Drawer Overlay (<640px) */}
+      {isMobileNavOpen && (
+        <div className="sm:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-[#0E1F21]/80 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsMobileNavOpen(false)}
+          />
+
+          {/* Drawer Panel */}
+          <div className="relative w-72 max-w-[85vw] h-full bg-[#0E1F21] text-[#E8E6DD] border-r border-[#1C3739] flex flex-col z-10 shadow-2xl animate-fade-in select-none">
+            {/* Header */}
+            <div className="h-14 flex items-center justify-between px-4 border-b border-[#1C3739]">
+              <div className="flex items-center gap-2">
+                <div className="p-1 rounded bg-[#1C3739] text-[#EDEBE0]">
+                  <CITLogo size={18} />
+                </div>
+                <span className="font-serif text-[18px] text-[#EDEBE0] tracking-tight">
+                  CIT Scheduler
+                </span>
+              </div>
+              <button
+                onClick={() => setIsMobileNavOpen(false)}
+                className="p-1.5 rounded text-[#9DB0AE] hover:text-white hover:bg-[#1C3739]"
+                aria-label="Close menu"
+              >
+                <CloseIcon size={16} />
+              </button>
+            </div>
+
+            {/* User Profile Card */}
+            <div className="p-4 border-b border-[#1C3739] bg-[#12292B]/60">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[13px] font-semibold text-[#EDEBE0] truncate max-w-[150px]">
+                  {user.name}
+                </span>
+                <span className="px-1.5 py-0.5 text-[10px] uppercase font-bold tracking-wider bg-violet/20 border border-violet/30 text-violet rounded-cell">
+                  {role === 'department_coordinator' ? 'Coord' : role}
+                </span>
+              </div>
+              <span className="text-[11px] text-[#9DB0AE] block truncate">{user.email}</span>
+            </div>
+
+            {/* Navigation links */}
+            <nav className="flex-1 py-3 px-3 space-y-1 overflow-y-auto">
+              <div className="px-2 py-1 text-[10px] uppercase font-bold text-[#9DB0AE] tracking-wider">
+                Navigation
+              </div>
+              {allowedPrimaryItems.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== '/dashboard' && pathname?.startsWith(item.href));
+                const IconComponent = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-card text-[13px] font-medium transition-all ${
+                      isActive
+                        ? 'text-white bg-violet/20 border border-violet/30 shadow-[0_0_12px_rgba(125,93,255,0.25)]'
+                        : 'text-[#EDEBE0]/75 hover:text-white hover:bg-[#1C3739]/60'
+                    }`}
+                  >
+                    <IconComponent
+                      size={18}
+                      className={isActive ? 'text-violet' : 'text-[#EDEBE0]/80'}
+                    />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+
+              {/* Admin Links */}
+              {isAdminRole && (
+                <div className="pt-2 border-t border-[#1C3739] mt-2">
+                  <div className="px-2 py-1 text-[10px] uppercase font-bold text-[#9DB0AE] tracking-wider">
+                    Admin Tools
+                  </div>
+                  {ADMIN_SUB_ITEMS.map((sub) => {
+                    const isSubActive = pathname === sub.href;
+                    const SubIcon = sub.icon;
+                    return (
+                      <Link
+                        key={sub.href}
+                        href={sub.href}
+                        onClick={() => setIsMobileNavOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-card text-[13px] font-medium transition-all ${
+                          isSubActive
+                            ? 'text-white bg-violet/20 border border-violet/30 shadow-[0_0_12px_rgba(125,93,255,0.25)]'
+                            : 'text-[#EDEBE0]/75 hover:text-white hover:bg-[#1C3739]/60'
+                        }`}
+                      >
+                        <SubIcon
+                          size={18}
+                          className={isSubActive ? 'text-violet' : 'text-[#EDEBE0]/80'}
+                        />
+                        <span>{sub.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Judge Tour button in Mobile Menu */}
+              <div className="pt-3">
+                <button
+                  onClick={() => {
+                    setIsMobileNavOpen(false);
+                    startTour();
+                  }}
+                  className="w-full flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-card bg-[#1C3739] border border-event/40 hover:border-event text-white text-[13px] font-semibold transition-all shadow-sm"
+                >
+                  <span className="w-2 h-2 rounded-full bg-yellow shadow-[0_0_6px_#FBE64D]" />
+                  <span>Launch Judge Tour</span>
+                </button>
+              </div>
+            </nav>
+
+            {/* Bottom: Sign out / switch account */}
+            <div className="p-3 border-t border-[#1C3739] bg-[#0E1F21]">
+              <Link
+                href="/login"
+                onClick={() => setIsMobileNavOpen(false)}
+                className="flex items-center gap-2 text-[12px] text-[#9DB0AE] hover:text-[#EDEBE0] py-1 transition-colors"
+              >
+                <SignOutIcon size={16} />
+                <span>Switch account / Sign out</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile Bottom Bar (<640px) */}
       <div className="sm:hidden fixed bottom-0 left-0 right-0 h-14 bg-rail/95 backdrop-blur-md text-[#E8E6DD] border-t border-[#1C3739] flex items-center justify-around z-40 px-2">
-        {allowedPrimaryItems.slice(0, 5).map((item) => {
+        {allowedPrimaryItems.slice(0, 4).map((item) => {
           const isActive = pathname === item.href;
           const IconComponent = item.icon;
           return (
@@ -297,6 +441,24 @@ export function Rail() {
             </Link>
           );
         })}
+
+        {/* 5th item: More Menu Toggle */}
+        <button
+          onClick={toggleMobileNav}
+          className={`flex flex-col items-center justify-center p-1 relative text-[10px] transition-colors ${
+            isMobileNavOpen || pathname?.startsWith('/admin') || pathname === '/rooms' || pathname === '/disruption'
+              ? 'text-violet font-semibold'
+              : 'text-[#EDEBE0]/60 hover:text-white'
+          }`}
+          aria-label="More navigation options"
+        >
+          <div className="w-5 h-5 flex flex-col justify-center items-center gap-1">
+            <span className="w-4 h-0.5 bg-current rounded-full" />
+            <span className="w-4 h-0.5 bg-current rounded-full" />
+            <span className="w-4 h-0.5 bg-current rounded-full" />
+          </div>
+          <span className="mt-0.5">More</span>
+        </button>
       </div>
     </>
   );

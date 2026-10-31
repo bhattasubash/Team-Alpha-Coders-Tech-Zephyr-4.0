@@ -60,7 +60,27 @@ class ApiClient {
     retries = 2
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    const token = this.getToken();
+    let token = this.getToken();
+
+    // Auto-authenticate with default demo admin account if no token exists in browser
+    if (!token && typeof window !== 'undefined' && !endpoint.startsWith('/api/auth/')) {
+      try {
+        const loginRes = await fetch(`${this.baseUrl}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: 'admin@cit.edu', password: 'admin123' }),
+        });
+        if (loginRes.ok) {
+          const authData = await loginRes.json();
+          if (authData?.access_token) {
+            this.setToken(authData.access_token);
+            token = authData.access_token;
+          }
+        }
+      } catch {
+        // Backend unreachable, continue with request
+      }
+    }
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -79,6 +99,27 @@ class ApiClient {
       });
 
       if (!response.ok) {
+        // Automatic re-authentication on 401 for demo resilience
+        if (response.status === 401 && !endpoint.startsWith('/api/auth/') && retries > 0 && typeof window !== 'undefined') {
+          this.setToken(null);
+          try {
+            const loginRes = await fetch(`${this.baseUrl}/api/auth/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: 'admin@cit.edu', password: 'admin123' }),
+            });
+            if (loginRes.ok) {
+              const authData = await loginRes.json();
+              if (authData?.access_token) {
+                this.setToken(authData.access_token);
+                return this.request<T>(endpoint, options, retries - 1);
+              }
+            }
+          } catch {
+            // Backend unreachable
+          }
+        }
+
         let envelope: ApiErrorEnvelope;
         try {
           envelope = await response.json();

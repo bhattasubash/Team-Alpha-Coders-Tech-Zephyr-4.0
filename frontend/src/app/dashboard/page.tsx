@@ -39,7 +39,26 @@ export default function DashboardPage() {
     api.getTimetableAll()
       .then((data) => {
         if (Array.isArray(data?.sessions)) {
-          setMondaySessions(data.sessions.filter((s: any) => s.day === 'MON'));
+          const mapped: ScheduledSession[] = data.sessions
+            .filter((s: any) => s.day === 'MON')
+            .map((s: any) => ({
+              id: s.session_id || s.id,
+              sessionId: s.session_id || s.id,
+              courseId: s.course_id || s.courseId,
+              courseTitle: s.course_name || s.courseTitle || s.course_id || s.courseId,
+              facultyId: s.faculty_id || s.facultyId,
+              facultyName: s.faculty_name || s.facultyName || s.faculty_id || s.facultyId,
+              facultySurname: s.faculty_surname || s.facultySurname || s.faculty_name || s.faculty_id,
+              roomId: s.room_id || s.roomId,
+              roomName: s.room_name || s.roomName || s.room_id || s.roomId,
+              day: s.day,
+              startPeriod: s.start_period ?? s.startPeriod ?? 1,
+              duration: s.duration || 1,
+              kind: s.kind || 'lecture',
+              state: s.state || (s.kind === 'tutorial' ? 'tutorial' : s.kind === 'lab' ? 'lab' : 'lecture'),
+              groups: s.groups || [],
+            }));
+          setMondaySessions(mapped);
         }
       })
       .catch(() => {});
@@ -69,7 +88,7 @@ export default function DashboardPage() {
       },
       {
         title: 'Run official validator audit',
-        desc: 'Typeset audit of 0 hard violations, soft penalties (S1–S6), and differential invariance verification.',
+        desc: 'Typeset audit of 0 hard violations, soft penalties (S1â€“S6), and differential invariance verification.',
         href: '/admin/proof',
         btnLabel: 'Run audit',
         variant: 'secondary',
@@ -144,7 +163,7 @@ export default function DashboardPage() {
         variant: 'secondary',
       },
       {
-        title: 'Explore free evening venues (P10–P13)',
+        title: 'Explore free evening venues (P10â€“P13)',
         desc: 'Inspect night slots in the campus map for music rehearsals and quiz prelims.',
         href: '/rooms',
         btnLabel: 'Venue map',
@@ -268,9 +287,19 @@ export default function DashboardPage() {
 
             {/* Honest Endpoint Status */}
             {apiError && (
-              <div className="p-4 bg-surface border border-coral text-ink rounded-card">
-                <span className="font-bold text-coral">Backend Status: </span>
-                <span>Not available yet ({apiError.code}). {apiError.message}</span>
+              <div className="p-4 bg-surface border border-coral text-ink rounded-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <span className="font-bold text-coral">Backend Status: </span>
+                  <span>Not available yet ({apiError.code}). {apiError.message}</span>
+                </div>
+                {apiError.code === 'UNAUTHENTICATED' && (
+                  <Link
+                    href="/login"
+                    className="px-3 py-1 bg-coral/10 hover:bg-coral/20 border border-coral text-coral rounded-cell text-xs font-semibold tracking-wide transition-colors"
+                  >
+                    Sign In to Demo
+                  </Link>
+                )}
               </div>
             )}
 
@@ -283,7 +312,7 @@ export default function DashboardPage() {
                     Sessions scheduled
                   </span>
                   <div className="font-serif text-[56px] leading-[56px] text-ink font-normal my-1 tabular-nums tracking-tight">
-                    {dashboardData ? (dashboardData.sessions_scheduled ?? dashboardData.sessions_count ?? '—') : '—'}
+                    {dashboardData ? (dashboardData.sessions_scheduled ?? dashboardData.sessions_count ?? 'â€”') : 'â€”'}
                   </div>
                   <span className="text-[12px] text-ink-2">Total teaching slots active</span>
                 </div>
@@ -295,16 +324,16 @@ export default function DashboardPage() {
                     <Chip label={dashboardData?.hard_violations === 0 ? 'Valid' : 'Audit'} variant={dashboardData?.hard_violations === 0 ? 'valid' : 'rejected'} />
                   </div>
                   <div className="font-serif text-[56px] leading-[56px] text-ink font-normal my-1 tabular-nums tracking-tight">
-                    {dashboardData ? (dashboardData.hard_violations ?? '0') : '—'}
+                    {dashboardData ? (dashboardData.hard_violations ?? '0') : 'â€”'}
                   </div>
-                  <span className="text-[12px] text-ink-2">Rules H1–H14 satisfied</span>
+                  <span className="text-[12px] text-ink-2">Rules H1â€“H14 satisfied</span>
                 </div>
 
                 {/* Cell 3: Soft penalty */}
                 <div className="p-5 sm:p-6">
                   <span className="text-[13px] text-ink-2 font-medium block mb-1">Soft penalty</span>
                   <div className="font-serif text-[56px] leading-[56px] text-ink font-normal my-1 tabular-nums tracking-tight">
-                    {dashboardData ? (dashboardData.soft_penalty ?? '—') : '—'}
+                    {dashboardData ? (dashboardData.soft_penalty ?? 'â€”') : 'â€”'}
                   </div>
                   <span className="text-[12px] text-ink-2">Minimised across preferences</span>
                 </div>
@@ -315,7 +344,7 @@ export default function DashboardPage() {
                     Pending approvals
                   </span>
                   <div className="font-serif text-[56px] leading-[56px] text-ink font-normal my-1 tabular-nums tracking-tight">
-                    {dashboardData ? (dashboardData.pending_approvals ?? dashboardData.pending_bookings ?? '—') : '—'}
+                    {dashboardData ? (dashboardData.pending_approvals ?? dashboardData.pending_bookings ?? 'â€”') : 'â€”'}
                   </div>
                   <span className="text-[12px] text-ink-2">Fest & guest lecture requests</span>
                 </div>
@@ -325,7 +354,7 @@ export default function DashboardPage() {
               <div className="p-4 bg-raised border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[12px]">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-ink">Campus room utilisation:</span>
-                  <span className="font-semibold text-ink tabular-nums">{dashboardData?.campus_utilization ? `${dashboardData.campus_utilization}%` : '—'}</span>
+                  <span className="font-semibold text-ink tabular-nums">{dashboardData?.campus_utilization ? `${dashboardData.campus_utilization}%` : 'â€”'}</span>
                   <span className="text-ink-2 hidden sm:inline">&middot; Live schedule capacity</span>
                 </div>
                 <div className="w-full sm:w-72 h-2 bg-line rounded-pill overflow-hidden">
@@ -446,11 +475,11 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Evening Festivities Strip (P10–P13) - Balances 8/4 grid height */}
+                {/* Evening Festivities Strip (P10â€“P13) - Balances 8/4 grid height */}
                 <div className="bg-surface border border-line rounded-panel p-5 shadow-sm space-y-3">
                   <div className="flex items-center justify-between border-b border-line pb-2">
                     <div>
-                      <h3 className="font-serif text-[18px] text-ink">Evening Activities (P10–P13)</h3>
+                      <h3 className="font-serif text-[18px] text-ink">Evening Activities (P10â€“P13)</h3>
                       <p className="text-[11px] text-ink-2">Spectra festival & cultural allocations</p>
                     </div>
                     <Chip label="SPECTRA" variant="event" />
