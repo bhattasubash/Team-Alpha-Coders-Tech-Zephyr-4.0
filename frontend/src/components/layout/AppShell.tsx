@@ -1,35 +1,50 @@
 'use client';
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import { Rail } from './Rail';
 import { Header } from './Header';
 import { WhyHereDrawer } from './WhyHereDrawer';
 import { CommandPalette } from '@/components/ui/CommandPalette';
 import { JudgeTour } from '@/components/ui/JudgeTour';
+import { AssistantOrb } from '@/components/ai/AssistantOrb';
+import { AssistantDrawer } from '@/components/ai/AssistantDrawer';
+import { useApp } from '@/context/AppContext';
 
 interface AppShellProps {
   children: React.ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const { isSidebarCollapsed } = useApp();
+
   return (
-    <div className="flex min-h-screen bg-paper text-ink">
-      {/* 232px lagoon-ink rail (desktop), 64px tablet, bottom bar phone */}
+    <div className="flex min-h-screen bg-paper text-ink transition-colors">
+      {/* Dynamic Collapsible Sidebar: 232px expanded, 64px collapsed, bottom bar mobile */}
       <Rail />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* 56px sticky header */}
+      <div className="flex-1 flex flex-col min-w-0 transition-all duration-200">
+        {/* Sticky Header with dynamic date and Spectra pill */}
         <Header />
 
-        {/* Page Content: padding 32px desktop, 16px mobile, max-width 1440 */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1440px] w-full mx-auto pb-20 sm:pb-8">
-          {children}
+        {/* Page Content with subtle gradient mesh & smooth page transition */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1440px] w-full mx-auto pb-24 sm:pb-12 bg-mesh">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="w-full"
+          >
+            {children}
+          </motion.div>
         </main>
       </div>
 
-      {/* Global Overlays */}
+      {/* Global Overlays & 3D AI Assistant */}
       <WhyHereDrawer />
+      <AssistantDrawer />
+      <AssistantOrb />
       <CommandPalette />
       <JudgeTour />
     </div>

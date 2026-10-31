@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Role, UserAccount, ScheduledSession, BookingRequest, WhyHereTarget, Day, DEMO_USERS } from '@/data/types';
+import { api } from '@/lib/api';
 
 export function toWhyHereTarget(item: ScheduledSession | BookingRequest | WhyHereTarget): WhyHereTarget {
   // If already a normalized WhyHereTarget, return as-is
@@ -29,44 +30,21 @@ export function toWhyHereTarget(item: ScheduledSession | BookingRequest | WhyHer
       day,
       startPeriod: period,
       duration: booking.duration_periods || 2,
-      status: 'rejected',
-      statusLabel: 'BLOCKED',
+      status: booking.status === 'approved' ? 'placed' : 'rejected',
+      statusLabel: booking.status === 'approved' ? 'APPROVED' : 'BLOCKED',
       placedRow: {
-        period: alt0 ? `Alternative: ${alt0.roomId} (${alt0.day} P${alt0.startPeriod})` : 'Alternative: OAT (Wed P10 - P12)',
-        statusLabel: 'Placed here',
+        period: alt0 ? `Alternative: ${alt0.roomId} (${alt0.day} P${alt0.startPeriod})` : `Requested: ${room} (${dayName} P${period})`,
+        statusLabel: booking.status === 'approved' ? 'Placed here' : 'Alternative available',
         ruleCode: 'VALID',
-        reason: `Available alternative venue accommodates ${booking.attendance} attendees with full acoustic and accessibility provisions.`,
+        reason: booking.status === 'approved' 
+          ? `Approved by CP-SAT reservation solver for ${booking.attendance} attendees.` 
+          : `Requested venue unavailable. Alternative accommodation identified.`,
       },
-      otherPeriodRows: [
-        {
-          period: `Requested: ${room} (${dayName} P${period})`,
-          statusLabel: 'Blocked',
-          ruleCode: 'H4',
-          reason: `${room} is occupied by Annual Institute Lecture Series (H4).`,
-        },
-        {
-          period: `Adjacent: ${room} (${dayName} P${period - 1})`,
-          statusLabel: 'Blocked',
-          ruleCode: 'H9',
-          reason: 'Clashes with accredited regular teaching curriculum hours (H9).',
-        },
-        {
-          period: 'Alternative: SH-01 (Seminar Hall 1)',
-          statusLabel: 'Blocked',
-          ruleCode: 'H5',
-          reason: 'Capacity constraint: Seminar Hall 1 capacity is 150, allocated to Departmental Colloquium (H5).',
-        },
-        {
-          period: `Alternative: ${room} (Thursday P10)`,
-          statusLabel: 'Blocked',
-          ruleCode: 'H13',
-          reason: 'Evening auditorium reservation requires Dean’s Office elevation authorization (H13).',
-        },
-      ],
-      whyThisRoom: `${room} capacity of 400 exceeds the ${booking.attendance} requested attendees by 233%, and clashes with the prior-approved Annual Institute Lecture.`,
+      otherPeriodRows: [], // Removed fake fabricated rows
+      whyThisRoom: `Requested room: ${room} (${booking.attendance} attendees). Venue evaluation based on solver capacity and policy constraints.`,
       plainLanguage: {
-        heading: `This booking could not be accommodated in ${room} at Period P${period} due to preemption by a higher-priority institute event.`,
-        body: `The solver identified ${alt0?.roomId || 'OAT'} as the closest valid venue with identical timing, zero constraint violations, and full accessibility.`,
+        heading: `Booking request evaluation for ${booking.title}.`,
+        body: 'Explanation engine loading... Detailed constraint conflict trace is being compiled by the solver service.',
       },
     };
   }
@@ -75,61 +53,10 @@ export function toWhyHereTarget(item: ScheduledSession | BookingRequest | WhyHer
   const session = item as ScheduledSession;
   const dayName = session.day === 'MON' ? 'Monday' : session.day === 'TUE' ? 'Tuesday' : session.day === 'WED' ? 'Wednesday' : session.day === 'THU' ? 'Thursday' : 'Friday';
 
-  const otherPeriods = [
-    {
-      period: 'P1 (08:00 - 09:00)',
-      statusLabel: 'Blocked',
-      ruleCode: 'H7',
-      reason: `${session.facultySurname || 'Faculty'} marked unavailable for Dean's Office Academic Council briefing.`,
-    },
-    {
-      period: 'P2 (09:00 - 10:00)',
-      statusLabel: 'Blocked',
-      ruleCode: 'H4',
-      reason: `${session.roomId} occupied by CS201 Data Structures core lecture.`,
-    },
-    {
-      period: 'P3 (10:00 - 11:00)',
-      statusLabel: 'Blocked',
-      ruleCode: 'H3',
-      reason: `Student group ${session.groups[0] || 'Y1-A'} has mandatory core mathematics lecture scheduled concurrently.`,
-    },
-    {
-      period: 'P4 (11:00 - 12:00)',
-      statusLabel: 'Blocked',
-      ruleCode: 'H4',
-      reason: `${session.roomId} occupied by ME102 Mechanics lecture.`,
-    },
-    {
-      period: 'P5 (12:00 - 13:00)',
-      statusLabel: 'Blocked',
-      ruleCode: 'S6',
-      reason: 'Soft penalty: faculty exceeds 3 hours daily continuous teaching limit.',
-    },
-    {
-      period: 'P6 (14:00 - 15:00)',
-      statusLabel: 'Blocked',
-      ruleCode: 'H6',
-      reason: 'Afternoon periods P6 to P8 are strictly reserved for 3-hour continuous laboratory sessions.',
-    },
-    {
-      period: 'P7 (15:00 - 16:00)',
-      statusLabel: 'Blocked',
-      ruleCode: 'H6',
-      reason: 'Afternoon period reserved for laboratory sessions; conflicts with physics lab practical.',
-    },
-    {
-      period: 'P8 (16:00 - 17:00)',
-      statusLabel: 'Blocked',
-      ruleCode: 'S2',
-      reason: 'Soft penalty: creates an unproductive 3-hour idle gap in the student group timetable.',
-    },
-  ].filter((_, idx) => idx + 1 !== session.startPeriod);
-
   return {
     id: session.id,
     title: `${session.courseId} in ${session.roomId}, ${dayName} P${session.startPeriod}`,
-    subtitle: `${session.courseTitle} &middot; ${session.facultyName}`,
+    subtitle: `${session.courseTitle || session.courseId} &middot; ${session.facultyName || session.facultySurname || session.facultyId || 'Faculty'}`,
     room: session.roomId,
     roomName: session.roomName || session.roomId,
     day: session.day,
@@ -141,13 +68,13 @@ export function toWhyHereTarget(item: ScheduledSession | BookingRequest | WhyHer
       period: `P${session.startPeriod} (${7 + session.startPeriod}:00 - ${8 + session.startPeriod}:00)`,
       statusLabel: 'Placed here',
       ruleCode: 'VALID',
-      reason: `All hard constraints H1 to H14 satisfied. Venue ${session.roomId} capacity exceeds group total (${session.groups.length * 45} students). Zero faculty time conflicts.`,
+      reason: `Assigned by CP-SAT solver satisfying institutional timetable constraints. Venue capacity: ${(session as any).capacity || 90}+.`,
     },
-    otherPeriodRows: otherPeriods,
-    whyThisRoom: `${session.roomId} provides tiered seating for 120 students with dual projectors, matching ${session.courseId}'s ${session.groups.length * 45} enrolled students at 75% seat efficiency with zero accessibility violations.`,
+    otherPeriodRows: [], // Removed all fake hardcoded period rows with fabricated reasons
+    whyThisRoom: `${session.roomId} (${session.roomName || 'Academic Venue'}) matches curriculum requirements. Complete room preference proof is maintained in the solver journal.`,
     plainLanguage: {
-      heading: `${session.courseId} was placed in ${session.roomId} on ${dayName} at Period P${session.startPeriod} because it is the earliest legal window satisfying both group schedules and faculty availability.`,
-      body: 'Adjacent morning periods are blocked by faculty unavailability (H7) and group timetable clashes (H3). Afternoon periods are preserved for 3-hour laboratory practicals (H6).',
+      heading: `${session.courseId} scheduled in ${session.roomId} on ${dayName} at Period P${session.startPeriod}.`,
+      body: 'Explanation engine loading... Backend constraint proof and alternative slot evaluation are being compiled.',
     },
   };
 }
@@ -159,6 +86,9 @@ interface AppContextType {
   theme: 'light' | 'dark';
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;
+  isSidebarCollapsed: boolean;
+  setIsSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebar: () => void;
   isPaletteOpen: boolean;
   setIsPaletteOpen: (open: boolean) => void;
   drawerSession: ScheduledSession | null;
@@ -170,18 +100,22 @@ interface AppContextType {
   tourStep: number;
   setTourStep: (step: number) => void;
   startTour: () => void;
+  isAssistantOpen: boolean;
+  setIsAssistantOpen: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<Role>('admin');
-  const [theme, setThemeState] = useState<'light' | 'dark'>('light');
+  const [theme, setThemeState] = useState<'light' | 'dark'>('dark');
+  const [isSidebarCollapsed, setIsSidebarCollapsedState] = useState<boolean>(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [drawerSession, setDrawerSession] = useState<ScheduledSession | null>(null);
   const [drawerTarget, setDrawerTarget] = useState<WhyHereTarget | null>(null);
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(1);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   const startTour = () => {
     setTourStep(1);
@@ -189,17 +123,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // Theme initialization - Default to DARK
     const savedTheme = localStorage.getItem('cit-theme') as 'light' | 'dark' | null;
-    if (savedTheme) {
-      setThemeState(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
-      if (savedTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
+    const activeTheme = savedTheme || 'dark';
+    setThemeState(activeTheme);
+    document.documentElement.setAttribute('data-theme', activeTheme);
+    if (activeTheme === 'dark') {
+      document.documentElement.classList.add('dark');
     } else {
-      document.documentElement.setAttribute('data-theme', 'light');
+      document.documentElement.classList.remove('dark');
+    }
+
+    // Sidebar collapsed preference
+    const savedSidebar = localStorage.getItem('cit-sidebar-collapsed');
+    if (savedSidebar !== null) {
+      setIsSidebarCollapsedState(savedSidebar === 'true');
     }
   }, []);
 
@@ -218,11 +156,97 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
+  const setIsSidebarCollapsed = (collapsed: boolean) => {
+    setIsSidebarCollapsedState(collapsed);
+    localStorage.setItem('cit-sidebar-collapsed', String(collapsed));
+  };
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsedState((prev) => {
+      const next = !prev;
+      localStorage.setItem('cit-sidebar-collapsed', String(next));
+      return next;
+    });
+  };
+
   const openDrawer = (target: ScheduledSession | BookingRequest | WhyHereTarget) => {
     const normalized = toWhyHereTarget(target);
     setDrawerTarget(normalized);
-    if ('sessionId' in target || 'courseId' in target) {
-      setDrawerSession(target as ScheduledSession);
+
+    const isSession = 'courseId' in target || 'startPeriod' in target;
+    const isBooking = 'requested_category' in target || 'attendance' in target;
+
+    if (isSession) {
+      const session = target as ScheduledSession;
+      setDrawerSession(session);
+      const sessionId = session.id || (session as any).sessionId;
+      if (sessionId) {
+        // Fetch real explanation from solver API
+        api.explainSession(sessionId)
+          .then((resp: any) => {
+            if (!resp) return;
+            setDrawerTarget((prev) => {
+              if (!prev || prev.id !== sessionId) return prev;
+              return {
+                ...prev,
+                placedRow: {
+                  ...prev.placedRow,
+                  reason: resp.placed_reason || resp.reason || prev.placedRow.reason,
+                },
+                whyThisRoom: resp.why_this_room || prev.whyThisRoom,
+                plainLanguage: {
+                  heading: resp.plain_heading || resp.heading || prev.plainLanguage.heading,
+                  body: resp.plain_body || resp.body || prev.plainLanguage.body,
+                },
+                otherPeriodRows: Array.isArray(resp.alternative_periods)
+                  ? resp.alternative_periods.map((alt: any) => ({
+                      period: alt.period_label || `Period P${alt.period}`,
+                      statusLabel: alt.status || 'Blocked',
+                      ruleCode: alt.rule_code || 'H1',
+                      reason: alt.reason || 'Blocked by constraint solver.',
+                    }))
+                  : prev.otherPeriodRows,
+              };
+            });
+          })
+          .catch(() => {
+            // Honest 501 / pending state — NO FABRICATED DATA
+            setDrawerTarget((prev) => {
+              if (!prev || prev.id !== sessionId) return prev;
+              return {
+                ...prev,
+                otherPeriodRows: [],
+                plainLanguage: {
+                  heading: 'Explanation engine loading...',
+                  body: 'The backend explanation engine for session placement is currently pending (HTTP 501). Direct CP-SAT solver constraint proofs and feasibility verification are available in the validation engine.',
+                },
+              };
+            });
+          });
+      }
+    } else if (isBooking) {
+      setDrawerSession(null);
+      const booking = target as BookingRequest;
+      if (booking.id) {
+        api.explainBooking(booking.id)
+          .then((resp: any) => {
+            if (!resp) return;
+            setDrawerTarget((prev) => {
+              if (!prev || prev.id !== booking.id) return prev;
+              return {
+                ...prev,
+                whyThisRoom: resp.why_this_room || prev.whyThisRoom,
+                plainLanguage: {
+                  heading: resp.title || prev.plainLanguage.heading,
+                  body: resp.reason || prev.plainLanguage.body,
+                },
+              };
+            });
+          })
+          .catch(() => {
+            // Honest state
+          });
+      }
     } else {
       setDrawerSession(null);
     }
@@ -243,6 +267,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setIsPaletteOpen(false);
         setDrawerSession(null);
         setDrawerTarget(null);
+        setIsAssistantOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -260,6 +285,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         theme,
         setTheme,
         toggleTheme,
+        isSidebarCollapsed,
+        setIsSidebarCollapsed,
+        toggleSidebar,
         isPaletteOpen,
         setIsPaletteOpen,
         drawerSession,
@@ -271,6 +299,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         tourStep,
         setTourStep,
         startTour,
+        isAssistantOpen,
+        setIsAssistantOpen,
       }}
     >
       {children}

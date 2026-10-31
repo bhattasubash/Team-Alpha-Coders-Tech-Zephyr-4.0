@@ -283,10 +283,13 @@ def get_proposal(prop_id: str, conn: sqlite3.Connection | None = None) -> dict[s
     return d
 
 
-def list_proposals(conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
-    """List all proposals."""
+def list_proposals(status: str | None = None, conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
+    """List all proposals, optionally filtered by status."""
     c = get_db(conn)
-    rows = c.execute("SELECT * FROM proposals ORDER BY created_at DESC").fetchall()
+    if status is not None:
+        rows = c.execute("SELECT * FROM proposals WHERE status = ? ORDER BY created_at DESC", (status,)).fetchall()
+    else:
+        rows = c.execute("SELECT * FROM proposals ORDER BY created_at DESC").fetchall()
     res = []
     for row in rows:
         d = dict(row)
@@ -417,3 +420,120 @@ def update_job(
                 job_id,
             ),
         )
+
+
+# =============================================================================
+# Bookings Persistence
+# =============================================================================
+
+def list_bookings(
+    status: str | None = None,
+    conn: sqlite3.Connection | None = None,
+) -> list[dict[str, Any]]:
+    """Retrieve all bookings with their latest decisions from SQLite."""
+    c = get_db(conn)
+    query = "SELECT * FROM bookings"
+    params: list[Any] = []
+    if status is not None:
+        query += " WHERE status = ?"
+        params.append(status)
+    query += " ORDER BY id ASC"
+
+    rows = c.execute(query, params).fetchall()
+    results: list[dict[str, Any]] = []
+    for r in rows:
+        row_dict = dict(r)
+        req_obj = json.loads(row_dict["request_json"]) if row_dict.get("request_json") else {}
+        dec_obj = json.loads(row_dict["decision_json"]) if row_dict.get("decision_json") else None
+
+        # Merge decision fields into booking object for UI convenience
+        merged = dict(req_obj)
+        merged["id"] = row_dict["request_id"]
+        merged["status"] = row_dict["status"]
+        if dec_obj:
+            merged["assigned_room"] = dec_obj.get("room_id")
+            merged["assigned_day"] = dec_obj.get("day")
+            merged["assigned_start_period"] = dec_obj.get("start_period")
+            merged["assigned_end_period"] = dec_obj.get("end_period")
+            merged["reason"] = dec_obj.get("reason", "")
+            merged["reason_codes"] = dec_obj.get("reason_codes", [])
+            merged["alternative_offered"] = dec_obj.get("alternative_offered")
+            merged["decision"] = dec_obj
+        results.append(merged)
+    return results
+
+
+def get_booking(
+    request_id: str,
+    conn: sqlite3.Connection | None = None,
+) -> dict[str, Any] | None:
+    """Retrieve single booking record by request_id."""
+    c = get_db(conn)
+    row = c.execute("SELECT * FROM bookings WHERE request_id = ?", (request_id,)).fetchone()
+    if not row:
+        return None
+    row_dict = dict(row)
+    req_obj = json.loads(row_dict["request_json"]) if row_dict.get("request_json") else {}
+    dec_obj = json.loads(row_dict["decision_json"]) if row_dict.get("decision_json") else None
+    merged = dict(req_obj)
+    merged["id"] = row_dict["request_id"]
+    merged["status"] = row_dict["status"]
+    if dec_obj:
+        merged["assigned_room"] = dec_obj.get("room_id")
+        merged["assigned_day"] = dec_obj.get("day")
+        merged["assigned_start_period"] = dec_obj.get("start_period")
+        merged["assigned_end_period"] = dec_obj.get("end_period")
+        merged["reason"] = dec_obj.get("reason", "")
+        merged["reason_codes"] = dec_obj.get("reason_codes", [])
+        merged["alternative_offered"] = dec_obj.get("alternative_offered")
+        merged["decision"] = dec_obj
+    return merged
+
+
+def save_booking(
+    request_id: str,
+    request_data: dict[str, Any],
+    status: str = "pending",
+    decision_data: dict[str, Any] | None = None,
+    conn: sqlite3.Connection | None = None,
+) -> None:
+    """Save or update booking request in SQLite."""
+    c = get_db(conn)
+    now = datetime.now(UTC).isoformat()
+    with c:
+        c.execute(
+            """
+            INSERT INTO bookings (id, request_id, status, request_json, decision_json, version, updated_at)
+            VALUES (?, ?, ?, ?, ?, 1, ?)
+            ON CONFLICT(request_id) DO UPDATE SET
+                status = excluded.status,
+                request_json = excluded.request_json,
+                decision_json = excluded.decision_json,
+                version = bookings.version + 1,
+                updated_at = excluded.updated_at
+            """,
+            (
+                f"book-{uuid.uuid4().hex[:8]}",
+                request_id,
+                status,
+                json.dumps(request_data),
+                json.dumps(decision_data) if decision_data else None,
+                now,
+            ),
+        )
+
+
+def update_booking_status(
+    request_id: str,
+    status: str,
+    conn: sqlite3.Connection | None = None,
+) -> bool:
+    """Update status of a booking."""
+    c = get_db(conn)
+    now = datetime.now(UTC).isoformat()
+    with c:
+        cur = c.execute(
+            "UPDATE bookings SET status = ?, updated_at = ? WHERE request_id = ?",
+            (status, now, request_id),
+        )
+        return cur.rowcount > 0

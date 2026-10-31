@@ -214,6 +214,52 @@ export function AlertIcon({ size = 16, className = '', ...props }: IconProps) {
   );
 }
 
+export function ChevronLeft({ size = 14, className = '', ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
+
+export function NavAdmin({ size = 18, className = '', ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="M12 8v4" />
+      <path d="M12 16h.01" />
+    </svg>
+  );
+}
+
+export function SidebarCollapseIcon({ size = 16, className = '', ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M9 3v18" />
+      <path d="M16 15l-3-3 3-3" />
+    </svg>
+  );
+}
+
+export function SidebarExpandIcon({ size = 16, className = '', ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M9 3v18" />
+      <path d="M13 9l3 3-3 3" />
+    </svg>
+  );
+}
+
+export function SparklesIcon({ size = 16, className = '', ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M12 3l1.912 5.885L20 10.8l-4.756 3.657L17.06 21 12 17.27 6.94 21l1.816-6.543L4 10.8l6.088-1.915L12 3z" />
+    </svg>
+  );
+}
+
 export function CheckIcon({ size = 16, className = '', ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>

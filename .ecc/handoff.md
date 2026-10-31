@@ -1,21 +1,15 @@
 # CIT Scheduler Handoff Note
 
-- **Status**: Milestone 8 (Persistence and Jobs) fully implemented, tested, and verified.
-- **Implemented Work (Milestone 8)**:
-  1. **SQLite Database Architecture**: Implemented standard library `sqlite3` persistence with WAL mode, foreign keys, 5000ms busy timeout, and row factory in `backend/app/db/` (`connection.py`, `schema.py`, `repository.py`).
-  2. **Relational Schema**: Created 8 persistent tables: `users`, `dataset_state`, `schedule_state`, `exams_state`, `bookings`, `proposals`, `audit_log`, `jobs`.
-  3. **Kernel-Mediated State Changes**: Everything that modifies data routes through the kernel repository (`commit_new_schedule`, `save_proposal`, `update_proposal_status`, `log_audit`).
-  4. **Background Jobs Engine**: Implemented `backend/app/jobs/` (`runner.py`) running CP-SAT timetable generation and optimization in daemon worker threads with real-time progress and phase tracking (Phase 1: Booking Reservations, Phase 2: Timetable Solve, Phase 3: Kernel Commit).
-  5. **Endpoints Wired**:
-     - `POST /api/timetable/generate`: Enforces mutual exclusion (HTTP 409 Conflict if active solve), spawns worker thread, returns HTTP 202 Accepted.
-     - `POST /api/timetable/optimise`: Optimizes with hints, returns HTTP 202 Accepted.
-     - `GET /api/jobs/{id}`: Returns real-time metrics (`phase`, `seconds`, `progress`, `best_soft_penalty`, `solver_status`).
-     - `POST /api/admin/reset`: Clears and re-seeds all tables from `data/cit_public.json` and `exports/schedule.json`.
-     - `GET /api/timetable`, `GET /api/timetable/all`, `GET /api/export/schedule.json`: Return hydrated assignments from SQLite.
+- **Status**: Stream B (UI Overhaul — Visual Polish & Wow Factor) completed and verified.
+- **Completed Work**:
+  1. **Fabricated Explanations Eradicated**: Removed hardcoded fake reasons and rule codes from `AppContext.tsx` (`toWhyHereTarget`), `WhyHereDrawer.tsx`, and `why-here/page.tsx`. Replaced with live calls to `api.explainSession` / `api.explainBooking` and honest "Explanation engine loading (HTTP 501)" fallback states.
+  2. **Collapsible Sidebar**: Implemented toggleable sidebar in `Rail.tsx` with smooth `transition-all duration-200`, icon-only collapsed mode (`w-16`), tooltips, and persistent `localStorage` state.
+  3. **Consolidated Navigation**: Reduced nav to 6 primary items (removed "Why Here"; consolidated "Proof" and "Priority" under an expandable/flyout "Admin" menu).
+  4. **Header Polish**: Replaced hardcoded week/date with dynamic "Spectra Week" glowing badge and formatted date. Removed dev role switcher dropdown; added professional user identity display.
+  5. **Visual Transformation**: Made Dark Mode default in `layout.tsx` and `AppContext.tsx`. Added `.glass`, `.glass-panel`, `.bg-mesh`, and `.glow-violet` effects in `globals.css`. Integrated Framer Motion page transitions in `AppShell.tsx`.
+  6. **Interactive 3D Assistant Orb**: Created Three.js floating AI assistant orb (`AssistantOrb.tsx`) with hover acceleration, glowing particle rings, and full `AssistantDrawer.tsx` wired to `/api/assistant`.
 - **Verification Results**:
-  - `pytest -m "not slow"`: 53 tests passed in 6.63s.
-  - `test_job_lifecycle_concurrency_and_commit`: Verified 202 response, 409 concurrency lock, progress polling, schedule version bump, and official validator check (0 hard violations).
-  - Official validator on `exports/schedule.json`: 0 hard violations, 161 soft penalty, 67.0 booking score, 0 exam soft penalty.
-  - Official validator on `exports/schedule_after.json`: 0 hard violations, 160 soft penalty, 67.0 booking score, 0 exam soft penalty, stability 14 moves.
-  - Frontend: `npm run build` succeeds cleanly across all 15 routes with 0 lint and 0 type errors.
-- **Next Step**: Milestone 9 (LLM Assistant and Natural Language Parser).
+  - `cd frontend && npm run build`: 15/15 routes compiled with 0 errors, 0 type errors.
+  - Dark mode verified as default without client hydration flash.
+  - Honest solver attribution and zero fabricated explanations.
+- **Next Step**: Hackathon final presentation and demo recording.

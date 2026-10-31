@@ -142,6 +142,6 @@ When importing this repository into Vercel:
 
 ## Known limitations
 
-- AI parsing of natural language booking prompts requires a valid `GEMINI_API_KEY` or `OPENAI_API_KEY`. If unconfigured, the system automatically falls back to deterministic regex pattern extraction without failing.
+- AI parsing of natural language booking prompts and assistant queries uses the Groq API (model `llama-3.1-8b-instant` via `LLM_API_KEY`). If unconfigured or offline, the system automatically falls back to deterministic regex pattern extraction and safe informational fallbacks without failing.
 - Real-time updates use polling; WebSockets are not enabled.
 - PDF and ICS calendar file exports are not implemented.

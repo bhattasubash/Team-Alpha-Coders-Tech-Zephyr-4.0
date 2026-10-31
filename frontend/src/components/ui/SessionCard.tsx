@@ -161,7 +161,7 @@ export function SessionCard({
           onClick?.();
         }
       }}
-      className={`${containerClasses} hover:!border-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ink ${className}`}
+      className={`${containerClasses} hover:!border-violet hover:shadow-[0_4px_14px_rgba(125,93,255,0.18)] hover:-translate-y-[1px] transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet ${className}`}
       style={{ ...bgStyle, ...borderStyle }}
     >
       {/* Top row: Course Code + Corner Tag / Pin */}

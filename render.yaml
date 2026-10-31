@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: cit-scheduler-backend
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: DATABASE_URL
+        value: sqlite:///./cit_schedule.db
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATASET_PATH
+        value: data/cit_public.json
+      - key: SOLVER_TIME_LIMIT_SECONDS
+        value: 30
+      - key: SOLVER_RANDOM_SEED
+        value: 42
+      - key: LLM_PROVIDER
+        value: groq
+      - key: LLM_MODEL
+        value: llama-3.1-8b-instant
+      - key: CORS_ORIGINS
+        value: https://team-alpha-coders-tech-zephyr-40.vercel.app,http://localhost:3000,http://127.0.0.1:3000

@@ -345,7 +345,7 @@ export default function DashboardPage() {
             )}
 
             {/* ONE METRIC STRIP PANEL (Four hairline-divided cells + 5th utilisation line) */}
-            <div className="bg-surface border border-line rounded-panel overflow-hidden shadow-sm">
+            <div className="glass-panel rounded-panel overflow-hidden shadow-card">
               <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-line">
                 {/* Cell 1: Sessions scheduled */}
                 <div className="p-5 sm:p-6">
@@ -410,7 +410,7 @@ export default function DashboardPage() {
             {/* 8/4 TWO-COLUMN LAYOUT */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Left Column (8 cols): Role-Adaptive Action List (Large text rows, NOT cards) */}
-              <div className="lg:col-span-8 bg-surface border border-line rounded-panel p-6 shadow-sm space-y-4">
+              <div className="lg:col-span-8 glass-panel rounded-panel p-6 shadow-card space-y-4">
                 <div className="flex items-baseline justify-between border-b border-line pb-3">
                   <div>
                     <h2 className="font-serif text-[26px] leading-[30px] text-ink">
@@ -458,7 +458,7 @@ export default function DashboardPage() {
               {/* Right Rail (4 cols): Conflict Radar & Today's Schedule Timeline with Now-Line */}
               <div className="lg:col-span-4 space-y-6">
                 {/* Conflict Radar Sentence Panel */}
-                <div className="bg-surface border border-line rounded-panel p-5 shadow-sm space-y-2">
+                <div className="glass-panel rounded-panel p-5 shadow-card space-y-2">
                   <div className="flex items-center justify-between">
                     <h3 className="font-serif text-[20px] text-ink">Conflict Radar</h3>
                     <Chip label="Valid" variant="valid" />
@@ -472,7 +472,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Today's Schedule as a Vertical Timeline with a Dashed Now-Line */}
-                <div className="bg-surface border border-line rounded-panel p-5 shadow-sm space-y-4">
+                <div className="glass-panel rounded-panel p-5 shadow-card space-y-4">
                   <div className="flex items-center justify-between border-b border-line pb-2">
                     <div>
                       <h3 className="font-serif text-[20px] text-ink">Today's Schedule</h3>

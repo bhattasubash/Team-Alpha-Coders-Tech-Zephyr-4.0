@@ -138,9 +138,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-paper flex items-center justify-center p-4 sm:p-6 lg:p-8 select-none">
-      {/* Centred 1040x600 Card (radius 8, on paper) */}
-      <div className="w-full max-w-[1040px] md:h-[600px] bg-surface border border-line rounded-panel overflow-hidden grid grid-cols-1 md:grid-cols-2 shadow-sm">
+    <div className="min-h-screen bg-mesh flex items-center justify-center p-4 sm:p-6 lg:p-8 select-none">
+      {/* Centred 1040x600 Glass Card */}
+      <div className="w-full max-w-[1040px] md:h-[600px] glass-panel rounded-panel overflow-hidden grid grid-cols-1 md:grid-cols-2 shadow-2xl">
         
         {/* Left Half: Generative Stipple Painting of Chilika Lagoon (160px band below 640px) */}
         <div className="relative h-[160px] md:h-full bg-[#0E1F21] border-b md:border-b-0 md:border-r border-[#1C3739] overflow-hidden flex flex-col justify-between">
@@ -198,7 +198,7 @@ export default function LoginPage() {
                     onClick={() =>
                       handleRoleQuickSignIn(account.roleKey, account.email, account.pass)
                     }
-                    className="w-full px-2.5 py-1.5 bg-raised border border-line hover:border-violet hover:border-l-2 rounded-[6px] text-left transition-colors duration-120 flex flex-col justify-center group cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet shadow-2xs"
+                    className="w-full px-2.5 py-1.5 bg-raised/80 hover:bg-raised border border-line hover:border-violet/60 hover:shadow-[0_0_12px_rgba(125,93,255,0.2)] rounded-[6px] text-left transition-all duration-150 flex flex-col justify-center group cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet shadow-2xs"
                   >
                     <span className="font-ui text-[12px] font-semibold text-ink group-hover:text-violet truncate">
                       {account.title}

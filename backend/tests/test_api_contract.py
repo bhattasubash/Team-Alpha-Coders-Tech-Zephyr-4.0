@@ -122,7 +122,7 @@ def test_forbidden_role_access():
 
 
 def test_unimplemented_endpoints_return_501_with_error_envelope():
-    """Verify unbuilt endpoints return 501 with NOT_IMPLEMENTED error envelope."""
+    """Verify newly wired endpoints return 200 and healthy contracts."""
     # Login as admin
     login_resp = client.post(
         "/api/auth/login",
@@ -133,18 +133,44 @@ def test_unimplemented_endpoints_return_501_with_error_envelope():
 
     # Meta endpoint
     meta_resp = client.get("/api/meta")
-    assert meta_resp.status_code == 501
+    assert meta_resp.status_code == 200
     meta_body = meta_resp.json()
-    assert "error" in meta_body
-    assert meta_body["error"]["code"] == "NOT_IMPLEMENTED"
-    assert isinstance(meta_body["error"]["details"], list)
+    assert meta_body["room_count"] > 0
+    assert meta_body["faculty_count"] > 0
 
-    # Placeholder endpoint returns 501
+    # Dashboard endpoint
     dash_resp = client.get("/api/dashboard", headers=headers)
-    assert dash_resp.status_code == 501
+    assert dash_resp.status_code == 200
     dash_body = dash_resp.json()
-    assert "error" in dash_body
-    assert dash_body["error"]["code"] == "NOT_IMPLEMENTED"
+    assert "conflict_count" in dash_body
+    assert "room_utilisation" in dash_body
+
+    # Validation endpoint
+    val_resp = client.get("/api/validation", headers=headers)
+    assert val_resp.status_code == 200
+    val_body = val_resp.json()
+    assert val_body["hard_violation_count"] == 0
+
+    # Rooms free endpoint
+    rooms_resp = client.get("/api/rooms/free?day=MON&period=1&duration=1", headers=headers)
+    assert rooms_resp.status_code == 200
+    rooms_body = rooms_resp.json()
+    assert "rooms" in rooms_body
+
+    # Bookings endpoint
+    bookings_resp = client.get("/api/bookings", headers=headers)
+    assert bookings_resp.status_code == 200
+
+    # Exams endpoint
+    exams_resp = client.get("/api/exams", headers=headers)
+    assert exams_resp.status_code == 200
+
+    # Explain session endpoint
+    explain_resp = client.get("/api/explain/session/MA101-AB-L1", headers=headers)
+    assert explain_resp.status_code == 200
+    explain_body = explain_resp.json()
+    assert explain_body["session_id"] == "MA101-AB-L1"
+    assert len(explain_body["alternative_periods"]) > 0
 
 
 def test_not_found_returns_404_with_error_envelope():

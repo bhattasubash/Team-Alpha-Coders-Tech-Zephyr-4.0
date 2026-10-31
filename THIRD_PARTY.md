@@ -12,6 +12,7 @@
 | python-jose | 3.3.0 | MIT | JWT tokens |
 | passlib | 1.7.4 | BSD | Password hashing |
 | httpx | 0.27.2 | BSD-3 | HTTP client for LLM API calls |
+| groq | 0.9.x | Apache-2.0 | Groq API client for LLM calls |
 | ruff | 0.6.9 | MIT | Linter |
 | black | 24.8.0 | MIT | Formatter |
 | pytest | 8.3.3 | MIT | Test runner |

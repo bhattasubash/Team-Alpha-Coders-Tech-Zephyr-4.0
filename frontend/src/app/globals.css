@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -116,8 +116,62 @@ h1, h2, h3, .font-serif, .display-serif {
 
 /* Focus styles: 2px ink outline with 2px paper gap */
 *:focus-visible {
-  outline: 2px solid var(--ink);
+  outline: 2px solid var(--violet);
   outline-offset: 2px;
+}
+
+/* Glassmorphism Styles */
+.glass {
+  background: rgba(21, 44, 46, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(125, 93, 255, 0.18);
+}
+
+.glass-light {
+  background: rgba(243, 241, 233, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(207, 204, 191, 0.5);
+}
+
+.glass-panel {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+}
+[data-theme="dark"] .glass-panel,
+.dark .glass-panel {
+  background: rgba(21, 44, 46, 0.6);
+  border-color: rgba(125, 93, 255, 0.16);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
+}
+[data-theme="light"] .glass-panel {
+  background: rgba(243, 241, 233, 0.75);
+  border-color: rgba(207, 204, 191, 0.6);
+}
+
+/* Gradient Mesh Background */
+.bg-mesh {
+  background-color: var(--paper);
+  background-image: 
+    radial-gradient(at 15% 85%, rgba(125, 93, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(at 85% 15%, rgba(234, 109, 248, 0.06) 0%, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(99, 204, 121, 0.04) 0%, transparent 50%),
+    radial-gradient(at 90% 90%, rgba(251, 230, 77, 0.03) 0%, transparent 45%);
+}
+
+/* Glow Effects */
+.glow-violet {
+  box-shadow: 0 0 20px rgba(125, 93, 255, 0.28), 0 0 40px rgba(125, 93, 255, 0.12);
+}
+
+.glow-pink {
+  box-shadow: 0 0 20px rgba(234, 109, 248, 0.25), 0 0 40px rgba(234, 109, 248, 0.1);
+}
+
+.glow-card {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3), 0 0 15px rgba(125, 93, 255, 0.08);
 }
 
 /* Hatch pattern for closed/maintenance/lunch */

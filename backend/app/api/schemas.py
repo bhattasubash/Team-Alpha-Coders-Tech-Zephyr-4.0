@@ -288,15 +288,15 @@ class ParseBookingTextRequest(BaseModel):
 
 
 class FieldProvenance(BaseModel):
-    value: Any
-    confidence: float
-    source_snippet: str
+    value: Any = None
+    confidence: float = 1.0
+    source_snippet: str = ""
 
 
 class ParseBookingResponse(BaseModel):
     draft: dict[str, Any]
     provenance: dict[str, FieldProvenance]
-    follow_up_questions: list[str]
+    follow_up_questions: list[str] = Field(default_factory=list)
     source: Literal["llm", "fallback"]
 
 
@@ -389,6 +389,10 @@ class ExplainSessionResponse(BaseModel):
     reason_codes: list[str]
     reason: str
     alternatives_considered: list[dict[str, Any]] = Field(default_factory=list)
+    placed_reason: str | None = None
+    alternative_periods: list[dict[str, Any]] = Field(default_factory=list)
+    plain_heading: str | None = None
+    plain_body: str | None = None
 
 
 class ExplainBookingResponse(BaseModel):
@@ -424,6 +428,11 @@ class DashboardResponse(BaseModel):
     pending_approvals: int
     room_utilisation: list[RoomUtilisationItem]
     booking_board: list[dict[str, Any]]
+    sessions_scheduled: int | None = None
+    sessions_count: int | None = None
+    hard_violations: int | None = None
+    soft_penalty: int | None = None
+    campus_utilization: float | None = None
 
 
 # -----------------------------------------------------------------------------
