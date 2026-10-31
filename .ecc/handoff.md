@@ -1,18 +1,21 @@
 # CIT Scheduler Handoff Note
 
-- **Status**: Fixes F2–F7 and New Items N1–N4 fully implemented, tested, and verified.
-- **Implemented Work (F2–F7 & N1–N4)**:
-  1. **F2 (Booking Reservations)**: Implemented `reservations_for_bookings(data)` reserving 33 teaching-hour room slots and 5 mandatory group slots against an empty timetable. Enforced in `TimetableSolver` and `RescheduleSolver` via domain pruning and CP-SAT constraints. Test `test_booking_reservations_consistency_across_seeds` verified booking score is deterministically `67.0` (22 approved, 1 alternative BR-17, 0 hard violations, 0 inversions) across seeds 7, 42, 99. Series consistency maintained purely as a tie-break.
-  2. **N1 (Exports Pipeline)**: Updated `scripts/export_schedule.py` to write both `exports/schedule.json` and `exports/schedule_after.json` using the real solver pipeline. Deleted obsolete `exports/after_disruption.json`.
-  3. **N2 (Proof Summary Endpoint)**: Implemented `GET /api/proof/summary` (Admin only) parsing real metrics from `docs/fuzz-report.md`, `docs/redteam-report.md`, `ortools.__version__`, and `exports/validator_report.json`. Returns `null` for unrun items; never returns default numbers.
-  4. **N3 (Scratch Cleanup)**: Deleted `backend/scratch` from git tracking (`git rm --cached -r backend/scratch`) and added `backend/scratch/` to `.gitignore`. Fallback logic updated across tests and routes to read `exports/schedule.json`.
-  5. **F4 & N4 (Auth & Profiles)**: `SECRET_KEY` env var enforced with production checks. Mapped profiles for all 5 demo accounts (`admin@cit.edu`, `dean@cit.edu`, `coordinator@cit.edu`, `faculty@cit.edu`, `club@cit.edu`) returned from `/api/auth/me`. Self-approval blocked on user requests (`SELF_APPROVAL`), system-generated proposals approvable by any Admin. Proposer/approver logged in audit log. Documented in `DECISIONS.md`.
-  6. **F5 (Backend Dockerfile & Health)**: Added `backend/Dockerfile` with Python 3.13 slim, dependencies, uvicorn on `$PORT`, and healthcheck. `/api/health` returns status, git_commit, solver_available, llm_configured, dataset_id, and uptime.
-  7. **F6 (Slow Tests & Makefile)**: Marked CP-SAT tests taking > 5s with `@pytest.mark.slow`. Added `make test` (fast, runs 50 tests in 4.87s) and `make test-all` (57 tests).
-  8. **F7 & F3 (Docs Honesty & AI Provenance)**: Fixed validator commands and tech stack in `README.md` (Python 3.13, OR-Tools 9.15). Cleared outdated limitations. Documented exact model Gemini 3.8 Flash (High) and Claude 3.5/3.7 Sonnet provenance in `AI_USAGE.md` and `DECISIONS.md`.
-- **Validation Results**:
-  - `exports/schedule.json`: 0 hard violations, soft penalty 161, booking score 67.0, exam soft penalty 0.
-  - `exports/schedule_after.json`: 0 hard violations, soft penalty 160, booking score 67.0, exam soft penalty 0.
-  - Stability: 14 sessions moved (1 changed time, 13 room only), stability penalty 0.
-  - Frontend: `npm run build` passing cleanly across all 15 static routes with 0 lint and 0 type errors.
-- **Next Step**: Await user review before starting Milestone 8 (Persistence and Jobs).
+- **Status**: Milestone 8 (Persistence and Jobs) fully implemented, tested, and verified.
+- **Implemented Work (Milestone 8)**:
+  1. **SQLite Database Architecture**: Implemented standard library `sqlite3` persistence with WAL mode, foreign keys, 5000ms busy timeout, and row factory in `backend/app/db/` (`connection.py`, `schema.py`, `repository.py`).
+  2. **Relational Schema**: Created 8 persistent tables: `users`, `dataset_state`, `schedule_state`, `exams_state`, `bookings`, `proposals`, `audit_log`, `jobs`.
+  3. **Kernel-Mediated State Changes**: Everything that modifies data routes through the kernel repository (`commit_new_schedule`, `save_proposal`, `update_proposal_status`, `log_audit`).
+  4. **Background Jobs Engine**: Implemented `backend/app/jobs/` (`runner.py`) running CP-SAT timetable generation and optimization in daemon worker threads with real-time progress and phase tracking (Phase 1: Booking Reservations, Phase 2: Timetable Solve, Phase 3: Kernel Commit).
+  5. **Endpoints Wired**:
+     - `POST /api/timetable/generate`: Enforces mutual exclusion (HTTP 409 Conflict if active solve), spawns worker thread, returns HTTP 202 Accepted.
+     - `POST /api/timetable/optimise`: Optimizes with hints, returns HTTP 202 Accepted.
+     - `GET /api/jobs/{id}`: Returns real-time metrics (`phase`, `seconds`, `progress`, `best_soft_penalty`, `solver_status`).
+     - `POST /api/admin/reset`: Clears and re-seeds all tables from `data/cit_public.json` and `exports/schedule.json`.
+     - `GET /api/timetable`, `GET /api/timetable/all`, `GET /api/export/schedule.json`: Return hydrated assignments from SQLite.
+- **Verification Results**:
+  - `pytest -m "not slow"`: 53 tests passed in 6.63s.
+  - `test_job_lifecycle_concurrency_and_commit`: Verified 202 response, 409 concurrency lock, progress polling, schedule version bump, and official validator check (0 hard violations).
+  - Official validator on `exports/schedule.json`: 0 hard violations, 161 soft penalty, 67.0 booking score, 0 exam soft penalty.
+  - Official validator on `exports/schedule_after.json`: 0 hard violations, 160 soft penalty, 67.0 booking score, 0 exam soft penalty, stability 14 moves.
+  - Frontend: `npm run build` succeeds cleanly across all 15 routes with 0 lint and 0 type errors.
+- **Next Step**: Milestone 9 (LLM Assistant and Natural Language Parser).
