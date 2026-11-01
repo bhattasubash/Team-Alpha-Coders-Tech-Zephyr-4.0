@@ -39,6 +39,14 @@ INJECTION_PATTERNS = [
     r";\s*drop\s+table",
 ]
 
+VALID_ROOMS: set[str] = {
+    "AUD", "LH-1", "LH-2", "LH-3", "LH-4", "LH-5", "LH-6",
+    "CR-101", "CR-102", "CR-103", "CR-104", "CR-105",
+    "CR-201", "CR-202", "CR-203", "CR-204", "CR-205",
+    "SH-1", "SH-2", "OAT", "CS-LAB-1", "CS-LAB-2",
+    "ELEC-LAB-1", "ELEC-LAB-2", "PHY-LAB", "MECH-WS", "CIVIL-LAB",
+}
+
 
 @dataclass
 class ParsedBooking:
@@ -207,6 +215,33 @@ class LLMProvider:
                 requested_room = data.get("requested_room")
                 if requested_room is not None:
                     requested_room = str(requested_room).strip()
+
+                # If LLM didn't catch specific room (like CR-101, CR-102, LH-*, labs), extract deterministically
+                cr_room, cr_types, cr_prov = self._extract_room(lower)
+                if cr_room:
+                    # Prefer explicit classroom or specific room mentioned in query if LLM returned None or different room
+                    if not requested_room or requested_room not in VALID_ROOMS or ("CR-" in cr_room and requested_room != cr_room):
+                        requested_room = cr_room
+                        room_types = room_types or cr_types
+                        if cr_prov:
+                            provenance["requested_room"] = cr_prov
+
+                # If windows missing or empty from LLM, extract deterministically
+                if not windows:
+                    d_val, d_prov = self._extract_day(lower)
+                    fp, tp, p_prov = self._extract_periods(lower)
+                    if fp is not None and tp is not None:
+                        windows = [{"day": d_val, "from_period": fp, "to_period": tp}]
+                        duration_periods = tp - fp + 1
+                        provenance["windows"] = f"{d_prov}, periods {fp} to {tp}"
+                        provenance["duration_periods"] = p_prov
+
+                # If attendance missing from LLM, extract deterministically
+                if attendance is None:
+                    att, att_prov = self._extract_attendance(lower, requested_room)
+                    if att:
+                        attendance = att
+                        provenance["attendance"] = att_prov
 
                 mandatory_for_groups = data.get("mandatory_for_groups")
                 if not isinstance(mandatory_for_groups, list):
@@ -582,6 +617,172 @@ class LLMProvider:
             pass
         return "; ".join(f"{r['rule']}: {r['detail']}" for r in reason_codes)
 
+    def _extract_room(self, lower: str) -> tuple[str | None, list[str] | None, str | None]:
+        """Extract canonical room ID, room types, and provenance note from text."""
+        # Classrooms (CR-101 to CR-105, CR-201 to CR-205)
+        cr_match = re.search(
+            r"\b(?:cr[\s-]*|class\s*room\s*|classroom\s*|room\s*|kamra\s*(?:no\.?|number)?\s*)([12]0[1-5])\b",
+            lower,
+        )
+        if cr_match:
+            r_id = f"CR-{cr_match.group(1)}"
+            return r_id, ["classroom"], f"Inferred from '{cr_match.group(0).strip()}' ({r_id})"
+
+        # Lecture Halls (LH-1 to LH-6)
+        lh_match = re.search(r"\b(?:lh[\s-]*|lecture\s*hall\s*)([1-6])\b", lower)
+        if lh_match:
+            r_id = f"LH-{lh_match.group(1)}"
+            return r_id, ["lecture_hall"], f"Inferred from '{lh_match.group(0).strip()}' ({r_id})"
+
+        if re.search(r"\b(?:auditorium|main\s+auditorium|aud)\b", lower):
+            return "AUD", ["auditorium"], "Inferred from 'Auditorium'"
+        if re.search(r"\b(?:open\s*air\s*theatre|open\s*air\s*theater|oat)\b", lower):
+            return "OAT", ["outdoor"], "Inferred from 'Open Air Theatre'"
+        if re.search(r"\b(?:seminar\s*hall\s*1|sh[\s-]*1)\b", lower):
+            return "SH-1", ["seminar_hall"], "Inferred from 'Seminar Hall 1'"
+        if re.search(r"\b(?:seminar\s*hall\s*2|sh[\s-]*2)\b", lower):
+            return "SH-2", ["seminar_hall"], "Inferred from 'Seminar Hall 2'"
+        if re.search(r"\b(?:physics\s*lab|phy[\s-]*lab)\b", lower):
+            return "PHY-LAB", ["lab_phy"], "Inferred from 'Physics Lab'"
+        if re.search(r"\b(?:computing\s*lab\s*2|computer\s*lab\s*2|cs[\s-]*lab[\s-]*2)\b", lower):
+            return "CS-LAB-2", ["lab_cs"], "Inferred from 'Computer Lab 2'"
+        if re.search(r"\b(?:computing\s*lab|computer\s*lab|cs[\s-]*lab(?:[\s-]*1)?)\b", lower):
+            return "CS-LAB-1", ["lab_cs"], "Inferred from 'Computer Lab 1'"
+        if re.search(r"\b(?:electronics\s*lab\s*2|elec[\s-]*lab[\s-]*2)\b", lower):
+            return "ELEC-LAB-2", ["lab_elec"], "Inferred from 'Electronics Lab 2'"
+        if re.search(r"\b(?:electronics\s*lab|elec[\s-]*lab(?:[\s-]*1)?)\b", lower):
+            return "ELEC-LAB-1", ["lab_elec"], "Inferred from 'Electronics Lab 1'"
+        if re.search(r"\b(?:workshop|central\s*workshop|mech[\s-]*ws|mechanical\s*workshop)\b", lower):
+            return "MECH-WS", ["workshop"], "Inferred from 'Central Workshop'"
+        if re.search(r"\b(?:civil\s*lab|civil[\s-]*lab)\b", lower):
+            return "CIVIL-LAB", ["lab_civil"], "Inferred from 'Civil Lab'"
+        if re.search(r"\b(?:kisi\s+bhi\s+bade\s+room|koi\s+bhi\s+bada\s+room|any\s+large\s+room|big\s+hall|bade\s+room)\b", lower):
+            return "LH-1", ["lecture_hall"], "Inferred from 'bade room' (large lecture hall LH-1)"
+        if re.search(r"\b(?:kisi\s+bhi\s+classroom|koi\s+bhi\s+classroom|any\s+classroom|koi\s+classroom)\b", lower):
+            return "CR-101", ["classroom"], "Defaulted to Classroom CR-101"
+
+        return None, None, None
+
+    def _extract_day(self, lower: str) -> tuple[str, str]:
+        """Extract timetable day (MON-FRI) from English, Hindi, or Hinglish text."""
+        if "शुक्रवार" in lower or re.search(r"\b(?:friday|shukrawar|shukravaar|jumma|fri)\b", lower) or "nov 6" in lower or "6 nov" in lower or "6th nov" in lower:
+            return "FRI", "Inferred from 'Friday / शुक्रवार'"
+        if "सोमवार" in lower or re.search(r"\b(?:monday|somwar|somvaar|sombar|mon)\b", lower) or "nov 2" in lower or "2 nov" in lower or "2nd nov" in lower:
+            return "MON", "Inferred from 'Monday / सोमवार'"
+        if "मंगलवार" in lower or re.search(r"\b(?:tuesday|mangalwar|mangalvaar|mangal|tue)\b", lower) or "nov 3" in lower or "3 nov" in lower or "3rd nov" in lower:
+            return "TUE", "Inferred from 'Tuesday / मंगलवार'"
+        if "बुधवार" in lower or re.search(r"\b(?:wednesday|budhwar|budhvaar|budh|wed)\b", lower) or "nov 4" in lower or "4 nov" in lower or "4th nov" in lower:
+            return "WED", "Inferred from 'Wednesday / बुधवार'"
+        if "गुरुवार" in lower or "बृहस्पतिवार" in lower or re.search(r"\b(?:thursday|guruwar|guruvaar|brihaspativar|veervar|thu)\b", lower) or "nov 5" in lower or "5 nov" in lower or "5th nov" in lower:
+            return "THU", "Inferred from 'Thursday / गुरुवार'"
+        if re.search(r"\b(?:kal|tomorrow)\b", lower):
+            return "TUE", "Inferred from 'kal' (Tuesday)"
+        if re.search(r"\b(?:parso|day after tomorrow)\b", lower):
+            return "WED", "Inferred from 'parso' (Wednesday)"
+        if re.search(r"\b(?:narso)\b", lower):
+            return "THU", "Inferred from 'narso' (Thursday)"
+        if re.search(r"\b(?:aaj|today)\b", lower):
+            return "MON", "Inferred from 'aaj' (Monday)"
+        return "THU", "Defaulted to Spectra fest Thursday"
+
+    def _extract_periods(self, lower: str) -> tuple[int | None, int | None, str | None]:
+        """Extract from_period and to_period from explicit periods or clock hours."""
+        p_range = re.search(r"(?:periods?|p)\s*(\d{1,2})\s*(?:to|-)\s*(?:periods?|p)?\s*(\d{1,2})", lower)
+        if p_range:
+            fp, tp = int(p_range.group(1)), int(p_range.group(2))
+            return fp, tp, f"Inferred from 'periods P{fp} to P{tp}'"
+
+        # 10 to 12 / 10 se 12 (P3 to P4)
+        if re.search(r"\b(?:10\s*(?:am)?\s*(?:se|to|-)\s*12\s*(?:pm|baje)?|10\s*baje\s*se\s*12\s*baje)\b", lower):
+            return 3, 4, "Inferred from 10:00 - 12:00 (P3 to P4)"
+        # 9 to 12 / 9 se 12 (P2 to P4)
+        if re.search(r"\b(?:9\s*(?:am)?\s*(?:se|to|-)\s*12\s*(?:pm|baje)?|9\s*baje\s*se\s*12\s*baje)\b", lower):
+            return 2, 4, "Inferred from 09:00 - 12:00 (P2 to P4)"
+        # 9 to 11 / 9 se 11 (P2 to P3)
+        if re.search(r"\b(?:9\s*(?:am)?\s*(?:se|to|-)\s*11\s*(?:am|baje)?|9\s*baje\s*se\s*11\s*baje)\b", lower):
+            return 2, 3, "Inferred from 09:00 - 11:00 (P2 to P3)"
+        # 8 to 10 / 8 se 10 (P1 to P2)
+        if re.search(r"\b(?:8\s*(?:am)?\s*(?:se|to|-)\s*10\s*(?:am|baje)?|8\s*baje\s*se\s*10\s*baje)\b", lower):
+            return 1, 2, "Inferred from 08:00 - 10:00 (P1 to P2)"
+        # 11 to 1 / 11 se 1 (P4 to P5)
+        if re.search(r"\b(?:11\s*(?:am)?\s*(?:se|to|-)\s*1\s*(?:pm|baje)?|11\s*baje\s*se\s*1\s*baje)\b", lower):
+            return 4, 5, "Inferred from 11:00 - 13:00 (P4 to P5)"
+        # 2 to 4 / 2 se 4 (P6 to P7)
+        if re.search(r"\b(?:2\s*(?:pm)?\s*(?:se|to|-)\s*4\s*(?:pm|baje)?|2\s*baje\s*se\s*4\s*baje|14:00\s*(?:to|-)\s*16:00)\b", lower):
+            return 6, 7, "Inferred from 14:00 - 16:00 (P6 to P7)"
+        # 2 to 5 / 2 se 5 (P6 to P8)
+        if re.search(r"\b(?:2\s*(?:pm)?\s*(?:se|to|-)\s*5\s*(?:pm|baje)?|2\s*baje\s*se\s*5\s*baje|14:00\s*(?:to|-)\s*17:00)\b", lower):
+            return 6, 8, "Inferred from 14:00 - 17:00 (P6 to P8)"
+        # 2 to 6 / 2 se 6 (P6 to P9)
+        if re.search(r"\b(?:2\s*(?:pm)?\s*(?:se|to|-)\s*6\s*(?:pm|baje)?|2\s*baje\s*se\s*6\s*baje|14:00\s*(?:to|-)\s*18:00)\b", lower):
+            return 6, 9, "Inferred from 14:00 - 18:00 (P6 to P9)"
+        # 3 to 5 / 3 se 5 (P7 to P8)
+        if re.search(r"\b(?:3\s*(?:pm)?\s*(?:se|to|-)\s*5\s*(?:pm|baje)?|3\s*baje\s*se\s*5\s*baje|15:00\s*(?:to|-)\s*17:00)\b", lower):
+            return 7, 8, "Inferred from 15:00 - 17:00 (P7 to P8)"
+        # 4 to 6 / 4 se 6 (P8 to P9)
+        if re.search(r"\b(?:4\s*(?:pm)?\s*(?:se|to|-)\s*6\s*(?:pm|baje)?|4\s*baje\s*se\s*6\s*baje|16:00\s*(?:to|-)\s*18:00)\b", lower):
+            return 8, 9, "Inferred from 16:00 - 18:00 (P8 to P9)"
+        # 6 to 8 / 6 se 8 (P10 to P11)
+        if re.search(r"\b(?:6\s*(?:pm)?\s*(?:se|to|-)\s*8\s*(?:pm|baje)?|6\s*baje\s*se\s*8\s*baje|18:00\s*(?:to|-)\s*20:00)\b", lower):
+            return 10, 11, "Inferred from evening 18:00 - 20:00 (P10 to P11)"
+        # 6 to 9 / 6 se 9 (P10 to P12)
+        if re.search(r"\b(?:6\s*(?:pm)?\s*(?:se|to|-)\s*9\s*(?:pm|baje)?|6\s*baje\s*se\s*9\s*baje|18:00\s*(?:to|-)\s*21:00)\b", lower):
+            return 10, 12, "Inferred from evening 18:00 - 21:00 (P10 to P12)"
+        # 7 to 9 / 7 se 9 (P11 to P12)
+        if re.search(r"\b(?:7\s*(?:pm)?\s*(?:se|to|-)\s*9\s*(?:pm|baje)?|7\s*baje\s*se\s*9\s*baje|19:00\s*(?:to|-)\s*21:00)\b", lower):
+            return 11, 12, "Inferred from evening 19:00 - 21:00 (P11 to P12)"
+        # 8 to 10 pm (P12 to P13)
+        if re.search(r"\b(?:8\s*(?:pm)?\s*(?:se|to|-)\s*10\s*pm|20:00\s*(?:to|-)\s*22:00)\b", lower):
+            return 12, 13, "Inferred from late evening 20:00 - 22:00 (P12 to P13)"
+
+        # Durations like "10 baje 2 ghante ke liye" or "6 pm for 2 hours"
+        dur_match = re.search(r"(\d{1,2})\s*(?:pm|am|baje)?\s*(?:se\s*)?(?:for\s*)?(\d)\s*(?:hours|ghante)", lower)
+        if dur_match:
+            st, dur = int(dur_match.group(1)), int(dur_match.group(2))
+            if st == 6 and ("shaam" in lower or "pm" in lower or st >= 6):
+                return 10, 10 + dur - 1, f"Inferred from 6 PM for {dur} hrs (P10 to P{10 + dur - 1})"
+            elif st == 10:
+                return 3, 3 + dur - 1, f"Inferred from 10 AM for {dur} hrs (P3 to P{3 + dur - 1})"
+            elif st == 2:
+                return 6, 6 + dur - 1, f"Inferred from 2 PM for {dur} hrs (P6 to P{6 + dur - 1})"
+            elif st == 9:
+                return 2, 2 + dur - 1, f"Inferred from 9 AM for {dur} hrs (P2 to P{2 + dur - 1})"
+
+        # Contextual keywords
+        if re.search(r"\b(?:after\s*lunch|post\s*lunch|lunch\s*ke\s*baad)\b", lower):
+            return 6, 6, "Inferred from 'after lunch' (Period P6, 14:00 - 15:00)"
+
+        single_p = re.search(r"\b(?:period|p)\s*(\d{1,2})\b", lower)
+        if single_p:
+            p = int(single_p.group(1))
+            return p, p, f"Inferred from 'Period P{p}'"
+
+        return None, None, None
+
+    def _extract_attendance(self, lower: str, matched_room: str | None) -> tuple[int | None, str | None]:
+        """Extract attendee count without mistaking room numbers (like 101, 102) for attendees."""
+        att_match = re.search(
+            r"(\d{1,4})\s*(?:people|pepole|students|participants|attendees|persons|folks|members|log|लोग|bacche|bache|seats)",
+            lower,
+        )
+        if att_match:
+            return int(att_match.group(1)), f"Inferred from '{att_match.group(0).strip()}'"
+
+        ctx_match = re.search(r"(?:attendance|capacity|strength|expecting|around|about|for)\s*(\d{2,4})\b", lower)
+        if ctx_match:
+            return int(ctx_match.group(1)), f"Inferred from '{ctx_match.group(0).strip()}'"
+
+        # Standalone numbers (guarding against room numbers like 101, 102 in CR-101)
+        room_digits = set(re.findall(r"\d+", matched_room or ""))
+        for n_str in re.findall(r"\b(\d{2,4})\b", lower):
+            if n_str in room_digits:
+                continue
+            n = int(n_str)
+            if 20 <= n <= 1000 and n not in (10, 11, 12, 13):
+                return n, f"Inferred from number '{n}'"
+
+        return None, None
+
     def _fallback_parse(self, raw_text: str, user_role: str | None = None) -> ParsedBooking:
         """Regex and lexicon based parser. No network call. Always available."""
         lower = (raw_text or "").lower().strip()
@@ -605,202 +806,37 @@ class LLMProvider:
                 )
 
         provenance: dict[str, str] = {}
-        requested_room: str | None = None
-        room_types: list[str] = []
 
         # 1. Room extraction
-        if re.search(r"\b(?:kisi\s+bhi\s+bade\s+room|koi\s+bhi\s+bada\s+room|any\s+large\s+room|big\s+hall|bade\s+room)\b", lower):
-            requested_room = "LH-1"
-            room_types = ["lecture_hall", "auditorium"]
-            provenance["requested_room"] = "Inferred from 'bade room' (large lecture hall LH-1)"
-        elif re.search(r"\b(?:auditorium|main\s+auditorium|aud)\b", lower):
-            requested_room = "AUD"
-            room_types = ["auditorium"]
-            provenance["requested_room"] = "Inferred from 'auditorium'"
-        elif re.search(r"\b(?:open\s*air\s*theatre|oat)\b", lower):
-            requested_room = "OAT"
-            room_types = ["outdoor"]
-            provenance["requested_room"] = "Inferred from 'open air theatre / OAT'"
-        elif re.search(r"\b(?:seminar\s*hall\s*1|sh-?1)\b", lower):
-            requested_room = "SH-1"
-            room_types = ["seminar_hall"]
-            provenance["requested_room"] = "Inferred from 'Seminar Hall 1'"
-        elif re.search(r"\b(?:seminar\s*hall\s*2|sh-?2)\b", lower):
-            requested_room = "SH-2"
-            room_types = ["seminar_hall"]
-            provenance["requested_room"] = "Inferred from 'Seminar Hall 2'"
-        elif re.search(r"\b(?:physics\s*lab|phy-?lab)\b", lower):
-            requested_room = "PHY-LAB"
-            room_types = ["lab_phy"]
-            provenance["requested_room"] = "Inferred from 'Physics Lab'"
-        elif re.search(r"\b(?:computing\s*lab|computer\s*lab|cs-?lab(?:-?1)?)\b", lower):
-            requested_room = "CS-LAB-1"
-            room_types = ["lab_cs"]
-            provenance["requested_room"] = "Inferred from 'Computer Lab'"
-        elif re.search(r"\b(?:electronics\s*lab|elec-?lab(?:-?1)?)\b", lower):
-            requested_room = "ELEC-LAB-1"
-            room_types = ["lab_elec"]
-            provenance["requested_room"] = "Inferred from 'Electronics Lab'"
-        else:
-            lh_match = re.search(r"\b(lh-?[1-6])\b", lower)
-            if lh_match:
-                clean_lh = lh_match.group(1).upper().replace("LH", "LH-")
-                if "--" in clean_lh:
-                    clean_lh = clean_lh.replace("--", "-")
-                requested_room = clean_lh
-                room_types = ["lecture_hall"]
-                provenance["requested_room"] = f"Inferred from '{lh_match.group(1)}'"
-            elif re.search(r"\b(?:seminar\s*hall|सेमिनार\s*हॉल)\b", lower):
-                room_types = ["seminar_hall"]
-            elif re.search(r"\blecture\s*hall\b", lower):
-                room_types = ["lecture_hall"]
-            elif re.search(r"\blab\b", lower):
-                room_types = ["lab_cs"]
+        requested_room, room_types, r_prov = self._extract_room(lower)
+        if r_prov:
+            provenance["requested_room"] = r_prov
 
         # 2. Date / Day extraction
-        day: str = "THU"  # default Spectra fest day
-        day_provenance = ""
-        if "शुक्रवार" in lower:
-            day = "FRI"
-            day_provenance = "Inferred from 'शुक्रवार' (Friday)"
-        elif "सोमवार" in lower:
-            day = "MON"
-            day_provenance = "Inferred from 'सोमवार' (Monday)"
-        elif "मंगलवार" in lower:
-            day = "TUE"
-            day_provenance = "Inferred from 'मंगलवार' (Tuesday)"
-        elif "बुधवार" in lower:
-            day = "WED"
-            day_provenance = "Inferred from 'बुधवार' (Wednesday)"
-        elif "गुरुवार" in lower or "बृहस्पतिवार" in lower:
-            day = "THU"
-            day_provenance = "Inferred from 'गुरुवार' (Thursday)"
-        elif re.search(r"\bnov(?:ember)?\s*5\b", lower) or "5th nov" in lower:
-            day = "THU"
-            day_provenance = "Inferred from 'Nov 5' (Spectra fest Thursday)"
-        elif re.search(r"\bnov(?:ember)?\s*2\b", lower):
-            day = "MON"
-            day_provenance = "Inferred from 'Nov 2' (Monday)"
-        elif re.search(r"\bnov(?:ember)?\s*3\b", lower):
-            day = "TUE"
-            day_provenance = "Inferred from 'Nov 3' (Tuesday)"
-        elif re.search(r"\bnov(?:ember)?\s*4\b", lower):
-            day = "WED"
-            day_provenance = "Inferred from 'Nov 4' (Wednesday)"
-        elif re.search(r"\bnov(?:ember)?\s*6\b", lower):
-            day = "FRI"
-            day_provenance = "Inferred from 'Nov 6' (Friday)"
-        elif re.search(r"\b(?:monday|somwar|mon)\b", lower):
-            day = "MON"
-            day_provenance = "Inferred from 'Monday'"
-        elif re.search(r"\b(?:tuesday|mangalwar|tue|tusday)\b", lower):
-            day = "TUE"
-            day_provenance = "Inferred from 'Tuesday'"
-        elif re.search(r"\b(?:wednesday|budhwar|wed)\b", lower):
-            day = "WED"
-            day_provenance = "Inferred from 'Wednesday'"
-        elif re.search(r"\b(?:thursday|guruwar|thu)\b", lower):
-            day = "THU"
-            day_provenance = "Inferred from 'Thursday'"
-        elif re.search(r"\b(?:friday|shukrawar|fri)\b", lower):
-            day = "FRI"
-            day_provenance = "Inferred from 'Friday'"
-        elif re.search(r"\b(?:kal|tomorrow)\b", lower):
-            day = "TUE"
-            day_provenance = "Inferred from 'tomorrow'"
-        elif re.search(r"\b(?:parso|day after tomorrow)\b", lower):
-            day = "WED"
-            day_provenance = "Inferred from 'parso' (Wednesday)"
+        day, day_prov = self._extract_day(lower)
+        if day_prov:
+            provenance["day"] = day_prov
 
         # 3. Periods extraction
-        from_period: int | None = None
-        to_period: int | None = None
-        period_match = re.search(r"(?:periods?|p)\s*(\d{1,2})\s*(?:to|-)\s*(?:periods?|p)?\s*(\d{1,2})", lower)
-        if period_match:
-            from_period = int(period_match.group(1))
-            to_period = int(period_match.group(2))
-            provenance["duration_periods"] = (
-                f"Inferred from 'periods {from_period} to {to_period}' ({to_period - from_period + 1} periods)"
-            )
-        elif re.search(r"\b(?:शाम\s*6\s*बजे|6\s*baje\s*shaam)\b", lower) and "2" in lower:
-            from_period = 10
-            to_period = 11
-            provenance["duration_periods"] = "Inferred from शाम 6 बजे (18:00 - 20:00 -> P10 to P11)"
-        elif re.search(r"\b(?:6\s*(?:pm|baje)?\s*(?:for\s*)?2\s*(?:hours|ghante))\b", lower):
-            from_period = 10
-            to_period = 11
-            provenance["duration_periods"] = "Inferred from 6 PM for 2 hours (18:00 - 20:00 -> P10 to P11)"
-        elif re.search(r"\b(?:6\s*(?:pm)?\s*(?:to|-)\s*8\s*pm|18:00\s*(?:to|-)\s*20:00|6\s*baje\s*se\s*8\s*baje|6-8\s*pm)\b", lower):
-            from_period = 10
-            to_period = 11
-            provenance["duration_periods"] = "Inferred from evening hours (18:00 - 20:00 -> P10 to P11)"
-        elif re.search(r"\b(?:after\s*lunch|post\s*lunch|lunch\s*ke\s*baad)\b", lower):
-            from_period = 6
-            to_period = 6
-            provenance["duration_periods"] = "Inferred from 'after lunch' (Period P6, 14:00 - 15:00)"
-        elif re.search(r"\b(?:10\s*(?:am)?\s*(?:to|-)\s*12\s*(?:pm)?|10\s*baje\s*se\s*12\s*baje)\b", lower):
-            from_period = 3
-            to_period = 4
-            provenance["duration_periods"] = "Inferred from morning hours (10:00 - 12:00 -> P3 to P4)"
-        elif re.search(r"\b(?:6\s*(?:pm)?\s*(?:to|-)\s*9\s*pm|18:00|6\s*baje\s*se\s*9\s*baje)\b", lower):
-            from_period = 10
-            to_period = 12
-            provenance["duration_periods"] = "Inferred from evening hours (18:00 - 21:00 -> P10 to P12)"
-        elif re.search(r"\b(?:9\s*(?:am)?\s*(?:to|-)\s*12\s*(?:pm)?|9\s*se\s*12)\b", lower):
-            from_period = 2
-            to_period = 4
-            provenance["duration_periods"] = "Inferred from morning hours (09:00 - 12:00 -> P2 to P4)"
-        elif re.search(r"\b(?:2\s*(?:pm)?\s*(?:to|-)\s*6\s*pm)\b", lower):
-            from_period = 6
-            to_period = 9
-            provenance["duration_periods"] = "Inferred from afternoon hours (14:00 - 18:00 -> P6 to P9)"
-        elif re.search(r"\b(?:11\s*(?:am)?\s*(?:to|-)\s*1\s*pm)\b", lower):
-            from_period = 4
-            to_period = 5
-            provenance["duration_periods"] = "Inferred from midday hours (11:00 - 13:00 -> P4 to P5)"
-        elif re.search(r"\b(?:7\s*(?:pm)?\s*(?:to|-)\s*9\s*pm)\b", lower):
-            from_period = 11
-            to_period = 12
-            provenance["duration_periods"] = "Inferred from evening hours (19:00 - 21:00 -> P11 to P12)"
-        else:
-            single_p = re.search(r"(?:period|p)\s*(\d{1,2})\b", lower)
-            if single_p:
-                from_period = int(single_p.group(1))
-                to_period = from_period
-                provenance["duration_periods"] = f"Inferred from 'period {from_period}' (1 period)"
+        from_period, to_period, p_prov = self._extract_periods(lower)
+        if p_prov:
+            provenance["duration_periods"] = p_prov
 
         windows = None
         duration_periods = None
         if from_period is not None and to_period is not None:
             duration_periods = to_period - from_period + 1
             windows = [{"day": day, "from_period": from_period, "to_period": to_period}]
-            provenance["windows"] = f"{day_provenance or f'Day {day}'}, periods {from_period} to {to_period}"
-        elif day_provenance:
-            # Day known but not periods: default to evening fest block P10-P12
+            provenance["windows"] = f"{day_prov or f'Day {day}'}, periods {from_period} to {to_period}"
+        elif day_prov:
             duration_periods = 3
             windows = [{"day": day, "from_period": 10, "to_period": 12}]
-            provenance["windows"] = f"{day_provenance}, default fest evening block P10-P12"
+            provenance["windows"] = f"{day_prov}, default fest evening block P10-P12"
 
         # 4. Attendance extraction
-        attendance = None
-        att_match = re.search(
-            r"(?:attendance|capacity|expecting|around|about)?\s*(\d{2,4})\s*(?:people|pepole|students|participants|attendees|persons|folks|members|log|लोग)",
-            lower,
-        )
-        if att_match:
-            attendance = int(att_match.group(1))
-            provenance["attendance"] = f"Inferred from '{att_match.group(0).strip()}'"
-        else:
-            # Search for numbers between 30 and 1000 not related to periods/dates
-            all_numbers = re.findall(r"\b(\d{2,4})\b", lower)
-            for n_str in all_numbers:
-                n = int(n_str)
-                if n in (10, 11, 12, 13) and from_period is not None:
-                    continue
-                if 25 <= n <= 1000:
-                    attendance = n
-                    provenance["attendance"] = f"Inferred from number '{n}'"
-                    break
+        attendance, att_prov = self._extract_attendance(lower, requested_room)
+        if att_prov:
+            provenance["attendance"] = att_prov
 
         # 5. Needs extraction
         needs: list[str] = []
@@ -810,7 +846,7 @@ class LLMProvider:
             needs.append("pa_system")
         if re.search(r"\bstage\b", lower):
             needs.append("stage")
-        if re.search(r"\b(?:accessible|wheelchair|ramp)\b", lower):
+        if re.search(r"\b(?:accessible|wheelchair|ramp|divyang)\b", lower):
             needs.append("accessible")
         if re.search(r"\b(?:power|plug|sockets)\b", lower):
             needs.append("power_points")

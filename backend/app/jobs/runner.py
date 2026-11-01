@@ -134,8 +134,10 @@ def run_timetable_solve_job(
             blocked_group_slots=blocked_groups,
         )
 
-        feasibility_limit = max(60.0, float(time_limit_seconds) * 0.75)
-        optimize_limit = max(5.0, float(time_limit_seconds) * 0.25)
+        # Fast adaptive limits: with warm-start hints, feasibility is instant (<0.05s)
+        t_limit = max(3.0, float(time_limit_seconds))
+        feasibility_limit = 5.0 if hint_assignments else min(25.0, t_limit * 0.6)
+        optimize_limit = min(5.0, max(2.0, t_limit * 0.4))
         res = solver.solve_two_phase(
             feasibility_limit=feasibility_limit,
             optimize_limit=optimize_limit,

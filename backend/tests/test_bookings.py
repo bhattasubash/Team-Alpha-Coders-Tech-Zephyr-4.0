@@ -118,6 +118,31 @@ def test_booking_find_alternative(dataset):
     assert alt["end_period"] >= alt["start_period"]
 
 
+def test_booking_engine_tracks_conflicts_and_alternate_rooms(dataset):
+    """Test that BookingEngine tracks conflicting_bookings and explains room reallocations."""
+    sched_path = ROOT_DIR / "exports" / "schedule.json"
+    with open(sched_path, encoding="utf-8") as f:
+        base_sched = json.load(f)
+
+    engine = BookingEngine(dataset, base_sched)
+    fest_week = engine.decide_all()
+    decisions = {d["request_id"]: d for d in fest_week["bookings"]}
+
+    # BR-06 is placed in SH-1 on THU P10-P11
+    d06 = decisions.get("BR-06")
+    assert d06 is not None
+    assert d06["status"] == "approved"
+    assert d06["room_id"] == "SH-1"
+
+    # BR-07 requested SH-1 on THU P10-P12, which clashed with BR-06
+    d07 = decisions.get("BR-07")
+    assert d07 is not None
+    assert d07["status"] == "approved"
+    assert d07["room_id"] == "AUD"  # reallocated to alternative room
+    assert "BR-06" in d07.get("conflicting_bookings", [])
+    assert "SH-1" in d07.get("reason", "") or "BR-06" in d07.get("reason", "")
+
+
 @pytest.mark.slow
 def test_booking_reservations_consistency_across_seeds(dataset, validator_module):
     """F2 verification: reservations_for_bookings guarantees 67.0 booking score across seeds."""

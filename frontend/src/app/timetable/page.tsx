@@ -121,7 +121,7 @@ export default function TimetablePage() {
       setIsGenerating(true);
       setGenerateError(null);
       setJobProgress({ status: 'queued', progress: 0.1, phase: 'Phase 1: Reserving Spectra Fest booking windows against empty teaching slots...', elapsed: 0 });
-      const jobRes = await api.generateTimetable({ time_limit_seconds: 30 });
+      const jobRes = await api.generateTimetable({ time_limit_seconds: 5 });
       const jobId = jobRes?.job_id;
 
       const startTime = Date.now();
@@ -131,7 +131,7 @@ export default function TimetablePage() {
           const elapsed = Math.round((Date.now() - startTime) / 1000);
           setJobProgress({
             status: statusRes.status,
-            progress: Math.max(statusRes.progress || 0.1, Math.min(0.95, elapsed / 28)),
+            progress: Math.max(statusRes.progress || 0.1, Math.min(0.95, elapsed / 4.5)),
             phase: statusRes.phase || 'CP-SAT integer optimization in progress...',
             elapsed,
           });
