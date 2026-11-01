@@ -257,9 +257,12 @@ class RescheduleSolver:
         # S1, S5, S6
         for s in self.data["sessions"]:
             sid = s["id"]
-            dur = s["duration"]
-            fid = s["faculty_id"]
-            size = s["size"]
+            dur = s.get("duration", 1)
+            fid = s.get("faculty_id", "")
+            size = s.get("size")
+            if size is None:
+                groups = s.get("groups", [])
+                size = sum(self.ctx.groups.get(g, {}).get("size", 60) for g in groups) or 60
             fac_prefs = fac_dict.get(fid, {}).get("preferences", [])
             for d, t, r in self.domains[sid]:
                 var = x[(sid, d, t, r)]

@@ -185,8 +185,15 @@ def apply_disruption_dict(data: dict[str, Any], disruption: dict[str, Any]) -> d
             d["faculty"].append(ch["faculty"])
             fac[ch["faculty"]["id"]] = ch["faculty"]
         elif t == "add_session":
-            s_obj = ch.get("session")
+            s_obj = copy.deepcopy(ch.get("session"))
             if s_obj:
+                if "size" not in s_obj or not s_obj["size"]:
+                    groups_map = {g["id"]: g for g in d.get("groups", [])}
+                    s_obj["size"] = sum(groups_map.get(g, {}).get("size", 60) for g in s_obj.get("groups", [])) or 60
+                s_obj.setdefault("duration", 1)
+                s_obj.setdefault("accessible", False)
+                s_obj.setdefault("fixed_slot", None)
+                s_obj.setdefault("room_types", ["classroom", "lecture_hall"])
                 d["sessions"].append(s_obj)
         elif t == "remove_session":
             d["sessions"] = [s for s in d["sessions"] if s["id"] != ch.get("session_id")]

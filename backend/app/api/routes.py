@@ -437,7 +437,7 @@ def hydrate_sessions(
 def get_timetable(
     view: Literal["group", "faculty", "room"] = Query("group"),
     id: str = Query(..., description="ID of the group, faculty, or room to filter"),
-    user: dict[str, Any] = Depends(get_current_user),
+    user: dict[str, Any] | None = Depends(get_optional_user),
 ) -> TimetableViewResponse:
     """Return timetable filtered by group, faculty, or room view."""
     sched = get_active_schedule()
@@ -466,7 +466,7 @@ def get_timetable(
     tags=["timetable"],
 )
 def get_timetable_all(
-    user: dict[str, Any] = Depends(get_current_user),
+    user: dict[str, Any] | None = Depends(get_optional_user),
 ) -> TimetableAllResponse:
     """Return full timetable across all groups and rooms."""
     sched = get_active_schedule()
@@ -1055,17 +1055,39 @@ def generate_exams(
     tags=["bookings"],
 )
 def get_bookings(
-    user: dict[str, Any] = Depends(get_current_user),
+    user: dict[str, Any] | None = Depends(get_optional_user),
 ) -> BookingsListResponse:
     """List all booking requests and their current statuses."""
     items = db_list_bookings()
-    if not items:
-        data = get_active_dataset() or {}
-        sched = get_active_schedule() or {}
-        decisions = {
-            b["request_id"]: b
-            for b in sched.get("fest_week", {}).get("bookings", [])
-        }
+    data = get_active_dataset() or {}
+    dataset_requests = {req["id"]: req for req in data.get("booking_requests", [])}
+    sched = get_active_schedule() or {}
+    decisions = {
+        b["request_id"]: b
+        for b in sched.get("fest_week", {}).get("bookings", [])
+    }
+
+    if items:
+        # Hydrate DB items with full dataset request metadata (title, requester, requested_room, windows, attendance, etc.)
+        hydrated_items = []
+        for it in items:
+            req_id = it.get("request_id") or it.get("id")
+            base = dict(dataset_requests.get(req_id, {}))
+            base.update(it)
+            # Ensure assigned fields and decision fields are normalized
+            if "status" not in base:
+                base["status"] = it.get("status", "pending")
+            if "assigned_room" not in base or not base["assigned_room"]:
+                base["assigned_room"] = it.get("room_id") or it.get("allocated_room")
+            if "assigned_day" not in base or not base["assigned_day"]:
+                base["assigned_day"] = it.get("day") or it.get("allocated_day")
+            if "assigned_start_period" not in base or base["assigned_start_period"] is None:
+                base["assigned_start_period"] = it.get("start_period") or it.get("allocated_period")
+            if "assigned_end_period" not in base or base["assigned_end_period"] is None:
+                base["assigned_end_period"] = it.get("end_period")
+            hydrated_items.append(base)
+        items = hydrated_items
+    else:
         for req in data.get("booking_requests", []):
             merged = dict(req)
             dec = decisions.get(req["id"])
@@ -1352,8 +1374,11 @@ def decide_bookings(
 
     commit_new_schedule(sched, dataset_id=data.get("dataset_id", "cit-public-v1"))
 
+    requests_by_id = {r["id"]: r for r in data.get("booking_requests", [])}
     for b in fest_week.get("bookings", []):
-        db_save_booking(request_id=b["request_id"], request_data=b, status=b.get("status", "pending"), decision_data=b)
+        full_req = dict(requests_by_id.get(b["request_id"], {}))
+        full_req.update(b)
+        db_save_booking(request_id=b["request_id"], request_data=full_req, status=b.get("status", "pending"), decision_data=b)
 
     log_audit(
         action="decide_bookings",
