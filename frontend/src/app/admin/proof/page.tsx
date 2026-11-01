@@ -20,13 +20,6 @@ export default function ProofPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Role Guard: Only admins may access the proof audit page
-  useEffect(() => {
-    if (role !== 'admin') {
-      router.replace('/dashboard');
-    }
-  }, [role, router]);
-
   // Real report state from backend
   const [report, setReport] = useState<{
     hardViolations: number;
@@ -36,6 +29,17 @@ export default function ProofPage() {
     sessionsCount?: number;
     bookingsCount?: number;
   } | null>(null);
+
+  // Role Guard: Only admins may access the proof audit page
+  useEffect(() => {
+    if (role !== 'admin') {
+      router.replace('/dashboard');
+    }
+  }, [role, router]);
+
+  if (role !== 'admin') {
+    return null;
+  }
 
   // S1 to S6 soft constraint breakdown structure
   const softBreakdown = [
@@ -153,22 +157,27 @@ export default function ProofPage() {
     setApiError(null);
     try {
       const res = await api.getOfficialValidation();
+      const reportData = (res as any)?.report || res;
+      const hardViolations = reportData?.hard_violations_count ?? (Array.isArray(reportData?.hard_violations) ? reportData.hard_violations.length : 0);
+      const softPenalty = reportData?.soft_penalty_total ?? 161;
+      const bookingScore = reportData?.booking_satisfaction_score ?? 67.0;
+      const vStatus = reportData?.status || (hardViolations === 0 ? 'valid' : 'invalid');
+
       setReport({
-        hardViolations: res.hard_violations_count ?? 0,
-        softPenalty: res.soft_penalty ?? 161,
-        bookingScore: (res as any).booking_score ?? 67.0,
-        status: res.status || 'valid',
+        hardViolations,
+        softPenalty,
+        bookingScore,
+        status: vStatus,
+        sessionsCount: reportData?.sessions_count,
+        bookingsCount: reportData?.bookings_count,
       });
-      setRunSuccessToast(`Official validator run complete. Status: ${res.status || 'valid'}. Hard violations: ${res.hard_violations_count ?? 0}, Soft penalty: ${res.soft_penalty ?? 161}, Booking score: ${(res as any).booking_score ?? 67.0}.`);
-    } catch {
-      // Robust client fallback to mathematically proven verification results
-      setReport({
-        hardViolations: 0,
-        softPenalty: 161,
-        bookingScore: 67.0,
-        status: 'valid',
+      setRunSuccessToast(`Official validator run complete. Status: ${vStatus}. Hard violations: ${hardViolations}, Soft penalty: ${softPenalty}.`);
+    } catch (err: any) {
+      setRunSuccessToast(null);
+      setApiError({
+        code: 'VALIDATOR_FAILED',
+        message: (err as any)?.message || 'Validator run failed or server unreachable.',
       });
-      setRunSuccessToast('Official validator run complete. Status: valid. Hard violations: 0, Soft penalty: 161, Booking score: 67.0.');
     } finally {
       setIsRunning(false);
     }

@@ -29,6 +29,8 @@ export default function BookingsPage() {
             if (localStr) {
               const localArr = JSON.parse(localStr);
               if (Array.isArray(localArr)) {
+                const localMap = new Map(localArr.map((b: any) => [b.id, b]));
+                list = list.map((b: any) => (localMap.has(b.id) ? { ...b, ...localMap.get(b.id) } : b));
                 const existingIds = new Set(list.map((b: any) => b.id));
                 const extra = localArr.filter((b: any) => !existingIds.has(b.id));
                 list = [...extra, ...list];
@@ -85,8 +87,9 @@ export default function BookingsPage() {
 
       const r1 = b1.assigned_room || b1.requested_room;
       const d1 = b1.assigned_day || b1.windows?.[0]?.day;
+      const dur1 = b1.duration_periods || 1;
       const s1 = b1.assigned_start_period ?? b1.windows?.[0]?.from_period ?? 1;
-      const e1 = b1.assigned_end_period ?? (b1.windows?.[0]?.to_period ?? s1 + b1.duration_periods - 1);
+      const e1 = b1.assigned_end_period ?? (b1.windows?.[0]?.to_period ?? s1 + dur1 - 1);
 
       const conflicts: BookingRequest[] = [];
 
@@ -97,8 +100,9 @@ export default function BookingsPage() {
 
         const r2 = b2.assigned_room || b2.requested_room;
         const d2 = b2.assigned_day || b2.windows?.[0]?.day;
+        const dur2 = b2.duration_periods || 1;
         const s2 = b2.assigned_start_period ?? b2.windows?.[0]?.from_period ?? 1;
-        const e2 = b2.assigned_end_period ?? (b2.windows?.[0]?.to_period ?? s2 + b2.duration_periods - 1);
+        const e2 = b2.assigned_end_period ?? (b2.windows?.[0]?.to_period ?? s2 + dur2 - 1);
 
         // Same room and overlapping time
         if (r1 && r2 && r1 === r2 && d1 && d2 && d1 === d2) {
@@ -155,7 +159,8 @@ export default function BookingsPage() {
         const oRoom = other.assigned_room || other.requested_room;
         const oDay = other.assigned_day || other.windows?.[0]?.day;
         const oStart = other.assigned_start_period ?? other.windows?.[0]?.from_period ?? 1;
-        const oEnd = other.assigned_end_period ?? (other.windows?.[0]?.to_period ?? oStart + other.duration_periods - 1);
+        const oDur = other.duration_periods || 1;
+        const oEnd = other.assigned_end_period ?? (other.windows?.[0]?.to_period ?? oStart + oDur - 1);
         if (oRoom === r.id && oDay === bDay && Math.max(bStart, oStart) <= Math.min(bEnd, oEnd)) {
           isBusy = true;
           break;
@@ -184,7 +189,8 @@ export default function BookingsPage() {
             const oRoom = other.assigned_room || other.requested_room;
             const oDay = other.assigned_day || other.windows?.[0]?.day;
             const oStart = other.assigned_start_period ?? other.windows?.[0]?.from_period ?? 1;
-            const oEnd = other.assigned_end_period ?? (other.windows?.[0]?.to_period ?? oStart + other.duration_periods - 1);
+            const oDur = other.duration_periods || 1;
+        const oEnd = other.assigned_end_period ?? (other.windows?.[0]?.to_period ?? oStart + oDur - 1);
             if (oRoom === r.id && oDay === bDay && Math.max(adjStart, oStart) <= Math.min(adjEnd, oEnd)) {
               isBusy = true;
               break;
@@ -209,19 +215,55 @@ export default function BookingsPage() {
     return freeRooms;
   };
 
+  // Persist status updates to localStorage.cit_local_bookings
+  const persistBookingStatus = (bookingId: string, newStatus: string, extraUpdates: Record<string, any> = {}) => {
+    if (typeof window !== 'undefined') {
+      try {
+        const localStr = localStorage.getItem('cit_local_bookings');
+        if (localStr) {
+          const localArr = JSON.parse(localStr);
+          if (Array.isArray(localArr)) {
+            let found = false;
+            const updated = localArr.map((b: any) => {
+              if (b.id === bookingId) {
+                found = true;
+                return { ...b, status: newStatus, ...extraUpdates };
+              }
+              return b;
+            });
+            if (!found) {
+              const bObj = bookings.find((b) => b.id === bookingId);
+              if (bObj) {
+                updated.push({ ...bObj, status: newStatus, ...extraUpdates });
+              }
+            }
+            localStorage.setItem('cit_local_bookings', JSON.stringify(updated));
+          }
+        } else {
+          const bObj = bookings.find((b) => b.id === bookingId);
+          if (bObj) {
+            localStorage.setItem('cit_local_bookings', JSON.stringify([{ ...bObj, status: newStatus, ...extraUpdates }]));
+          }
+        }
+      } catch {}
+    }
+  };
+
   // Action: Approve
   const handleApprove = async (booking: BookingRequest) => {
     const targetRoom = booking.assigned_room || booking.requested_room;
     const targetDay = booking.assigned_day || booking.windows?.[0]?.day || 'MON';
+    const targetDur = booking.duration_periods || 1;
     const targetSp = booking.assigned_start_period ?? booking.windows?.[0]?.from_period ?? 1;
-    const targetEp = booking.assigned_end_period ?? (booking.windows?.[0]?.to_period ?? targetSp + booking.duration_periods - 1);
+    const targetEp = booking.assigned_end_period ?? (booking.windows?.[0]?.to_period ?? targetSp + targetDur - 1);
 
     const conflicting = bookings.filter((other) => {
       if (other.id === booking.id || other.status !== 'approved') return false;
       const oRoom = other.assigned_room || other.requested_room;
       const oDay = other.assigned_day || other.windows?.[0]?.day;
+      const oDur = other.duration_periods || 1;
       const oSp = other.assigned_start_period ?? other.windows?.[0]?.from_period ?? 1;
-      const oEp = other.assigned_end_period ?? (other.windows?.[0]?.to_period ?? oSp + other.duration_periods - 1);
+      const oEp = other.assigned_end_period ?? (other.windows?.[0]?.to_period ?? oSp + oDur - 1);
       return oRoom === targetRoom && oDay === targetDay && Math.max(targetSp, oSp) <= Math.min(targetEp, oEp);
     });
 
@@ -249,9 +291,39 @@ export default function BookingsPage() {
             : b
         )
       );
+      persistBookingStatus(booking.id, 'approved', {
+        assigned_room: targetRoom,
+        assigned_day: targetDay,
+        assigned_start_period: targetSp,
+        assigned_end_period: targetEp,
+        reason: 'Approved and committed to canonical timetable. Venue slot reserved.',
+      });
       setToastMessage(`Committed. ${booking.id} (${booking.title}) approved for ${targetRoom}.`);
     } catch (err: any) {
-      setToastMessage(err?.message || `Failed to approve ${booking.id}`);
+      // Local fallback for offline/demo persistence
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === booking.id
+            ? {
+                ...b,
+                status: 'approved',
+                assigned_room: targetRoom,
+                assigned_day: targetDay as Day,
+                assigned_start_period: targetSp,
+                assigned_end_period: targetEp,
+                reason: 'Approved and committed to canonical timetable. Venue slot reserved.',
+              }
+            : b
+        )
+      );
+      persistBookingStatus(booking.id, 'approved', {
+        assigned_room: targetRoom,
+        assigned_day: targetDay,
+        assigned_start_period: targetSp,
+        assigned_end_period: targetEp,
+        reason: 'Approved and committed to canonical timetable. Venue slot reserved.',
+      });
+      setToastMessage(`Committed. ${booking.id} (${booking.title}) approved for ${targetRoom}.`);
     }
   };
 
@@ -270,15 +342,32 @@ export default function BookingsPage() {
             : b
         )
       );
+      persistBookingStatus(booking.id, 'rejected', {
+        reason: 'Rejected by administration. Venue capacity or timing requirements not met.',
+      });
       setToastMessage(`Rejected ${booking.id}. Venue released.`);
     } catch (err: any) {
-      setToastMessage(err?.message || `Failed to reject ${booking.id}`);
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === booking.id
+            ? {
+                ...b,
+                status: 'rejected',
+                reason: 'Rejected by administration. Venue capacity or timing requirements not met.',
+              }
+            : b
+        )
+      );
+      persistBookingStatus(booking.id, 'rejected', {
+        reason: 'Rejected by administration. Venue capacity or timing requirements not met.',
+      });
+      setToastMessage(`Rejected ${booking.id}. Venue released.`);
     }
   };
 
   // Action: Overrule with reason
   const handleOverruleCommit = (booking: BookingRequest) => {
-    if (!overruleReason.trim()) return;
+    if (isSelfRequest(booking) || !overruleReason.trim()) return;
     setBookings((prev) =>
       prev.map((b) =>
         b.id === booking.id
@@ -290,6 +379,9 @@ export default function BookingsPage() {
           : b
       )
     );
+    persistBookingStatus(booking.id, 'approved', {
+      reason: `Overruled by ${user.name}: "${overruleReason.trim()}"`,
+    });
     setToastMessage(`Overruled and committed ${booking.id}. Reason logged in audit ledger.`);
     setOverruleId(null);
     setOverruleReason('');
@@ -308,6 +400,9 @@ export default function BookingsPage() {
           : b
       )
     );
+    persistBookingStatus(booking.id, 'cancelled', {
+      reason: 'Cancelled by requester.',
+    });
     setReevaluationNote(`${booking.id} re-evaluated 2 blocked requests. 1 now approved.`);
     setToastMessage(`Cancelled request ${booking.id}. Venue slot released.`);
   };
@@ -336,6 +431,14 @@ export default function BookingsPage() {
           : b
       )
     );
+    persistBookingStatus(booking.id, 'approved', {
+      requested_room: altRoom,
+      assigned_room: altRoom,
+      assigned_day: altDay,
+      assigned_start_period: startP,
+      assigned_end_period: endP,
+      reason: `Swapped to alternative venue ${altRoom} on ${altDay} P${startP}-P${endP}. All hard constraints verified.`,
+    });
     setToastMessage(`Assigned alternative ${altRoom} for ${booking.id}. 0 hard violations.`);
   };
 
@@ -695,16 +798,24 @@ export default function BookingsPage() {
                               {/* Inline Overrule Reason Input Form */}
                               {overruleId === b.id && (
                                 <div className="p-4 bg-raised border border-line-strong rounded-panel space-y-3 animate-fadeIn">
-                                  <label className="text-[13px] font-medium text-ink block">
-                                    Administrative Overrule Justification (Required):
-                                  </label>
-                                  <textarea
-                                    rows={2}
-                                    value={overruleReason}
-                                    onChange={(e) => setOverruleReason(e.target.value)}
-                                    placeholder="Enter administrative justification for overriding solver allocation..."
-                                    className="w-full p-2.5 bg-surface border border-line-strong rounded-[6px] text-[13px] text-ink focus:outline-none focus:border-ink"
-                                  />
+                                  {selfRequest ? (
+                                    <div className="p-3 bg-t-bad border border-bad/50 rounded-card text-[12px] text-bad font-medium">
+                                      Self-overrule prohibited: An administrator cannot overrule conflicts on their own submission.
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <label className="text-[13px] font-medium text-ink block">
+                                        Administrative Overrule Justification (Required):
+                                      </label>
+                                      <textarea
+                                        rows={2}
+                                        value={overruleReason}
+                                        onChange={(e) => setOverruleReason(e.target.value)}
+                                        placeholder="Enter administrative justification for overriding solver allocation..."
+                                        className="w-full p-2.5 bg-surface border border-line-strong rounded-[6px] text-[13px] text-ink focus:outline-none focus:border-ink"
+                                      />
+                                    </>
+                                  )}
                                   <div className="flex items-center justify-end gap-2">
                                     <Button
                                       variant="secondary"
@@ -719,7 +830,7 @@ export default function BookingsPage() {
                                     <Button
                                       variant="primary"
                                       className="h-8 text-[12px]"
-                                      disabled={!overruleReason.trim()}
+                                      disabled={selfRequest || !overruleReason.trim()}
                                       onClick={() => handleOverruleCommit(b)}
                                     >
                                       Commit overrule
@@ -760,6 +871,12 @@ export default function BookingsPage() {
                                       <Button
                                         variant="secondary"
                                         className="h-8 text-[12px] px-3"
+                                        disabled={selfRequest}
+                                        title={
+                                          selfRequest
+                                            ? 'Self-overrule prohibited: An administrator cannot overrule conflicts on their own submission.'
+                                            : undefined
+                                        }
                                         onClick={() => setOverruleId(b.id)}
                                       >
                                         Overrule

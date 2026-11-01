@@ -224,12 +224,21 @@ def commit_new_schedule(
 # =============================================================================
 
 def save_proposal(
-    prop: dict[str, Any],
+    prop: dict[str, Any] | None = None,
     schedule_data: dict[str, Any] | None = None,
     proposer_id: str = "system",
     conn: sqlite3.Connection | None = None,
+    **kwargs: Any,
 ) -> None:
     """Persist a rescheduling proposal and its schedule diff."""
+    if prop is None:
+        prop = dict(kwargs)
+        if "proposal_id" in kwargs:
+            prop["id"] = kwargs["proposal_id"]
+        if "schedule_json" in kwargs and schedule_data is None:
+            schedule_data = kwargs["schedule_json"]
+        if "proposer_id" in kwargs:
+            proposer_id = kwargs["proposer_id"]
     c = get_db(conn)
     now = datetime.now(UTC).isoformat()
     moves_json = json.dumps(prop.get("moves", []))

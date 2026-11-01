@@ -27,10 +27,83 @@ interface AuditEntry {
   change: string;
 }
 
+const INITIAL_LADDER: PriorityRow[] = [
+  {
+    id: 'exams',
+    name: 'Exams',
+    rank: 1,
+    locked: true,
+    code: 'RANK_1_EXAMS',
+    desc: 'Semester end-term and mid-term examinations. Absolute preemption priority.',
+  },
+  {
+    id: 'regular_classes',
+    name: 'Regular classes',
+    rank: 2,
+    code: 'RANK_2_CLASSES',
+    desc: 'Accredited lectures, tutorials, and laboratory practical sessions.',
+  },
+  {
+    id: 'institute_events',
+    name: 'Institute events',
+    rank: 3,
+    code: 'RANK_3_INSTITUTE',
+    desc: 'Convocation, Annual Day, Dean orientation, and official council briefings.',
+  },
+  {
+    id: 'guest_lectures',
+    name: 'Guest lectures',
+    rank: 4,
+    code: 'RANK_4_GUEST',
+    desc: 'Invited academic and industry keynote sessions.',
+  },
+  {
+    id: 'department_events',
+    name: 'Department events',
+    rank: 5,
+    code: 'RANK_5_DEPT',
+    desc: 'Department colloquia, research seminars, and student project vivas.',
+  },
+  {
+    id: 'club_events',
+    name: 'Club events',
+    rank: 6,
+    code: 'RANK_6_CLUBS',
+    desc: 'Spectra fest cultural societies, robotics club, quiz, and music rehearsals.',
+  },
+];
+
 export default function PriorityPage() {
   const router = useRouter();
   const { role } = useApp();
   const [isDebug, setIsDebug] = useState(false);
+  const [ladder, setLadder] = useState<PriorityRow[]>(INITIAL_LADDER);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [hasChanged, setHasChanged] = useState<boolean>(false);
+  const [saveToast, setSaveToast] = useState<string | null>(null);
+  const [viewState, setViewState] = useState<'normal' | 'skeleton' | 'error' | 'empty_audit'>('normal');
+
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([
+    {
+      id: 'AUD-902',
+      time: '02 Nov 2026, 09:14',
+      admin: "Dean's Office (Dr. Raman Patnaik)",
+      change: 'Promoted Institute events above regular classes for Week 7 Spectra fest',
+    },
+    {
+      id: 'AUD-881',
+      time: '28 Oct 2026, 16:30',
+      admin: 'Academic Council',
+      change: 'Locked Semester Mid-term Examinations at Rank 1 (preemption priority)',
+    },
+    {
+      id: 'AUD-740',
+      time: '15 Oct 2026, 11:00',
+      admin: 'Dean Academics',
+      change: 'Initial semester baseline priority ladder established',
+    },
+  ]);
 
   // Role Guard: Admin access only
   useEffect(() => {
@@ -60,81 +133,10 @@ export default function PriorityPage() {
       }
     }
   }, []);
-  const initialLadder: PriorityRow[] = [
-    {
-      id: 'exams',
-      name: 'Exams',
-      rank: 1,
-      locked: true,
-      code: 'RANK_1_EXAMS',
-      desc: 'Semester end-term and mid-term examinations. Absolute preemption priority.',
-    },
-    {
-      id: 'regular_classes',
-      name: 'Regular classes',
-      rank: 2,
-      code: 'RANK_2_CLASSES',
-      desc: 'Accredited lectures, tutorials, and laboratory practical sessions.',
-    },
-    {
-      id: 'institute_events',
-      name: 'Institute events',
-      rank: 3,
-      code: 'RANK_3_INSTITUTE',
-      desc: 'Convocation, Annual Day, Dean orientation, and official council briefings.',
-    },
-    {
-      id: 'guest_lectures',
-      name: 'Guest lectures',
-      rank: 4,
-      code: 'RANK_4_GUEST',
-      desc: 'Invited academic and industry keynote sessions.',
-    },
-    {
-      id: 'department_events',
-      name: 'Department events',
-      rank: 5,
-      code: 'RANK_5_DEPT',
-      desc: 'Department colloquia, research seminars, and student project vivas.',
-    },
-    {
-      id: 'club_events',
-      name: 'Club events',
-      rank: 6,
-      code: 'RANK_6_CLUBS',
-      desc: 'Spectra fest cultural societies, robotics club, quiz, and music rehearsals.',
-    },
-  ];
 
-  const [ladder, setLadder] = useState<PriorityRow[]>(initialLadder);
-  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
-  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-  const [hasChanged, setHasChanged] = useState<boolean>(false);
-  const [saveToast, setSaveToast] = useState<string | null>(null);
-
-  // State simulator for quality floor review: normal | skeleton | error | empty_audit
-  const [viewState, setViewState] = useState<'normal' | 'skeleton' | 'error' | 'empty_audit'>('normal');
-
-  const [auditLog, setAuditLog] = useState<AuditEntry[]>([
-    {
-      id: 'AUD-902',
-      time: '02 Nov 2026, 09:14',
-      admin: "Dean's Office (Dr. Raman Patnaik)",
-      change: 'Promoted Institute events above regular classes for Week 7 Spectra fest',
-    },
-    {
-      id: 'AUD-881',
-      time: '28 Oct 2026, 16:30',
-      admin: 'Academic Council',
-      change: 'Locked Semester Mid-term Examinations at Rank 1 (preemption priority)',
-    },
-    {
-      id: 'AUD-740',
-      time: '15 Oct 2026, 11:00',
-      admin: 'Dean Academics',
-      change: 'Initial semester baseline priority ladder established',
-    },
-  ]);
+  if (role !== 'admin') {
+    return null;
+  }
 
   // Reorder helper
   const reorderList = (fromIndex: number, toIndex: number) => {
@@ -209,6 +211,16 @@ export default function PriorityPage() {
     reorderList(index, index + 1);
   };
 
+  const handleResetToDefault = () => {
+    setLadder(INITIAL_LADDER);
+    setHasChanged(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cit-priority-ladder');
+    }
+    setSaveToast('Priority ladder restored to academic baseline.');
+    setTimeout(() => setSaveToast(null), 4000);
+  };
+
   // Save order commit
   const handleSave = () => {
     const newEntry: AuditEntry = {
@@ -245,6 +257,12 @@ export default function PriorityPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            <Button
+              variant="secondary"
+              onClick={handleResetToDefault}
+            >
+              Reset to Default
+            </Button>
             <Button
               variant="primary"
               onClick={handleSave}
