@@ -36,7 +36,14 @@ ACTIVE_JOB_TIMERS: dict[str, float] = {}
 
 
 def get_job_metrics(job: dict[str, Any]) -> dict[str, Any]:
-    """Calculate real-time elapsed seconds and progress for a job."""
+    """Calculate real-time elapsed seconds and progress for a job.
+
+    Progress is phase-aware so the bar keeps moving throughout the solve:
+      - Phase 1 (Booking Reservations): 0 → 0.10
+      - Phase 2 (Timetable Solve):       0.10 → 0.80  (longest phase)
+      - Phase 3 (Kernel Commit):         0.80 → 0.95
+      - Completed:                        1.0
+    """
     job_id = job["id"]
     status_lower = str(job["status"]).lower()
 
@@ -45,17 +52,42 @@ def get_job_metrics(job: dict[str, Any]) -> dict[str, Any]:
             "elapsed": float(job.get("elapsed_seconds") or 0.0),
             "progress": 1.0,
         }
+
+    if status_lower == "failed":
+        return {
+            "elapsed": float(job.get("elapsed_seconds") or 0.0),
+            "progress": 0.0,
+        }
+
     if status_lower in ("running", "queued"):
         start = ACTIVE_JOB_TIMERS.get(job_id)
         if start:
             elapsed = round(time.time() - start, 2)
-            # Estimate progress up to 95% while solving
-            progress = min(0.95, round(elapsed / 30.0, 2))
+            phase = str(job.get("phase") or "").lower()
+
+            if "phase 1" in phase or "booking" in phase:
+                # Phase 1 is fast (< 1s), animate 0 → 0.10 over 2 seconds
+                progress = min(0.10, round(0.05 + elapsed / 20.0, 3))
+            elif "phase 3" in phase or "commit" in phase:
+                # Phase 3 is fast (~1s), animate 0.80 → 0.95 over 3 seconds
+                phase3_elapsed = max(0.0, elapsed - 8.0)
+                progress = min(0.95, round(0.80 + phase3_elapsed / 20.0, 3))
+            else:
+                # Phase 2 (Timetable Solve) — the heavy CP-SAT work.
+                # Animate from 0.10 → 0.80 over the solve window (≈8s with warm-start).
+                # Uses sqrt scaling so early progress is fast and it slows toward the end.
+                phase2_elapsed = max(0.0, elapsed - 1.0)
+                solve_window = 8.0  # matches feasibility_limit with warm-start
+                ratio = min(1.0, phase2_elapsed / solve_window)
+                progress = round(0.10 + 0.70 * (ratio ** 0.5), 3)
+
             return {"elapsed": elapsed, "progress": progress}
+
         return {
             "elapsed": float(job.get("elapsed_seconds") or 0.0),
-            "progress": 0.5,
+            "progress": 0.05,
         }
+
     return {
         "elapsed": float(job.get("elapsed_seconds") or 0.0),
         "progress": 0.0,

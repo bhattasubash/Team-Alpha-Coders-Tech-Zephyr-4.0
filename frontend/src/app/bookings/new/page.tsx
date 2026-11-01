@@ -121,33 +121,73 @@ function parsePromptClient(text: string, availableRooms: Room[]) {
   // 2. Detect Day
   let d: Day | undefined;
   let dProv: string | undefined;
-  if (lower.includes('शुक्रवार') || lower.match(/\b(?:friday|shukrawar|shukravaar|jumma|fri)\b/) || lower.includes('nov 6') || lower.includes('6 nov')) {
-    d = 'FRI';
-    dProv = 'Inferred from "Friday / शुक्रवार"';
-  } else if (lower.includes('सोमवार') || lower.match(/\b(?:monday|somwar|somvaar|sombar|mon)\b/) || lower.includes('nov 2') || lower.includes('2 nov')) {
-    d = 'MON';
-    dProv = 'Inferred from "Monday / सोमवार"';
-  } else if (lower.includes('मंगलवार') || lower.match(/\b(?:tuesday|mangalwar|mangalvaar|mangal|tue)\b/) || lower.includes('nov 3') || lower.includes('3 nov')) {
-    d = 'TUE';
-    dProv = 'Inferred from "Tuesday / मंगलवार"';
-  } else if (lower.includes('बुधवार') || lower.match(/\b(?:wednesday|budhwar|budhvaar|budh|wed)\b/) || lower.includes('nov 4') || lower.includes('4 nov')) {
-    d = 'WED';
-    dProv = 'Inferred from "Wednesday / बुधवार"';
-  } else if (lower.includes('गुरुवार') || lower.includes('बृहस्पतिवार') || lower.match(/\b(?:thursday|guruwar|guruvaar|brihaspativar|veervar|thu)\b/) || lower.includes('nov 5') || lower.includes('5 nov')) {
-    d = 'THU';
-    dProv = 'Inferred from "Thursday / गुरुवार"';
-  } else if (lower.match(/\b(?:kal|tomorrow)\b/)) {
-    d = 'TUE';
-    dProv = 'Inferred from "kal" (Tuesday)';
-  } else if (lower.match(/\b(?:parso|day after tomorrow)\b/)) {
-    d = 'WED';
-    dProv = 'Inferred from "parso" (Wednesday)';
-  } else if (lower.match(/\b(?:narso)\b/)) {
-    d = 'THU';
-    dProv = 'Inferred from "narso" (Thursday)';
-  } else if (lower.match(/\b(?:aaj|today)\b/)) {
-    d = 'MON';
-    dProv = 'Inferred from "aaj" (Monday)';
+
+  // 1. Explicit dates like '4 nov', '4th november', 'nov 4'
+  const mDayFirst = lower.match(/\b([2-6])(?:st|nd|rd|th)?\s*(?:nov|november)\b/);
+  if (mDayFirst) {
+    const dayNum = parseInt(mDayFirst[1], 10);
+    const dayMap: Record<number, [Day, string]> = {
+      2: ['MON', '2 Nov'],
+      3: ['TUE', '3 Nov'],
+      4: ['WED', '4 Nov'],
+      5: ['THU', '5 Nov'],
+      6: ['FRI', '6 Nov'],
+    };
+    if (dayMap[dayNum]) {
+      const [code, label] = dayMap[dayNum];
+      d = code;
+      dProv = `Inferred from "${mDayFirst[0].trim()}" (${label})`;
+    }
+  }
+
+  if (!d) {
+    const mMonthFirst = lower.match(/\b(?:nov|november)\s*([2-6])(?:st|nd|rd|th)?\b(?!\s*(?:baje|pm|am|:|o'clock|hours?|ghante?))/);
+    if (mMonthFirst) {
+      const dayNum = parseInt(mMonthFirst[1], 10);
+      const dayMap: Record<number, [Day, string]> = {
+        2: ['MON', '2 Nov'],
+        3: ['TUE', '3 Nov'],
+        4: ['WED', '4 Nov'],
+        5: ['THU', '5 Nov'],
+        6: ['FRI', '6 Nov'],
+      };
+      if (dayMap[dayNum]) {
+        const [code, label] = dayMap[dayNum];
+        d = code;
+        dProv = `Inferred from "${mMonthFirst[0].trim()}" (${label})`;
+      }
+    }
+  }
+
+  if (!d) {
+    if (lower.includes('शुक्रवार') || lower.match(/\b(?:friday|shukrawar|shukravaar|jumma|fri)\b/)) {
+      d = 'FRI';
+      dProv = 'Inferred from "Friday / शुक्रवार"';
+    } else if (lower.includes('सोमवार') || lower.match(/\b(?:monday|somwar|somvaar|sombar|mon)\b/)) {
+      d = 'MON';
+      dProv = 'Inferred from "Monday / सोमवार"';
+    } else if (lower.includes('मंगलवार') || lower.match(/\b(?:tuesday|mangalwar|mangalvaar|mangal|tue)\b/)) {
+      d = 'TUE';
+      dProv = 'Inferred from "Tuesday / मंगलवार"';
+    } else if (lower.includes('बुधवार') || lower.match(/\b(?:wednesday|budhwar|budhvaar|budh|wed)\b/)) {
+      d = 'WED';
+      dProv = 'Inferred from "Wednesday / बुधवार"';
+    } else if (lower.includes('गुरुवार') || lower.includes('बृहस्पतिवार') || lower.match(/\b(?:thursday|guruwar|guruvaar|brihaspativar|veervar|thu)\b/)) {
+      d = 'THU';
+      dProv = 'Inferred from "Thursday / गुरुवार"';
+    } else if (lower.match(/\b(?:kal|tomorrow)\b/)) {
+      d = 'TUE';
+      dProv = 'Inferred from "kal" (Tuesday)';
+    } else if (lower.match(/\b(?:parso|day after tomorrow)\b/)) {
+      d = 'WED';
+      dProv = 'Inferred from "parso" (Wednesday)';
+    } else if (lower.match(/\b(?:narso)\b/)) {
+      d = 'THU';
+      dProv = 'Inferred from "narso" (Thursday)';
+    } else if (lower.match(/\b(?:aaj|today)\b/)) {
+      d = 'MON';
+      dProv = 'Inferred from "aaj" (Monday)';
+    }
   }
 
   // 3. Detect Periods / Time
@@ -280,7 +320,34 @@ function parsePromptClient(text: string, availableRooms: Room[]) {
     }
   }
 
-  // 6. Single time mention
+  // 6. Single end time with 'tak' / 'till' / 'until' (e.g. '6 baje tak' -> ends at 18:00, default P8 to P9)
+  if (!pers) {
+    const untilMatch = lower.match(/\b(\d{1,2})(?::00)?\s*(am|pm|baje)?\s*(?:tak|till|until)\b/);
+    if (untilMatch) {
+      const rawEnd = parseInt(untilMatch[1], 10);
+      const tag = untilMatch[2] || '';
+      const hAm = tag.includes('am') || isAm;
+      const hPm = tag.includes('pm') || isPm;
+
+      let end_24: number;
+      if (rawEnd >= 1 && rawEnd <= 7 && !hAm) {
+        end_24 = rawEnd + 12;
+      } else if (rawEnd >= 8 && rawEnd <= 11 && hPm) {
+        end_24 = rawEnd + 12;
+      } else {
+        end_24 = rawEnd;
+      }
+
+      const tp = hourToPeriodEnd(end_24);
+      if (tp) {
+        const fp = Math.max(1, tp - 1);
+        pers = Array.from({ length: tp - fp + 1 }, (_, i) => fp + i);
+        pProv = `Periods P${fp}-P${tp} inferred from until ${rawEnd}:00 ("${untilMatch[0].trim()}").`;
+      }
+    }
+  }
+
+  // 7. Single time mention
   if (!pers) {
     const timeMatch = lower.match(/\b(\d{1,2})(?::00)?\s*(am|pm|baje)\b/);
     if (timeMatch) {
@@ -350,7 +417,7 @@ function parsePromptClient(text: string, availableRooms: Room[]) {
   // 5. Detect Title / Purpose
   let t = 'Campus Activity Booking';
   let tProv = 'Inferred from activity description.';
-  if (lower.includes('dance rehearsal')) {
+  if (lower.includes('dance rehearsal') || lower.includes('rehearsal') || lower.includes('reharsal')) {
     t = "Spectra '27 Dance Society Rehearsal";
     tProv = 'Inferred from "dance rehearsal".';
   } else if (lower.includes('battle of the bands')) {

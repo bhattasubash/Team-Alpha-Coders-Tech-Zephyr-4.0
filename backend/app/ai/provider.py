@@ -704,17 +704,36 @@ class LLMProvider:
         return None, None, None
 
     def _extract_day(self, lower: str) -> tuple[str, str]:
-        """Extract timetable day (MON-FRI) from English, Hindi, or Hinglish text."""
-        if "शुक्रवार" in lower or re.search(r"\b(?:friday|shukrawar|shukravaar|jumma|fri)\b", lower) or "nov 6" in lower or "6 nov" in lower or "6th nov" in lower:
+        """Extract timetable day (MON-FRI) from English, Hindi, or Hinglish text accurately without substring collisions."""
+        # 1. First, check explicit dates like '4 nov', '4th november', '4th nov'
+        m_day_first = re.search(r"\b([2-6])(?:st|nd|rd|th)?\s*(?:nov|november)\b", lower)
+        if m_day_first:
+            day_num = int(m_day_first.group(1))
+            day_map = {2: ("MON", "2 Nov"), 3: ("TUE", "3 Nov"), 4: ("WED", "4 Nov"), 5: ("THU", "5 Nov"), 6: ("FRI", "6 Nov")}
+            code, label = day_map[day_num]
+            return code, f"Inferred from '{m_day_first.group(0).strip()}' ({label})"
+
+        # Check 'nov <day>': e.g. 'nov 4', 'november 6th' (negative lookahead for time words to avoid 'nov 6 baje' trap)
+        m_month_first = re.search(r"\b(?:nov|november)\s*([2-6])(?:st|nd|rd|th)?\b(?!\s*(?:baje|pm|am|:|o'clock|hours?|ghante?))", lower)
+        if m_month_first:
+            day_num = int(m_month_first.group(1))
+            day_map = {2: ("MON", "2 Nov"), 3: ("TUE", "3 Nov"), 4: ("WED", "4 Nov"), 5: ("THU", "5 Nov"), 6: ("FRI", "6 Nov")}
+            code, label = day_map[day_num]
+            return code, f"Inferred from '{m_month_first.group(0).strip()}' ({label})"
+
+        # 2. Check named days in Hindi, Hinglish, English
+        if "शुक्रवार" in lower or re.search(r"\b(?:friday|shukrawar|shukravaar|jumma|fri)\b", lower):
             return "FRI", "Inferred from 'Friday / शुक्रवार'"
-        if "सोमवार" in lower or re.search(r"\b(?:monday|somwar|somvaar|sombar|mon)\b", lower) or "nov 2" in lower or "2 nov" in lower or "2nd nov" in lower:
+        if "सोमवार" in lower or re.search(r"\b(?:monday|somwar|somvaar|sombar|mon)\b", lower):
             return "MON", "Inferred from 'Monday / सोमवार'"
-        if "मंगलवार" in lower or re.search(r"\b(?:tuesday|mangalwar|mangalvaar|mangal|tue)\b", lower) or "nov 3" in lower or "3 nov" in lower or "3rd nov" in lower:
+        if "मंगलवार" in lower or re.search(r"\b(?:tuesday|mangalwar|mangalvaar|mangal|tue)\b", lower):
             return "TUE", "Inferred from 'Tuesday / मंगलवार'"
-        if "बुधवार" in lower or re.search(r"\b(?:wednesday|budhwar|budhvaar|budh|wed)\b", lower) or "nov 4" in lower or "4 nov" in lower or "4th nov" in lower:
+        if "बुधवार" in lower or re.search(r"\b(?:wednesday|budhwar|budhvaar|budh|wed)\b", lower):
             return "WED", "Inferred from 'Wednesday / बुधवार'"
-        if "गुरुवार" in lower or "बृहस्पतिवार" in lower or re.search(r"\b(?:thursday|guruwar|guruvaar|brihaspativar|veervar|thu)\b", lower) or "nov 5" in lower or "5 nov" in lower or "5th nov" in lower:
+        if "गुरुवार" in lower or "बृहस्पतिवार" in lower or re.search(r"\b(?:thursday|guruwar|guruvaar|brihaspativar|veervar|thu)\b", lower):
             return "THU", "Inferred from 'Thursday / गुरुवार'"
+
+        # 3. Check relative days: kal, parso, narso, aaj
         if re.search(r"\b(?:kal|tomorrow)\b", lower):
             return "TUE", "Inferred from 'kal' (Tuesday)"
         if re.search(r"\b(?:parso|day after tomorrow)\b", lower):
@@ -869,7 +888,25 @@ class LLMProvider:
             if fp is not None and tp is not None and tp >= fp:
                 return fp, tp, f"Inferred from {raw_start}:00 for {dur_num} hrs (P{fp} to P{tp})"
 
-        # 6. Single time mention: default 1 period
+        # 6. Single end time with 'tak' / 'till' / 'until' (e.g. '6 baje tak' -> ends at 18:00, P8 to P9)
+        until_match = re.search(r"\b(\d{1,2})(?::00)?\s*(am|pm|baje)?\s*(?:tak|till|until)\b", lower)
+        if until_match:
+            raw_end = int(until_match.group(1))
+            tag = until_match.group(2) or ""
+            h_am = "am" in tag or is_am
+            h_pm = "pm" in tag or is_pm
+            if 1 <= raw_end <= 7 and not h_am:
+                end_24 = raw_end + 12
+            elif 8 <= raw_end <= 11 and h_pm:
+                end_24 = raw_end + 12
+            else:
+                end_24 = raw_end
+            tp = self._hour_to_period_end(end_24)
+            if tp:
+                fp = max(1, tp - 1)
+                return fp, tp, f"Inferred from until {raw_end}:00 ('{until_match.group(0).strip()}', P{fp} to P{tp})"
+
+        # 7. Single time mention: default 1 period
         if time_match and not dur_num:
             raw_h = int(time_match.group(1))
             tag = time_match.group(2)
@@ -1000,7 +1037,7 @@ class LLMProvider:
         elif re.search(r"\b(?:guest\s*lecture|talk|seminar|keynote)\b", lower):
             event_type = "guest_lecture"
             provenance["event_type"] = "Inferred from guest lecture keywords"
-        elif re.search(r"\b(?:hackathon|workshop|rehearsal|club|dance|battle\s*of\s*the\s*bands|coding)\b", lower):
+        elif re.search(r"\b(?:hackathon|workshop|rehearsal|reharsal|club|dance|battle\s*of\s*the\s*bands|coding)\b", lower):
             event_type = "club_event"
             provenance["event_type"] = "Inferred from student/club activity keywords"
 
