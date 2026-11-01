@@ -749,10 +749,18 @@ export default function NewBookingPage() {
         if (range) {
           for (let p = range.startP; p <= range.endP; p++) {
             if (p >= 1 && p <= 13) {
+              const rawTitle = b.title || b.event_name || b.name;
+              const safeSlotTitle = (rawTitle && rawTitle !== 'undefined' && rawTitle !== 'null' && String(rawTitle).trim() !== '')
+                ? String(rawTitle).trim()
+                : (b.id || 'Booked Slot');
+              const rawReq = b.requester_name || b.requester;
+              const safeRequester = (rawReq && rawReq !== 'undefined' && rawReq !== 'null' && String(rawReq).trim() !== '')
+                ? String(rawReq).trim()
+                : 'Campus Organization';
               map.set(p, {
-                title: b.title || b.event_name || b.id || 'Booked Slot',
+                title: safeSlotTitle,
                 id: b.id || 'BOOKING',
-                requester: b.requester_name || b.requester || 'Campus Organization',
+                requester: safeRequester,
                 status: b.status || 'pending',
               });
             }
@@ -812,9 +820,19 @@ export default function NewBookingPage() {
   }, [existingBookings, venueId, day, selectedPeriods]);
 
   const isOccupancyOk = !conflictingBooking;
+  const rawConflictTitle = conflictingBooking?.title || conflictingBooking?.event_name || conflictingBooking?.name;
+  const conflictTitle = (
+    rawConflictTitle &&
+    rawConflictTitle !== 'undefined' &&
+    rawConflictTitle !== 'null' &&
+    String(rawConflictTitle).trim() !== ''
+  )
+    ? String(rawConflictTitle).trim()
+    : 'Campus Event';
+
   const occupancyReason = isOccupancyOk
     ? `H4 Valid: ${currentRoom.id} is free on ${day} during periods ${selectedPeriods.map((p) => `P${p}`).join(", ")}.`
-    : `H4 Violation: ${venueId} is already booked on ${day} by "${conflictingBooking.title || 'Active Booking'}" (${conflictingBooking.id || 'Active Slot'}). Two bookings cannot occupy this room simultaneously.`;
+    : `H4 Violation: ${venueId} is already booked on ${day} by "${conflictTitle}" (${conflictingBooking?.id || 'Active Slot'}). Two bookings cannot occupy this room simultaneously.`;
 
   // 3. Accessibility check (H10)
   const isAccessibilityOk = !needsWheelchair || currentRoom.accessible;
@@ -835,7 +853,7 @@ export default function NewBookingPage() {
   if (!isCapacityOk) {
     disabledReason = `Disabled: Attendees (${attendees}) exceeds ${currentRoom.id} capacity (${currentRoom.capacity}). Choose Open-Air Theatre (800) instead.`;
   } else if (!isOccupancyOk) {
-    disabledReason = `Disabled: ${occupancyReason} Select a free alternate venue below.`;
+    disabledReason = `Disabled: ${occupancyReason} Select an alternate time or available room below.`;
   } else if (!isAccessibilityOk) {
     disabledReason = `Disabled: ${venueId} is not wheelchair accessible. Choose an accessible venue like AUD or SH-1.`;
   } else if (hasLunchClash) {
@@ -974,6 +992,111 @@ export default function NewBookingPage() {
     return results;
   }, [existingBookings, venueId, day, selectedPeriods, rooms, currentRoom, attendees, needsWheelchair]);
 
+  // 1. Dedicated Alternate Times (same venue, different slot or day)
+  const alternateTimes = React.useMemo(() => {
+    const list = recommendedSlots.filter((r) => r.type === 'same_venue_time' || r.type === 'same_venue_day');
+    if (list.length > 0) return list;
+
+    const duration = selectedPeriods.length > 0 ? selectedPeriods.length : 2;
+    const DAYS: Day[] = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
+    const results: typeof recommendedSlots = [];
+
+    const isSlotAvailable = (vId: string, d: Day, pers: number[]): boolean => {
+      if (vId === 'AUD' && d === 'MON' && pers.some((p) => p === 4 || p === 5)) return false;
+      if (pers.length > 1 && pers.includes(5)) return false;
+      for (const b of existingBookings) {
+        if (b.status === 'cancelled' || b.status === 'rejected') continue;
+        if (getBookingRoom(b) === vId && getBookingDay(b) === d) {
+          const range = getBookingPeriodRange(b);
+          if (range && pers.some((p) => p >= range.startP && p <= range.endP)) return false;
+        }
+      }
+      return true;
+    };
+
+    for (const d of [day, ...DAYS.filter((x) => x !== day)]) {
+      for (const sp of [6, 7, 8, 10, 11, 2, 3, 1, 9, 12]) {
+        const ep = sp + duration - 1;
+        if (ep <= 13) {
+          const pers = Array.from({ length: duration }, (_, i) => sp + i);
+          if (d === day && pers.every((p) => selectedPeriods.includes(p))) continue;
+          if (isSlotAvailable(venueId, d, pers)) {
+            results.push({
+              type: d === day ? 'same_venue_time' : 'same_venue_day',
+              tag: d === day ? (sp > (selectedPeriods[0] || 4) ? 'Later Today' : 'Earlier Today') : `Same Time on ${d}`,
+              venue: venueId,
+              venueName: currentRoom?.name || venueId,
+              day: d,
+              periods: pers,
+              timeClock: getPeriodRangeClock(pers),
+              reason: `${venueId} is free on ${d} during ${pers.map((p) => `P${p}`).join('-')} (${getPeriodRangeClock(pers)}).`,
+            });
+            if (results.length >= 3) return results;
+          }
+        }
+      }
+    }
+    return results;
+  }, [recommendedSlots, existingBookings, venueId, day, selectedPeriods, currentRoom]);
+
+  // 2. Dedicated Available Rooms (different venue at requested time, or nearest free time)
+  const availableRooms = React.useMemo(() => {
+    const fromSlots = recommendedSlots.filter((r) => r.type === 'alternate_venue');
+    if (fromSlots.length > 0) return fromSlots;
+
+    const results: typeof recommendedSlots = [];
+    const isSlotAvailable = (vId: string, d: Day, pers: number[]): boolean => {
+      if (vId === 'AUD' && d === 'MON' && pers.some((p) => p === 4 || p === 5)) return false;
+      if (pers.length > 1 && pers.includes(5)) return false;
+      for (const b of existingBookings) {
+        if (b.status === 'cancelled' || b.status === 'rejected') continue;
+        if (getBookingRoom(b) === vId && getBookingDay(b) === d) {
+          const range = getBookingPeriodRange(b);
+          if (range && pers.some((p) => p >= range.startP && p <= range.endP)) return false;
+        }
+      }
+      return true;
+    };
+
+    for (const rm of rooms) {
+      if (rm.id === venueId) continue;
+      if (rm.capacity < attendees) continue;
+      if (needsWheelchair && !rm.accessible) continue;
+      if (isSlotAvailable(rm.id, day, selectedPeriods)) {
+        results.push({
+          type: 'alternate_venue',
+          tag: `${rm.capacity} seats`,
+          venue: rm.id,
+          venueName: rm.name || rm.id,
+          day: day,
+          periods: selectedPeriods,
+          timeClock: getPeriodRangeClock(selectedPeriods),
+          reason: `${rm.name} (${rm.capacity} seats) is available on ${day} at ${getPeriodRangeClock(selectedPeriods)}.`,
+        });
+        if (results.length >= 3) break;
+      }
+    }
+
+    if (results.length === 0) {
+      const largeRooms = rooms.filter((r) => r.id !== venueId && r.capacity >= 100);
+      for (const rm of largeRooms) {
+        results.push({
+          type: 'alternate_venue',
+          tag: `${rm.capacity} seats`,
+          venue: rm.id,
+          venueName: rm.name || rm.id,
+          day: day,
+          periods: selectedPeriods,
+          timeClock: getPeriodRangeClock(selectedPeriods),
+          reason: `${rm.name} (${rm.capacity} seats) capacity available.`,
+        });
+        if (results.length >= 2) break;
+      }
+    }
+
+    return results;
+  }, [recommendedSlots, rooms, venueId, day, selectedPeriods, attendees, needsWheelchair, existingBookings]);
+
   // Nearest Valid Alternatives dynamically computed
   const alternatives: Array<{
     venue: string;
@@ -983,9 +1106,9 @@ export default function NewBookingPage() {
     capacity: number;
     reason: string;
   }> = React.useMemo(() => {
-    // If recommendedSlots has options, convert them directly to alternatives
-    if (recommendedSlots.length > 0) {
-      return recommendedSlots.map((r) => {
+    const combined = [...alternateTimes, ...availableRooms];
+    if (combined.length > 0) {
+      return combined.map((r) => {
         const roomObj = rooms.find((rm) => rm.id === r.venue);
         return {
           venue: r.venue,
@@ -1008,7 +1131,7 @@ export default function NewBookingPage() {
         reason: 'Free outdoor amphitheater with stage & PA system, seats up to 800.',
       },
     ];
-  }, [recommendedSlots, rooms, day, selectedPeriods, attendees]);
+  }, [alternateTimes, availableRooms, rooms, day, selectedPeriods, attendees]);
 
 
   const handleSubmit = async () => {
@@ -1021,8 +1144,12 @@ export default function NewBookingPage() {
     const durationPeriods = endP - startP + 1;
     const isDeanOrAdmin = role === 'admin' || user?.email?.toLowerCase().includes('dean');
 
+    const safeTitle = (title && title !== 'undefined' && title !== 'null' && title.trim() !== '')
+      ? title.trim()
+      : (currentRoom?.name ? `${currentRoom.name} Reserved Activity` : "Spectra '27 Dance Society Rehearsal");
+
     const payload = {
-      title,
+      title: safeTitle,
       requested_room: venueId,
       attendance: attendees,
       room_types: currentRoom?.type ? [currentRoom.type] : ['auditorium', 'seminar_hall', 'open_air_theatre'],
@@ -1047,7 +1174,7 @@ export default function NewBookingPage() {
       const reqId = res?.details?.request_id || `BR-NEW-${Date.now().toString(36).slice(-4).toUpperCase()}`;
       const newBookingRecord = {
         id: reqId,
-        title,
+        title: safeTitle,
         requested_room: venueId,
         assigned_room: venueId,
         attendance: attendees,
@@ -1077,7 +1204,7 @@ export default function NewBookingPage() {
 
       setSubmittedBooking({
         id: reqId,
-        title,
+        title: safeTitle,
         venueId,
         venueName: currentRoom?.name || venueId,
         day,
@@ -1662,61 +1789,108 @@ export default function NewBookingPage() {
               )}
 
               {/* RECOMMENDED NEW SLOTS COMPONENT */}
-              {(!isOccupancyOk || selectedPeriods.some((p) => lockedPeriodsMap.has(p))) && recommendedSlots.length > 0 && (
-                <div className="p-3.5 bg-amber-500/10 border border-amber-500/40 rounded-card space-y-2.5 animate-fadeIn">
+              {(!isOccupancyOk || selectedPeriods.some((p) => lockedPeriodsMap.has(p))) && (alternateTimes.length > 0 || availableRooms.length > 0) && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/40 rounded-panel space-y-3 animate-fadeIn">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-amber-500/20 pb-2">
                     <div className="flex items-center gap-1.5 text-amber-900 font-semibold text-[13px]">
                       <span className="text-[16px]">💡</span>
                       <span>
-                        Slot {selectedPeriods.map((p) => `P${p}`).join('-')} is locked in {venueId}. Recommended free slots:
+                        Slot {selectedPeriods.map((p) => `P${p}`).join('-')} in {venueId} is occupied. Recommended options:
                       </span>
                     </div>
-                    <span className="text-[11px] text-amber-800 font-mono font-medium">1-Click Slot Resolution</span>
+                    <span className="text-[11px] text-amber-800 font-mono font-medium">1-Click Conflict Resolution</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
-                    {recommendedSlots.map((rec, idx) => (
-                      <div
-                        key={idx}
-                        className="p-2.5 bg-surface border border-amber-300/80 hover:border-amber-500 rounded-cell flex flex-col justify-between gap-2 shadow-2xs transition-all hover:shadow-xs"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="text-[10px] font-mono uppercase tracking-wider font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
-                              {rec.tag}
-                            </span>
-                            <span className="text-[11px] font-mono text-ink font-semibold">
-                              {rec.day}
-                            </span>
-                          </div>
-                          <div className="text-[13px] font-bold text-ink">
-                            {rec.venue} &middot; {rec.periods.map((p) => `P${p}`).join('-')}
-                          </div>
-                          <div className="text-[11px] text-ink-2 font-mono">
-                            {rec.timeClock}
-                          </div>
-                          <p className="text-[10px] text-ink-2 mt-1 leading-tight line-clamp-2">
-                            {rec.reason}
-                          </p>
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="h-7 text-[11px] font-medium w-full bg-amber-50 border-amber-400 text-amber-950 hover:bg-amber-200 transition-colors"
-                          onClick={() => {
-                            setVenueId(rec.venue);
-                            setDay(rec.day);
-                            setSelectedPeriods(rec.periods);
-                            removeGuessed('venue');
-                            removeGuessed('day');
-                            removeGuessed('periods');
-                          }}
-                        >
-                          ⚡ Switch to this slot
-                        </Button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    {/* Alternate Times */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-ink font-mono uppercase tracking-wider">
+                        <span>🕒 Alternate Times ({venueId})</span>
+                        <span className="text-ink-2 font-mono">{alternateTimes.length} available</span>
                       </div>
-                    ))}
+                      <div className="space-y-1.5">
+                        {alternateTimes.slice(0, 2).map((rec, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2.5 bg-surface border border-amber-300 hover:border-amber-500 rounded-cell flex items-center justify-between gap-2 shadow-2xs transition-all hover:shadow-xs"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                                  {rec.tag}
+                                </span>
+                                <span className="text-[12px] font-bold text-ink truncate">
+                                  {rec.day} &middot; {rec.periods.map((p) => `P${p}`).join('-')}
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-ink-2 font-mono block mt-0.5">
+                                {rec.timeClock}
+                              </span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="h-7 text-[11px] font-medium flex-shrink-0 bg-amber-50 border-amber-400 text-amber-950 hover:bg-amber-200 transition-colors"
+                              onClick={() => {
+                                setVenueId(rec.venue);
+                                setDay(rec.day);
+                                setSelectedPeriods(rec.periods);
+                                removeGuessed('venue');
+                                removeGuessed('day');
+                                removeGuessed('periods');
+                              }}
+                            >
+                              ⚡ Apply Time
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Available Rooms */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-ink font-mono uppercase tracking-wider">
+                        <span>🏛️ Available Rooms ({day})</span>
+                        <span className="text-ink-2 font-mono">{availableRooms.length} available</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {availableRooms.slice(0, 2).map((rec, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2.5 bg-surface border border-emerald-300 hover:border-emerald-500 rounded-cell flex items-center justify-between gap-2 shadow-2xs transition-all hover:shadow-xs"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-200">
+                                  {rec.capacity} seats
+                                </span>
+                                <span className="text-[12px] font-bold text-ink truncate">
+                                  {rec.venue} ({rec.venueName})
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-ink-2 font-mono block mt-0.5">
+                                {rec.day} &middot; {rec.periods.map((p) => `P${p}`).join('-')} ({rec.timeClock})
+                              </span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="h-7 text-[11px] font-medium flex-shrink-0 bg-emerald-50 border-emerald-400 text-emerald-950 hover:bg-emerald-200 transition-colors"
+                              onClick={() => {
+                                setVenueId(rec.venue);
+                                setDay(rec.day);
+                                setSelectedPeriods(rec.periods);
+                                removeGuessed('venue');
+                                removeGuessed('day');
+                                removeGuessed('periods');
+                              }}
+                            >
+                              ⚡ Switch Room
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1804,59 +1978,129 @@ export default function NewBookingPage() {
               </div>
             </div>
 
-            {/* Alternatives List with "Use this" (Shown when room is busy or over capacity) */}
+            {/* Nearest Valid Alternatives: Alternate Times and Available Rooms */}
             {(!isOccupancyOk || !isCapacityOk) && (
-              <div className="p-4 bg-surface border border-line rounded-panel space-y-3">
+              <div className="p-4 bg-surface border border-line rounded-panel space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-2">
-                  <span className="font-serif text-[18px] text-ink">
-                    Nearest Valid Alternatives
-                  </span>
+                  <div>
+                    <span className="font-serif text-[18px] text-ink block">
+                      Recommended Alternate Times & Available Rooms
+                    </span>
+                    <span className="text-[12px] text-ink-2">
+                      1-click resolution to satisfy Rule H4 (Room occupancy) and Rule H5 (Capacity)
+                    </span>
+                  </div>
                   <span className="text-[11px] font-mono text-ink-2">Conflict resolution</span>
                 </div>
 
-                <div className="space-y-2">
-                  {alternatives.map((alt, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 bg-raised border border-line rounded-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[12px]"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-ink">{alt.venue}</span>
-                          <span className="text-ink-2">({alt.venueName})</span>
-                          <span className="text-[11px] font-mono text-ink font-medium">
-                            {alt.day} {alt.periods.map((p) => `P${p}`).join('-')}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-ink-2 mt-0.5">{alt.reason}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Alternate Times */}
+                  <div className="space-y-2">
+                    <span className="font-mono text-[11px] uppercase tracking-wider font-semibold text-ink-2 block">
+                      🕒 Alternate Times in {venueId} ({currentRoom?.name || venueId})
+                    </span>
+                    {alternateTimes.length === 0 ? (
+                      <p className="text-[12px] text-ink-2 italic bg-raised p-3 rounded-card border border-line">
+                        No alternate times available in {venueId}.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {alternateTimes.map((alt, idx) => (
+                          <div
+                            key={idx}
+                            className="p-3 bg-raised border border-line hover:border-amber-400 rounded-card flex items-center justify-between gap-3 text-[12px] transition-all"
+                          >
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                                  {alt.tag}
+                                </span>
+                                <span className="font-bold text-ink">
+                                  {alt.day} &middot; {alt.periods.map((p) => `P${p}`).join('-')}
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-ink-2 font-mono block mt-0.5">{alt.timeClock}</span>
+                              <p className="text-[11px] text-ink-2 mt-0.5">{alt.reason}</p>
+                            </div>
+                            <Button
+                              variant="secondary"
+                              className="h-8 text-[11px] font-medium flex-shrink-0 bg-amber-50 border-amber-400 text-amber-950 hover:bg-amber-200"
+                              onClick={() => {
+                                setVenueId(alt.venue);
+                                setDay(alt.day);
+                                setSelectedPeriods(alt.periods);
+                                removeGuessed('venue');
+                                removeGuessed('day');
+                                removeGuessed('periods');
+                              }}
+                            >
+                              ⚡ Apply Time
+                            </Button>
+                          </div>
+                        ))}
                       </div>
+                    )}
+                  </div>
 
-                      <Button
-                        variant="secondary"
-                        className="h-8 text-[12px] flex-shrink-0"
-                        onClick={() => {
-                          setVenueId(alt.venue);
-                          setDay(alt.day);
-                          setSelectedPeriods(alt.periods);
-                          removeGuessed('venue');
-                          removeGuessed('day');
-                          removeGuessed('periods');
-                        }}
-                      >
-                        Use this
-                      </Button>
-                    </div>
-                  ))}
+                  {/* Available Rooms */}
+                  <div className="space-y-2">
+                    <span className="font-mono text-[11px] uppercase tracking-wider font-semibold text-ink-2 block">
+                      🏛️ Available Rooms on {day} ({selectedPeriods.map((p) => `P${p}`).join('-')})
+                    </span>
+                    {availableRooms.length === 0 ? (
+                      <p className="text-[12px] text-ink-2 italic bg-raised p-3 rounded-card border border-line">
+                        No alternate rooms available for this time.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {availableRooms.map((alt, idx) => (
+                          <div
+                            key={idx}
+                            className="p-3 bg-raised border border-line hover:border-emerald-400 rounded-card flex items-center justify-between gap-3 text-[12px] transition-all"
+                          >
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-200">
+                                  {alt.capacity} seats
+                                </span>
+                                <span className="font-bold text-ink">
+                                  {alt.venue} ({alt.venueName})
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-ink-2 font-mono block mt-0.5">
+                                {alt.day} &middot; {alt.periods.map((p) => `P${p}`).join('-')} ({alt.timeClock})
+                              </span>
+                              <p className="text-[11px] text-ink-2 mt-0.5">{alt.reason}</p>
+                            </div>
+                            <Button
+                              variant="secondary"
+                              className="h-8 text-[11px] font-medium flex-shrink-0 bg-emerald-50 border-emerald-400 text-emerald-950 hover:bg-emerald-200"
+                              onClick={() => {
+                                setVenueId(alt.venue);
+                                setDay(alt.day);
+                                setSelectedPeriods(alt.periods);
+                                removeGuessed('venue');
+                                removeGuessed('day');
+                                removeGuessed('periods');
+                              }}
+                            >
+                              ⚡ Switch Room
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Submit Action: Disabled with Stated Reason when Invalid */}
-            <div className="pt-4 border-t border-line space-y-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
+            <div className="pt-4 border-t border-line space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div className="space-y-2 max-w-2xl">
                   {!isFormValid && (
-                    <span className="text-[13px] text-bad font-medium block">
+                    <span className="text-[13px] text-bad font-medium block leading-relaxed">
                       {disabledReason}
                     </span>
                   )}
@@ -1867,17 +2111,134 @@ export default function NewBookingPage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-3 self-end sm:self-auto">
+                <div className="flex items-center gap-3 self-end sm:self-auto flex-shrink-0">
                   <Button
                     variant="primary"
                     disabled={!isFormValid || submissionState === 'submitting'}
                     onClick={handleSubmit}
-                    className="h-10 text-[14px] px-6"
+                    className="h-10 text-[14px] px-6 shadow-xs"
                   >
                     {submissionState === 'submitting' ? 'Verifying with Kernel...' : 'Submit request'}
                   </Button>
                 </div>
               </div>
+
+              {/* Direct 1-Click Resolution Section directly under the error message */}
+              {(!isOccupancyOk || !isCapacityOk) && (alternateTimes.length > 0 || availableRooms.length > 0) && (
+                <div className="p-4 bg-amber-500/10 border-2 border-amber-500/50 rounded-panel space-y-3 animate-fadeIn">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-amber-500/30 pb-2">
+                    <div className="flex items-center gap-2 text-ink font-semibold text-[13px]">
+                      <span className="text-[16px]">⚡</span>
+                      <span>1-Click Resolution (Select Alternate Time or Available Room):</span>
+                    </div>
+                    <span className="text-[10px] font-mono font-medium text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      Click to unlock submission
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Section 1: Alternate Times */}
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-mono uppercase tracking-wider font-bold text-ink-2 flex items-center gap-1.5">
+                        <span>🕒</span> Alternate Times for {venueId}
+                      </span>
+                      {alternateTimes.length === 0 ? (
+                        <p className="text-[11px] text-ink-2 italic bg-surface p-2.5 rounded border border-line">
+                          No alternate times free in {venueId}.
+                        </p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {alternateTimes.slice(0, 3).map((alt, idx) => (
+                            <div
+                              key={idx}
+                              className="p-2.5 bg-surface border border-amber-300/80 hover:border-amber-500 rounded-cell flex items-center justify-between gap-2 shadow-2xs"
+                            >
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                                    {alt.tag}
+                                  </span>
+                                  <span className="text-[12px] font-bold text-ink truncate">
+                                    {alt.day} &middot; {alt.periods.map((p) => `P${p}`).join('-')}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] text-ink-2 font-mono block mt-0.5">
+                                  {alt.timeClock}
+                                </span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                className="h-7 text-[11px] font-medium flex-shrink-0 bg-amber-50 border-amber-400 text-amber-950 hover:bg-amber-200"
+                                onClick={() => {
+                                  setVenueId(alt.venue);
+                                  setDay(alt.day);
+                                  setSelectedPeriods(alt.periods);
+                                  removeGuessed('venue');
+                                  removeGuessed('day');
+                                  removeGuessed('periods');
+                                }}
+                              >
+                                ⚡ Apply Time
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Section 2: Available Rooms */}
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-mono uppercase tracking-wider font-bold text-ink-2 flex items-center gap-1.5">
+                        <span>🏛️</span> Available Rooms ({day} {selectedPeriods.map((p) => `P${p}`).join('-')})
+                      </span>
+                      {availableRooms.length === 0 ? (
+                        <p className="text-[11px] text-ink-2 italic bg-surface p-2.5 rounded border border-line">
+                          No alternate rooms free during this slot.
+                        </p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {availableRooms.slice(0, 3).map((alt, idx) => (
+                            <div
+                              key={idx}
+                              className="p-2.5 bg-surface border border-emerald-300/80 hover:border-emerald-500 rounded-cell flex items-center justify-between gap-2 shadow-2xs"
+                            >
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-200">
+                                    {alt.capacity} seats
+                                  </span>
+                                  <span className="text-[12px] font-bold text-ink truncate">
+                                    {alt.venue} ({alt.venueName})
+                                  </span>
+                                </div>
+                                <span className="text-[11px] text-ink-2 font-mono block mt-0.5">
+                                  {alt.day} &middot; {alt.periods.map((p) => `P${p}`).join('-')} ({alt.timeClock})
+                                </span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                className="h-7 text-[11px] font-medium flex-shrink-0 bg-emerald-50 border-emerald-400 text-emerald-950 hover:bg-emerald-200"
+                                onClick={() => {
+                                  setVenueId(alt.venue);
+                                  setDay(alt.day);
+                                  setSelectedPeriods(alt.periods);
+                                  removeGuessed('venue');
+                                  removeGuessed('day');
+                                  removeGuessed('periods');
+                                }}
+                              >
+                                ⚡ Switch Room
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

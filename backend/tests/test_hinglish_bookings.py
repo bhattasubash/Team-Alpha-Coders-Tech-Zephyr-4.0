@@ -172,6 +172,10 @@ def test_double_booking_and_conflict_rejection():
     assert "Two bookings cannot occupy this room simultaneously" in res2.reason
     assert res2.details.get("recommended_slot") is not None, "Must provide recommended free slot"
     assert "Recommended free slot" in res2.reason
+    assert res2.details.get("conflict_title") not in (None, "undefined", "null", "")
+    assert "undefined" not in res2.reason
+    assert "available_rooms" in res2.details, "Must provide available alternate rooms"
+    assert len(res2.details["available_rooms"]) > 0, "Should find at least 1 free room like OAT for 150 attendees"
 
     # 3. Inauguration period (AUD Mon P4-P5) must also fail with H4
     req3 = CreateBookingRequest(

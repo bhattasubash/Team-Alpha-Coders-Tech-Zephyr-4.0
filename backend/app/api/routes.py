@@ -1168,6 +1168,57 @@ def parse_booking(
     )
 
 
+def _find_alternate_rooms(
+    target_room: str,
+    target_day: str,
+    from_p: int,
+    to_p: int,
+    attendance: int,
+    all_bookings: list[dict[str, Any]],
+    all_rooms: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Find alternate rooms with adequate capacity that are free during the requested periods."""
+    valid_rooms = []
+    for r in all_rooms:
+        r_id = r.get("id")
+        if not r_id or r_id == target_room:
+            continue
+        if r.get("capacity", 0) < attendance:
+            continue
+        clash = False
+        if r_id == "AUD" and target_day == "MON" and max(from_p, 4) <= min(to_p, 5):
+            clash = True
+        if not clash:
+            for eb in all_bookings:
+                if eb.get("status") in ("cancelled", "rejected"):
+                    continue
+                eb_r = eb.get("assigned_room") or eb.get("requested_room")
+                if eb_r != r_id:
+                    continue
+                eb_w = eb.get("windows", [])
+                eb_d = eb.get("assigned_day") or (eb_w[0].get("day") if eb_w else None)
+                eb_sp = eb.get("assigned_start_period") or (eb_w[0].get("from_period") if eb_w else None)
+                eb_ep = eb.get("assigned_end_period") or (eb_w[0].get("to_period") if eb_w else (eb_sp + eb.get("duration_periods", 1) - 1 if eb_sp else None))
+                if eb_d == target_day and eb_sp is not None and eb_ep is not None:
+                    if max(from_p, eb_sp) <= min(to_p, eb_ep):
+                        clash = True
+                        break
+        if not clash:
+            valid_rooms.append({
+                "room_id": r_id,
+                "name": r.get("name", r_id),
+                "capacity": r.get("capacity", 0),
+                "day": target_day,
+                "start_period": from_p,
+                "end_period": to_p,
+                "periods": list(range(from_p, to_p + 1)),
+                "reason": f"{r.get('name', r_id)} ({r.get('capacity', 0)} seats) is free on {target_day} during P{from_p}-P{to_p}.",
+            })
+            if len(valid_rooms) >= 3:
+                break
+    return valid_rooms
+
+
 def _find_slot_recommendation(
     target_room: str,
     target_day: str,
@@ -1291,10 +1342,13 @@ def create_booking(
 
         for w in req.windows:
             if w.day == b_day and max(w.from_period, b_sp) <= min(w.to_period, b_ep):
-                conflict_title = b.get("title") or b.get("event_name") or b.get("id") or "Existing Booking"
+                raw_title = b.get("title") or b.get("event_name") or b.get("name")
+                conflict_title = str(raw_title).strip() if raw_title and str(raw_title).strip() not in ("undefined", "null", "None", "") else "Campus Event"
                 conflict_id = b.get("id") or b.get("request_id") or "BOOKING"
-                conflict_req = b.get("requester_name") or b.get("requester") or "Another User"
+                raw_req = b.get("requester_name") or b.get("requester")
+                conflict_req = str(raw_req).strip() if raw_req and str(raw_req).strip() not in ("undefined", "null", "None", "") else "Another User"
                 rec = _find_slot_recommendation(req.requested_room, w.day, dur, all_bookings)
+                alt_rooms = _find_alternate_rooms(req.requested_room, w.day, w.from_period, w.to_period, req.attendance, all_bookings, data.get("rooms", []))
                 details = {
                     "rules_violated": ["H4"],
                     "conflict_id": conflict_id,
@@ -1302,6 +1356,8 @@ def create_booking(
                     "conflict_requester": conflict_req,
                     "conflicting_periods": list(range(max(w.from_period, b_sp), min(w.to_period, b_ep) + 1)),
                 }
+                if alt_rooms:
+                    details["available_rooms"] = alt_rooms
                 reason_msg = f'H4 Violation: {req.requested_room} is already booked on {w.day} during periods P{b_sp}-P{b_ep} by {conflict_req} ("{conflict_title}", {conflict_id}). Two bookings cannot occupy this room simultaneously.'
                 if rec:
                     details["recommended_slot"] = rec
@@ -1319,8 +1375,8 @@ def create_booking(
     req_dict["requester"] = user.get("email", "unknown")
     req_dict["requester_name"] = req.requester_name or user.get("name") or user.get("email", "unknown")
     req_dict["role"] = user.get("role", "club")
-    if req.title:
-        req_dict["title"] = req.title
+    req_title = req.title.strip() if req.title and req.title.strip() not in ("undefined", "null", "None", "") else "Campus Activity Booking"
+    req_dict["title"] = req_title
 
     is_dean_or_admin = user.get("role") == "admin" or "dean" in user.get("email", "").lower()
     status = "approved" if is_dean_or_admin else "pending"
