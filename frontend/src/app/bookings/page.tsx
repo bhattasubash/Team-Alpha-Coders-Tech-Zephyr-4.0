@@ -169,7 +169,7 @@ export default function BookingsPage() {
           day: bDay,
           startP: bStart,
           endP: bEnd,
-          reason: `Free venue (${r.capacity} seats) on ${bDay} P${bStart}-P${bEnd}. Meets attendee requirement (${att}) and all technical needs.`,
+          reason: `Available venue (${r.capacity} seats) on ${bDay} P${bStart}-P${bEnd}. Meets attendee capacity and room requirements.`,
         });
       }
     }
@@ -380,7 +380,7 @@ export default function BookingsPage() {
               Venue Bookings
             </h1>
             <p className="font-serif italic text-[16px] text-ink-2">
-              Spectra fest requests, department seminars, and club activities. Decision ledger governed by kernel priority.
+              Campus venue requests, department seminars, and student activities.
             </p>
           </div>
 
@@ -591,7 +591,7 @@ export default function BookingsPage() {
                                         {clashInfo?.reason}
                                       </h4>
                                       <p className="text-[12px] text-ink-2 font-ui">
-                                        Multiple bookings cannot hold the same venue at the same time. The kernel requires one of the events to be switched to a free alternate room meeting the same capacity ({b.attendance} attendees) and facility requirements.
+                                        Venue clash detected: Multiple bookings cannot occupy the same venue at the same time. Please select an available alternative venue below.
                                       </p>
                                     </div>
                                   </div>
@@ -796,7 +796,7 @@ export default function BookingsPage() {
 
                                   {role === 'faculty' && (
                                     <span className="text-[12px] text-ink-2 italic font-serif">
-                                      Read-only inspection view for faculty.
+                                      View-only mode for faculty.
                                     </span>
                                   )}
                                 </div>

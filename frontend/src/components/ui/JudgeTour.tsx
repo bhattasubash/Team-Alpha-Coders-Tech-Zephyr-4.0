@@ -13,29 +13,29 @@ export function JudgeTour() {
   const steps = [
     {
       step: 1,
-      title: 'Task 1: Find a free room at Thursday P6',
+      title: 'Explore Room & Venue Availability',
       description:
-        'Use the top finder row and isometric wayfinder map to locate an accessible lecture hall or classroom free at Thursday Period P6.',
+        'Use the top filters and campus map to locate free, accessible lecture halls and classrooms across all academic blocks.',
       route: '/rooms',
       buttonLabel: 'Go to Rooms & Venues',
       positionClasses: 'top-24 left-1/2 -translate-x-1/2 sm:left-64 sm:translate-x-0',
     },
     {
       step: 2,
-      title: 'Task 2: Simulate minimal-move schedule disruption',
+      title: 'Disruption & Reallocation Simulation',
       description:
-        'Review how the CP-SAT constraint kernel calculates the minimum possible schedule moves (3 sessions) when Dr. Raman is on leave.',
+        'Review how the system calculates minimal schedule moves when faculty take leave or rooms require maintenance.',
       route: '/disruption',
-      buttonLabel: 'Go to Disruption Solver',
+      buttonLabel: 'Go to Disruption Simulation',
       positionClasses: 'top-32 left-1/2 -translate-x-1/2 sm:left-72 sm:translate-x-0',
     },
     {
       step: 3,
-      title: 'Task 3: Run official validator and inspect 10,000 fuzzing proof',
+      title: 'Institutional Policy & Verification Audit',
       description:
-        'Audit zero hard violations, explore soft penalty horizontal bars, and verify 80+ blocked red-team attack vectors.',
+        'Review the hard constraints audit, soft preference metrics, and security validation matrix.',
       route: '/admin/proof',
-      buttonLabel: 'Go to Validator Proof',
+      buttonLabel: 'Go to Audit Ledger',
       positionClasses: 'top-28 left-1/2 -translate-x-1/2 sm:left-auto sm:right-8 sm:translate-x-0',
     },
   ];
@@ -75,7 +75,7 @@ export function JudgeTour() {
         {/* Header: Task Name + Progress */}
         <div className="flex items-center justify-between border-b border-paper/20 pb-2 mb-3">
           <span className="font-serif italic text-[16px] text-paper">
-            Judge Evaluation Tour
+            Product Walkthrough
           </span>
           <span className="text-[12px] font-mono text-paper/70 font-semibold">
             {currentStep.step} of 3

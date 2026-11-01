@@ -154,7 +154,7 @@ export default function ExamsPage() {
               Midsem Examination Schedule
             </h1>
             <p className="font-serif italic text-[16px] text-ink-2">
-              Grid Mon to Sat with AM (09:00 to 12:00) and PM (14:00 to 17:00) rows. Exam hall capacity is strictly 50% of normal capacity.
+              Midsem examination timetable. Venue allocations enforce 50% de-densified seating capacity.
             </p>
           </div>
 

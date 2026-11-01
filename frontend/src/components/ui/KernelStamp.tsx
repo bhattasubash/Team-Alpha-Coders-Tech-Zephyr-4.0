@@ -8,8 +8,8 @@ interface KernelStampProps {
 }
 
 export function KernelStamp({
-  label = 'Checked by kernel',
-  provenance = 'Checked deterministically against rules H1 to H14. LLM drafts, kernel decides.',
+  label = 'Policy verified',
+  provenance = 'Verified against institutional scheduling policies (H1–H14).',
   className = '',
   showProvenance = false,
 }: KernelStampProps) {

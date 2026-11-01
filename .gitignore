@@ -18,3 +18,5 @@ exports/*report*.json
 CrunchWeek_StarterPack/
 backend/scratch/
 .vscode/
+
+validator_*.json

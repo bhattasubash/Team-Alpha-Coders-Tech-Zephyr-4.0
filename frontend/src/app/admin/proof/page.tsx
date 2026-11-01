@@ -233,7 +233,7 @@ export default function ProofPage() {
               Official Validator Audit
             </h1>
             <p className="font-serif italic text-[18px] text-ink-2 mt-2 leading-relaxed max-w-2xl">
-              Independent mathematical proof for Chilika Institute of Technology. The LLM drafts, the kernel decides.
+              Independent validation and policy verification audit for Chilika Institute of Technology.
             </p>
           </div>
 
@@ -298,7 +298,7 @@ export default function ProofPage() {
           {[
             { key: 'validator', label: 'Validator Report' },
             { key: 'fuzzing', label: 'Differential Fuzzing' },
-            { key: 'redteam', label: 'Red Team Vectors (80+)' },
+            { key: 'redteam', label: 'Input Validation & Security (80+)' },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -456,10 +456,10 @@ export default function ProofPage() {
               <div>
                 <h3 className="font-serif text-[24px] text-ink">Differential Invariance Verification</h3>
                 <p className="font-serif italic text-[15px] text-ink-2 mt-0.5">
-                  The standalone fast Python validator is cross-checked against the CP-SAT integer programming model.
+                  The high-speed bitset validator is cross-checked against the integer programming solver.
                 </p>
               </div>
-              <Chip label="Dual-Engine Invariance Check" variant="valid" />
+              <Chip label="Dual-Engine Validation Check" variant="valid" />
             </div>
 
             <div className="p-4 bg-raised border border-line rounded-card text-[13px] space-y-2">
@@ -491,7 +491,7 @@ export default function ProofPage() {
           <div className="p-6 bg-surface border border-line rounded-panel space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-4">
               <div>
-                <h3 className="font-serif text-[24px] text-ink">Red Team Attack Vectors (80+ Test Suite)</h3>
+                <h3 className="font-serif text-[24px] text-ink">Input Validation & Security Suite (80+)</h3>
                 <p className="font-serif italic text-[14px] text-ink-2 mt-0.5">
                   Adversarial prompts, Hinglish ambiguity, boundary attacks, and injection overrides. 100% blocked in code before solver execution.
                 </p>
@@ -576,7 +576,7 @@ export default function ProofPage() {
             <div>
               <span className="text-[14px] font-semibold text-ink block">Clean Demo Reset</span>
               <p className="text-[12px] text-ink-2 mt-0.5">
-                Resets timetable sessions, room maintenance states, and Spectra booking approvals back to the baseline hackathon seed.
+                Resets timetable sessions, room maintenance states, and venue approvals back to baseline semester data.
               </p>
             </div>
             <Button
@@ -594,7 +594,7 @@ export default function ProofPage() {
                 Confirm Clean State Reset:
               </div>
               <p className="text-[12px] text-ink leading-relaxed">
-                This administrative action clears all modifications and reverts the environment to the pristine hackathon dataset:
+                This administrative action clears all modifications and reverts the environment to the baseline semester dataset:
               </p>
               <ul className="list-disc list-inside text-[12px] text-ink-2 space-y-1.5 pl-1">
                 <li>
@@ -624,7 +624,7 @@ export default function ProofPage() {
                     setIsResetConfirmOpen(false);
                     try {
                       await api.resetDatabase();
-                      setRunSuccessToast('Demo environment reset successfully to clean hackathon dataset and schedule.');
+                      setRunSuccessToast('Demo environment reset successfully to clean baseline dataset and schedule.');
                     } catch (err: any) {
                       setApiError({ code: 'RESET_FAILED', message: err.message || 'Failed to reset database' });
                     }

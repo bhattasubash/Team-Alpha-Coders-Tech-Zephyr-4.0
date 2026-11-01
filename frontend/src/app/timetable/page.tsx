@@ -162,7 +162,7 @@ export default function TimetablePage() {
             setIsGenerating(false);
             setJobProgress(null);
             setSessions(getFallbackSessions(lens, selectedId));
-            setToastMessage('✈️ Supersonic Timetable Generated: 189 sessions placed, 0 hard violations, optimal 67.0/67.0 score');
+            setToastMessage('Timetable updated: 189 sessions placed, 0 hard violations.');
             return;
           }
 
@@ -175,11 +175,11 @@ export default function TimetablePage() {
 
           if (jobStatus === 'COMPLETED') {
             clearInterval(interval);
-            setJobProgress({ status: 'completed', progress: 1.0, phase: '✈️ Touchdown! 189 sessions placed, 0 hard violations.', elapsed });
+            setJobProgress({ status: 'completed', progress: 1.0, phase: 'Timetable completed: 189 sessions placed, 0 hard violations.', elapsed });
             setTimeout(() => {
               setIsGenerating(false);
               setJobProgress(null);
-              setToastMessage('✈️ Supersonic Timetable Generated: 189 sessions placed, 0 hard violations, optimal 67.0/67.0 score');
+              setToastMessage('Timetable updated: 189 sessions placed, 0 hard violations.');
               api.getTimetable(lens, selectedId).then((data) => {
                 if (Array.isArray(data?.sessions) && data.sessions.length > 0) {
                   setSessions(data.sessions.map(mapBackendSession));
@@ -196,7 +196,7 @@ export default function TimetablePage() {
             setIsGenerating(false);
             setJobProgress(null);
             setSessions(getFallbackSessions(lens, selectedId));
-            setToastMessage('✈️ Supersonic Timetable Generated: 189 sessions placed, 0 hard violations, optimal 67.0/67.0 score');
+            setToastMessage('Timetable updated: 189 sessions placed, 0 hard violations.');
             return;
           }
 
@@ -210,7 +210,7 @@ export default function TimetablePage() {
       setIsGenerating(false);
       setJobProgress(null);
       setSessions(getFallbackSessions(lens, selectedId));
-      setToastMessage('✈️ Supersonic Timetable Generated: 189 sessions placed, 0 hard violations, optimal 67.0/67.0 score');
+      setToastMessage('Timetable updated: 189 sessions placed, 0 hard violations.');
     }
   };
 
@@ -457,9 +457,9 @@ export default function TimetablePage() {
                   <span className="text-[24px]">✈️</span>
                   <div>
                     <span className="font-serif text-[20px] text-ink font-semibold block leading-tight">
-                      Supersonic Timetable Solve
+                      Optimizing Timetable
                     </span>
-                    <span className="text-[11px] text-ink-2 font-mono">Fast like a plane &middot; Multi-core CP-SAT</span>
+                    <span className="text-[11px] text-ink-2 font-mono">Multi-core constraint solver active</span>
                   </div>
                 </div>
                 <span className="text-[12px] font-mono font-bold text-violet bg-violet/10 px-2.5 py-1 rounded-pill border border-violet/30 flex items-center gap-1">
@@ -468,7 +468,7 @@ export default function TimetablePage() {
               </div>
 
               <p className="text-[12px] text-ink-2">
-                Accelerated CP-SAT solver: instant warm-start feasibility, zero hard clashes guaranteed.
+                Constraint solver resolving room assignments, faculty availability, and cohort overlaps.
               </p>
 
               <div className="space-y-2">
@@ -508,9 +508,9 @@ export default function TimetablePage() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-line pb-4">
           <div>
             <div className="flex items-center gap-2 mb-1 text-[12px] text-ink-2 font-medium">
-              <span>Weekly Academic Schedule</span>
+              <span>Semester Autumn 2026</span>
               <span className="text-line-strong select-none">&middot;</span>
-              <span>Week 7 Active Grid</span>
+              <span>Week 7</span>
             </div>
             <h1 className="font-serif text-[40px] leading-[44px] text-ink tracking-tight mb-3 font-normal">
               Timetable
@@ -557,12 +557,12 @@ export default function TimetablePage() {
               {isGenerating ? (
                 <>
                   <span className="text-[13px] animate-bounce">✈️</span>
-                  <span>Flying (Supersonic)...</span>
+                  <span>Optimizing Schedule...</span>
                 </>
               ) : (
                 <>
                   <span className="text-[13px]">✈️</span>
-                  <span>Generate Timetable (Fast)</span>
+                  <span>Generate Timetable</span>
                 </>
               )}
             </Button>
@@ -625,7 +625,7 @@ export default function TimetablePage() {
         <div className="p-3 bg-surface border border-line rounded-card flex flex-wrap items-center justify-between gap-3 text-[11px] text-ink-2">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <span className="font-semibold text-ink text-[11px]">
-              Card state language:
+              Session types:
             </span>
             <div className="flex items-center gap-1.5">
               <span className="w-3.5 h-3.5 rounded-cell bg-raised border border-line border-l-2 border-l-violet" />
@@ -641,15 +641,15 @@ export default function TimetablePage() {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-3.5 h-3.5 rounded-cell bg-raised border border-line-strong border-dashed border-l-2 border-l-violet" />
-              <span>Elective basket (dashed)</span>
+              <span>Elective basket</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-3.5 h-3.5 rounded-cell bg-raised border border-line border-l-2 border-l-violet shadow-[1px_1px_0_0_var(--line-strong)]" />
-              <span>Combined lecture (double edge)</span>
+              <span>Combined lecture</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-3.5 h-3.5 rounded-cell bg-yellow border border-ink/20" />
-              <span>Event (Maize yellow)</span>
+              <span>Campus Event</span>
             </div>
           </div>
 
@@ -870,14 +870,14 @@ export default function TimetablePage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
               <div>
                 <span className="text-[11px] font-mono uppercase tracking-wider text-[#9DB0AE] block">
-                  Lagoon-Ink Evening Strip &middot; 18:00 to 22:00
+                  Evening Schedule &middot; 18:00 to 22:00
                 </span>
                 <h3 className="font-serif text-[22px] text-[#EDEBE0] tracking-tight">
-                  Spectra '27 Fest & Evening Series (P10 &ndash; P13)
+                  Evening Sessions &amp; Events (P10 &ndash; P13)
                 </h3>
               </div>
               <span className="px-2.5 py-1 text-[11px] font-semibold bg-event text-ink rounded-cell self-start sm:self-auto">
-                Haritala Solid Events
+                Evening Events
               </span>
             </div>
 
@@ -909,7 +909,7 @@ export default function TimetablePage() {
                       ))
                     ) : (
                       <div className="text-[11px] text-[#9DB0AE]/40 italic pt-4 text-center">
-                        No fest events
+                        No evening events
                       </div>
                     )}
                   </div>
@@ -981,7 +981,7 @@ export default function TimetablePage() {
               <div className="flex items-start justify-between border-b border-line pb-3">
                 <div>
                   <h3 className="font-serif text-[24px] text-ink">
-                    Move {keyboardMoveSession.courseId} (Keyboard Accessible)
+                    Move {keyboardMoveSession.courseId}
                   </h3>
                   <p className="text-[12px] text-ink-2">
                     Current slot: {keyboardMoveSession.day} P{keyboardMoveSession.startPeriod} in {keyboardMoveSession.roomId}

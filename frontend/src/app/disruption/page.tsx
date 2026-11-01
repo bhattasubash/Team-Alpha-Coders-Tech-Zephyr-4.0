@@ -194,13 +194,13 @@ export default function DisruptionPage() {
               <span className="px-2 py-0.5 text-[11px] font-semibold bg-ink text-paper rounded-cell">
                 Rescheduling Engine
               </span>
-              <span className="text-[12px] text-ink-2 font-mono">CP-SAT Minimal-Move Warm-Start</span>
+              <span className="text-[12px] text-ink-2 font-mono">Minimal-Move Optimizer</span>
             </div>
             <h1 className="font-serif text-[40px] leading-[44px] text-ink tracking-tight mb-2">
               Disruption Simulation
             </h1>
             <p className="font-serif italic text-[16px] text-ink-2">
-              Calculate the minimal number of moved sessions when faculty take leave or rooms close.
+              Calculate minimal session reallocations when faculty take leave or rooms close.
             </p>
           </div>
 
@@ -210,14 +210,14 @@ export default function DisruptionPage() {
               className="text-[12px] h-8 px-3 text-bad border-bad/50 hover:bg-t-bad"
               onClick={handleLoadImpossible}
             >
-              Simulate conflict (Infeasible)
+              Scenario: Extended Closure
             </Button>
             <Button
               variant="primary"
               className="text-[12px] h-8 px-3.5 bg-ink text-paper hover:bg-ink/90"
               onClick={handleLoadSample}
             >
-              Load practice disruption (Feasible)
+              Scenario: Faculty Leave
             </Button>
           </div>
         </div>
@@ -433,7 +433,7 @@ export default function DisruptionPage() {
               <div className="p-6 bg-t-bad border border-bad/50 rounded-panel space-y-5 shadow-sm animate-fadeIn">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="px-2 py-0.5 text-[11px] font-mono font-bold bg-bad text-paper rounded-cell uppercase">
-                    C. After Rescheduling
+                    Rescheduling Outcome
                   </span>
                   <span className="text-[11px] font-mono text-bad font-semibold">
                     Hard Validity Failure &middot; Infeasible Repair Outcome
@@ -445,7 +445,7 @@ export default function DisruptionPage() {
                       No valid schedule exists (Infeasible Disruption).
                     </h2>
                     <p className="font-serif italic text-[14px] text-ink leading-relaxed mt-1">
-                      The CP-SAT kernel proved that no combination of room and time slots satisfies all hard constraints simultaneously under this disruption. Hard validity failed; repair outcome is unachievable without constraint relaxation.
+                      No feasible schedule satisfies all institutional requirements under this disruption scenario. Please adjust room closure windows or assign substitute faculty.
                     </p>
                   </div>
                   <Chip label="HARD VALIDITY FAILED" variant="failed" />
@@ -509,7 +509,7 @@ export default function DisruptionPage() {
                   <div className="flex items-center justify-between border-b border-line pb-2">
                     <span className="text-[11px] font-mono uppercase tracking-wider text-ink font-bold flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-event" />
-                      1. Why This Disruption Occurred (Root Cause Analysis)
+                      Root Cause Analysis
                     </span>
                     <span className="text-[11px] font-mono text-ink-2">Impact: {proposal.forced_moves || moves.length} sessions invalidated</span>
                   </div>
@@ -562,7 +562,7 @@ export default function DisruptionPage() {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="px-2 py-0.5 text-[11px] font-mono font-bold bg-ink text-paper rounded-cell uppercase">
-                          C. After Rescheduling
+                          Rescheduling Outcome
                         </span>
                         <span className="text-[11px] font-mono text-green font-semibold">
                           {proposal.proven_minimum ? 'Proven Minimal Move Solution' : 'Feasible Recovery Solution'}
@@ -585,7 +585,7 @@ export default function DisruptionPage() {
                       <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-good" />
                         <span className="text-[12px] font-mono uppercase tracking-wider text-green font-bold">
-                          1. Hard Validity &amp; Repair Outcome (Evaluated First)
+                          Schedule Validity &amp; Repair Outcome
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -648,7 +648,7 @@ export default function DisruptionPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[12px] font-semibold text-ink uppercase tracking-wide">
-                        2. Moved-Session Count &amp; Relocation Distribution
+                        Relocation Distribution
                       </span>
                       <span className="text-[11px] font-mono text-ink-2">
                         {proposal.proven_minimum ? 'Mathematically Proven Minimum' : 'Solver Proposal'}
@@ -680,7 +680,7 @@ export default function DisruptionPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-line pb-1.5">
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] font-mono uppercase tracking-wider text-ink font-bold">
-                          3. Soft Penalty Score (Exposed Briefly)
+                          Preference Penalty Metrics
                         </span>
                         <Chip label="ADVISORY" variant="neutral" />
                       </div>
@@ -710,9 +710,7 @@ export default function DisruptionPage() {
                       </span>
                     </div>
 
-                    <p className="font-serif italic text-[11px] text-ink-2 leading-tight">
-                      * Hard validity and minimal relocation stability take priority over soft penalties in disruption management.
-                    </p>
+
                   </div>
 
                   {/* 4. CHANGE COMPARISON (Before vs After Timetables & Filterable Ledger) */}
@@ -720,7 +718,7 @@ export default function DisruptionPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
                         <span className="text-[12px] font-semibold text-ink uppercase tracking-wide block">
-                          4. Change Comparison (Before vs After)
+                          Change Comparison (Before vs After)
                         </span>
                         <span className="text-[11px] text-ink-2 font-serif italic">
                           Side-by-side visualization of vacated baseline slots versus newly recovered allocations.

@@ -147,21 +147,21 @@ export default function DashboardPage() {
     admin: [
       {
         title: 'Simulate disruption scenario',
-        desc: 'Calculate minimal-move schedule for faculty leave or emergency room maintenance using CP-SAT.',
+        desc: 'Calculate minimal reallocations for faculty leave or emergency room maintenance.',
         href: '/disruption',
         btnLabel: 'Open solver',
         variant: 'primary',
       },
       {
         title: 'Run official validator audit',
-        desc: 'Typeset audit of 0 hard violations, soft penalties (S1–S6), and differential invariance verification.',
+        desc: 'Comprehensive audit of 0 hard violations, soft penalties (S1–S6), and security verification.',
         href: '/admin/proof',
         btnLabel: 'Run audit',
         variant: 'secondary',
       },
       {
         title: 'Review venue priority ladder',
-        desc: 'Reorder preemption ranks (Exams → Regular → Spectra events) and inspect outcome shifts.',
+        desc: 'Reorder preemption ranks and preview booking allocation outcomes.',
         href: '/admin/priority',
         btnLabel: 'Edit ladder',
         variant: 'secondary',
@@ -170,7 +170,7 @@ export default function DashboardPage() {
     department_coordinator: [
       {
         title: 'Audit department timetable',
-        desc: 'Inspect CSE lecture distribution, faculty daily limits (H12), and 3-hour laboratory slots.',
+        desc: 'Inspect course lecture distribution, faculty daily limits, and 3-hour laboratory slots.',
         href: '/timetable',
         btnLabel: 'View timetable',
         variant: 'primary',
@@ -193,7 +193,7 @@ export default function DashboardPage() {
     faculty: [
       {
         title: 'View my weekly teaching schedule',
-        desc: 'Check assigned lecture halls, laboratories, and teaching periods with zero personal conflicts.',
+        desc: 'Check assigned lecture halls, laboratories, and teaching periods.',
         href: '/timetable',
         btnLabel: 'My timetable',
         variant: 'primary',
@@ -216,14 +216,14 @@ export default function DashboardPage() {
     club: [
       {
         title: 'Submit Spectra venue booking',
-        desc: 'Draft auditorium, open-air theatre, or seminar hall reservation with AI prompt parsing.',
+        desc: 'Draft auditorium, open-air theatre, or seminar hall reservations.',
         href: '/bookings/new',
         btnLabel: 'New booking',
         variant: 'primary',
       },
       {
         title: 'Check booking approval decisions',
-        desc: 'Review 25 Spectra fest requests, approval reasons, and kernel priority ranking.',
+        desc: 'Review campus venue requests, approval statuses, and priority assignments.',
         href: '/bookings',
         btnLabel: 'Track status',
         variant: 'secondary',
@@ -361,13 +361,13 @@ export default function DashboardPage() {
             <div className="w-full glass-panel rounded-panel p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 overflow-hidden relative shadow-card">
               <div className="max-w-xl z-10">
                 <span className="text-[13px] font-medium text-ink-2 block mb-1">
-                  {weekLabel} Academic &amp; {festName} Operations
+                  {weekLabel} Academic &amp; Venue Operations
                 </span>
                 <h1 className="font-serif text-[34px] sm:text-[42px] leading-[1.06] text-ink tracking-tight mb-2 font-normal">
-                  {weekLabel} is the busiest week of the semester.
+                  Semester Autumn 2026 &middot; {weekLabel}
                 </h1>
                 <p className="font-serif italic text-[17px] sm:text-[18px] text-ink-2 leading-relaxed">
-                  {totalBookingsCount} {festName} bookings, regular classes and midsem preparation overlap.
+                  Timetable schedules, venue reservations, and midsem exam preparations.
                 </p>
               </div>
 
@@ -581,7 +581,7 @@ export default function DashboardPage() {
                         Operational Actions
                       </h2>
                       <p className="text-[13px] text-ink-2 mt-0.5">
-                        Workflow actions adapted for {DEMO_USERS[role].title}.
+                        Available operational workflows for {DEMO_USERS[role].title}.
                       </p>
                     </div>
                     <span className="text-[11px] font-mono text-ink-2 uppercase">Role: {role}</span>
@@ -639,13 +639,13 @@ export default function DashboardPage() {
                         />
                       </div>
                       <p className="font-serif italic text-[15px] text-ink leading-relaxed">
-                        &ldquo;{conflictCount} active conflict{conflictCount === 1 ? '' : 's'}.&rdquo;
+                        {conflictCount === 0 ? "0 active conflicts" : `${conflictCount} active conflicts`}
                       </p>
                       <p className="text-[12px] text-ink-2 leading-normal">
                         {conflictCount === 0 ? (
                           <>
                             All {sessionsCount} sessions and approved bookings comply with faculty limits,
-                            room capacities, and accessibility mandates.
+                            room capacities, and accessibility requirements.
                           </>
                         ) : (
                           <>
@@ -752,8 +752,8 @@ export default function DashboardPage() {
                           <h3 className="font-serif text-[18px] text-ink">Evening Activities (P10–P13)</h3>
                           <p className="text-[11px] text-ink-2">
                             {isWeekFallback
-                              ? `Spectra festival highlights (Full week schedule)`
-                              : `Spectra festival allocations for ${activeDay}`}
+                              ? `Evening schedule highlights (Full week schedule)`
+                              : `Evening schedule allocations for ${activeDay}`}
                           </p>
                         </div>
                         <Chip label="SPECTRA" variant="event" />

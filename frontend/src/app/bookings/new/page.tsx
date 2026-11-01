@@ -1246,7 +1246,7 @@ export default function NewBookingPage() {
               New Booking Request
             </h1>
             <p className="font-serif italic text-[16px] text-ink-2">
-              The AI only drafts. The kernel deterministically verifies room conflicts and capacity.
+              Submit a room reservation request for lectures, seminars, or student events.
             </p>
           </div>
 
@@ -1339,7 +1339,7 @@ export default function NewBookingPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
               <div className="flex items-center gap-2 text-[12px] text-ink-2">
                 <KernelStamp label="Verified by kernel" />
-                <span>Deterministic precheck: 0 hard violations &middot; Rule B1 satisfied</span>
+                <span>Pre-check verified: 0 schedule clashes detected.</span>
               </div>
 
               <div className="flex items-center gap-3">
@@ -1437,7 +1437,7 @@ export default function NewBookingPage() {
               activeTab === 'describe' ? 'text-ink font-semibold' : 'text-ink-2 hover:text-ink'
             }`}
           >
-            Describe it (AI draft)
+            Natural Language
             {activeTab === 'describe' && (
               <span className="absolute left-0 right-0 -bottom-[9px] h-[2px] bg-violet rounded-full" />
             )}
@@ -1449,7 +1449,7 @@ export default function NewBookingPage() {
               activeTab === 'manual' ? 'text-ink font-semibold' : 'text-ink-2 hover:text-ink'
             }`}
           >
-            Fill the form (Manual entry &middot; Always works)
+            Standard Form
             {activeTab === 'manual' && (
               <span className="absolute left-0 right-0 -bottom-[9px] h-[2px] bg-violet rounded-full" />
             )}
@@ -1533,7 +1533,7 @@ export default function NewBookingPage() {
               <KernelStamp
                 label="Checked by kernel"
                 showProvenance
-                provenance="Checked by kernel. This check does not use an AI model."
+                provenance="Verified against venue capacity and schedule conflicts."
               />
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-mono text-ink-2">Validation:</span>
@@ -1688,7 +1688,7 @@ export default function NewBookingPage() {
                     className="w-4 h-4 rounded text-ink border-line-strong focus:ring-ink"
                   />
                   <span className="font-ui text-[13px] font-medium text-ink">
-                    Wheelchair accessibility required (H10)
+                    Wheelchair accessibility required
                   </span>
                 </label>
                 {provenanceMap.wheelchair && (
@@ -1703,7 +1703,7 @@ export default function NewBookingPage() {
             <div className="space-y-2 pt-2 border-t border-line">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                 <label className="text-[13px] font-medium text-ink">
-                  Periods P1 to P13 (Segmented Selector)
+                  Select Periods (P1 to P13)
                 </label>
                 <span className="text-[11px] text-ink-2 font-mono">
                   Selected:{' '}

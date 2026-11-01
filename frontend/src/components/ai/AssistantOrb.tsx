@@ -154,15 +154,10 @@ export function AssistantOrb() {
       const bobY = Math.sin(time * 0.0025) * 0.06;
       characterGroup.position.y = bobY;
 
-      // Rotation & interaction
-      if (loadedCharacter) {
-        if (isHoveredRef.current) {
-          characterGroup.rotation.y += delta * 1.8 * speed;
-        } else {
-          // Subtle idle sway around front orientation
-          characterGroup.rotation.y += delta * 0.45;
-        }
-      } else if (fallbackMesh.visible) {
+      // Keep character still facing towards the viewers (no revolving)
+      characterGroup.rotation.set(0, 0, 0);
+
+      if (!loadedCharacter && fallbackMesh.visible) {
         fallbackMesh.rotation.y += delta * 0.9 * speed;
         fallbackMesh.rotation.x += delta * 0.5 * speed;
       }
@@ -185,7 +180,7 @@ export function AssistantOrb() {
 
   return (
     <aside
-      aria-label="CIT 3D AI Scheduling Guide"
+      aria-label="CIT Campus Scheduling Guide"
       className="fixed bottom-4 right-5 z-40 select-none"
     >
       {/* Floating 3D Character Button */}
@@ -194,18 +189,15 @@ export function AssistantOrb() {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className="relative flex flex-col items-center justify-end cursor-pointer group focus:outline-none transition-transform duration-300 hover:scale-105"
-        title="Open CIT AI Scheduling Assistant"
-        aria-label="Open CIT AI Scheduling Assistant"
+        title="Open Campus Scheduling Assistant"
+        aria-label="Open Campus Scheduling Assistant"
       >
         {/* Interactive tooltip placed directly ABOVE character */}
         <div
           className="absolute bottom-[102%] left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all duration-200 pointer-events-none flex items-center gap-1.5 px-2.5 py-1 rounded-pill bg-surface/95 backdrop-blur-md border border-violet/30 text-ink shadow-elevated text-[11px] font-medium whitespace-nowrap z-50 mb-1"
         >
-          <SparklesIcon size={12} className="text-violet animate-pulse" />
-          <span>Ask CIT Guide</span>
-          <span className="text-[9px] text-ink-2 font-mono bg-raised px-1 py-0.2 rounded border border-line">
-            AI
-          </span>
+          <SparklesIcon size={12} className="text-violet" />
+          <span>Campus Assistant</span>
         </div>
 
         {/* 3D Character Canvas (boosted exposure, higher contrast & +5% size) */}

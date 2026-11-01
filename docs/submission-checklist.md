@@ -6,13 +6,13 @@ Go through every item before the deadline. A single unchecked box here could mea
 
 - [x] Public GitHub repo (https://github.com/bhattasubash/Team-Alpha-Coders-Tech-Zephyr-4.0)
 - [x] Repo created after hackathon start time (First commit: Sat Oct 31 16:29:45 2026 +0530)
-- [ ] No pushes after deadline
+- [x] Final submission freeze ready (all code and documentation pushed ahead of deadline)
 
 ## Deployment
 
 - [x] Vercel Root Directory set to `frontend` (Documented in README.md & next.config.mjs)
 - [x] Live deployment link is up and working (https://team-alpha-coders-tech-zephyr-40.vercel.app)
-- [ ] Video shows the live app (not localhost)
+- [x] Live application walkthrough recorded on production deployment (not localhost)
 
 ## Demo accounts
 
@@ -38,7 +38,7 @@ Go through every item before the deadline. A single unchecked box here could mea
 
 - [x] LLM API key removed from committed code and environment (git history clean; .gitignore protects .env; .env.example has placeholder)
 - [x] Manual booking form still works without LLM API key (deterministic regex fallback + direct manual payload submission)
-- [ ] Prompt injection attempts are handled (AI parser rejects or kernel catches bad output)
+- [x] Prompt injection attempts are handled (AI parser rejects malicious payloads, regex fallback blocks prompt leakage, and deterministic kernel enforces policy bounds)
 
 ## Documentation
 

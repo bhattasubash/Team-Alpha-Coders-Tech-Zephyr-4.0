@@ -20,7 +20,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
   {
     id: 'welcome',
     sender: 'assistant',
-    text: "Hello! I am the CIT Scheduling Assistant. I'm grounded in the current CP-SAT solved schedule, venue constraints, and Spectra festival rules. How can I assist you?",
+    text: "Hello! I am the CIT Campus Scheduling Assistant. How can I assist you with timetable sessions, room availability, or booking guidelines today?",
     timestamp: 'Just now',
     citations: ['CP-SAT Solver', 'Dataset State'],
   },
@@ -114,8 +114,8 @@ export function AssistantDrawer() {
     <Drawer
       isOpen={isAssistantOpen}
       onClose={() => setIsAssistantOpen(false)}
-      title="CIT AI Guide & Assistant"
-      subtitle="Interactive 3D guide & CP-SAT solver constraint explainer"
+      title="Campus Assistant"
+      subtitle="Search schedules, room policies, and booking guidelines"
     >
       <div className="flex flex-col h-[calc(100vh-170px)] font-ui">
         {/* Messages scroll area */}
@@ -135,7 +135,7 @@ export function AssistantDrawer() {
                 {msg.sender === 'assistant' && (
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold text-violet mb-1.5">
                     <SparklesIcon size={13} />
-                    <span>CIT AI Guide</span>
+                    <span>Campus Assistant</span>
                   </div>
                 )}
                 <p className="whitespace-pre-wrap">{msg.text}</p>

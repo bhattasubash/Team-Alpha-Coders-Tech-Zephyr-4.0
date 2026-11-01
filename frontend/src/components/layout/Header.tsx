@@ -57,8 +57,8 @@ export function Header() {
           </svg>
         </button>
         <span className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-[11px] sm:text-[11.5px] font-semibold bg-violet/15 text-violet border border-violet/30 rounded-pill leading-none shadow-[0_0_12px_rgba(125,93,255,0.2)]">
-          <span className="w-1.5 h-1.5 rounded-full bg-violet animate-pulse" />
-          <span>Spectra</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-violet" />
+          <span>Autumn 2026</span>
         </span>
         <span className="text-[12px] text-ink-2 font-medium hidden md:inline">
           {currentDateStr}
@@ -85,14 +85,14 @@ export function Header() {
 
       {/* Right: Judge Tour, User Profile Card, & Light|Dark Switch */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
-        {/* Judge Tour Button: visible on all devices */}
+        {/* Guided Tour Walkthrough */}
         <button
           onClick={startTour}
-          className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-[11px] font-semibold bg-raised border border-line hover:border-event hover:shadow-[0_0_12px_rgba(251,230,77,0.25)] rounded-[6px] text-ink transition-all cursor-pointer flex-shrink-0"
-          title="Launch guided judge walkthrough"
+          className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-[11px] font-semibold bg-raised border border-line hover:border-violet/60 hover:shadow-xs rounded-[6px] text-ink transition-all cursor-pointer flex-shrink-0"
+          title="Launch guided walkthrough"
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-yellow shadow-[0_0_6px_#FBE64D]" />
-          <span className="hidden xs:inline">Judge Tour</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-violet" />
+          <span className="hidden xs:inline">Product Tour</span>
         </button>
 
         {/* Professional User Profile Display (Switches accounts on Login page) */}

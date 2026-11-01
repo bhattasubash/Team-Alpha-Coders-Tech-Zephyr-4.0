@@ -50,7 +50,7 @@ export default function WhyHerePage() {
               Why Here Ledger
             </h1>
             <p className="font-serif italic text-[16px] text-ink-2">
-              Granular explanation ledger for placement decisions. Deterministic constraint trace + verified AI paraphrase.
+              Detailed placement explanations and constraint verification for scheduled sessions.
             </p>
           </div>
 
@@ -94,7 +94,7 @@ export default function WhyHerePage() {
                   viewMode === 'trace' ? 'bg-surface text-ink font-semibold' : 'text-ink-2'
                 }`}
               >
-                Rule trace
+                Audit trace
               </button>
               <button
                 onClick={() => setViewMode('plain')}
@@ -102,7 +102,7 @@ export default function WhyHerePage() {
                   viewMode === 'plain' ? 'bg-surface text-ink font-semibold' : 'text-ink-2'
                 }`}
               >
-                Plain language
+                Summary
               </button>
             </div>
           </div>
@@ -170,7 +170,7 @@ export default function WhyHerePage() {
                     'Explanation engine loading... Complete solver placement proof and alternative feasibility logs are maintained in the solver audit ledger.'}
                 </p>
                 <div className="pt-3 border-t border-line text-[11px] text-ink-2 italic font-serif">
-                  Paraphrase by AI. The rule trace ledger is the source of truth.
+                  
                 </div>
               </div>
             </div>

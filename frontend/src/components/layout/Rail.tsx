@@ -390,17 +390,17 @@ export function Rail() {
                 </div>
               )}
 
-              {/* Judge Tour button in Mobile Menu */}
+              {/* Product Tour button in Mobile Menu */}
               <div className="pt-3">
                 <button
                   onClick={() => {
                     setIsMobileNavOpen(false);
                     startTour();
                   }}
-                  className="w-full flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-card bg-[#1C3739] border border-event/40 hover:border-event text-white text-[13px] font-semibold transition-all shadow-sm"
+                  className="w-full flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-card bg-[#1C3739] border border-violet/40 hover:border-violet text-white text-[13px] font-semibold transition-all shadow-sm"
                 >
-                  <span className="w-2 h-2 rounded-full bg-yellow shadow-[0_0_6px_#FBE64D]" />
-                  <span>Launch Judge Tour</span>
+                  <span className="w-2 h-2 rounded-full bg-violet" />
+                  <span>Launch Product Tour</span>
                 </button>
               </div>
             </nav>

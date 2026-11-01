@@ -163,7 +163,7 @@ export default function RoomsPage() {
               Venues &amp; Room Explorer
             </h1>
             <p className="font-serif italic text-[16px] text-ink-2">
-              Quiet paper-like wayfinder for 27 campus venues. Isometric line-art campus map and single-hue lagoon utilisation matrix.
+              Campus venues, room capacities, live occupancy, and accessibility information.
             </p>
           </div>
 

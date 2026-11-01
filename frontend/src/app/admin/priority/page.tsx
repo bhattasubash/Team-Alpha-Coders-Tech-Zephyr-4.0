@@ -240,7 +240,7 @@ export default function PriorityPage() {
               Priority Hierarchy
             </h1>
             <p className="font-serif italic text-[16px] text-ink-2 max-w-2xl">
-              Deterministic preemption ladder for venue booking allocation. When multiple events compete for the same room, the higher rank prevails.
+              Preemption priority hierarchy for venue reservations and conflict resolution.
             </p>
           </div>
 
@@ -306,7 +306,7 @@ export default function PriorityPage() {
                   <div>
                     <h2 className="font-serif text-[22px] text-ink">Ranking Ladder</h2>
                     <p className="font-serif italic text-[13px] text-ink-2">
-                      Drag and drop rows or use Alt+Up / Alt+Down to reorder ranks 2 to 6.
+                      Drag rows or use arrow buttons to reorder priority ranks 2 to 6.
                     </p>
                   </div>
                   <span className="text-[11px] text-ink-2 font-mono">Rank 1 is locked</span>
@@ -410,7 +410,7 @@ export default function PriorityPage() {
                       <span className="text-[11px] font-mono text-ink-2">Live Simulation</span>
                     </div>
                     <p className="font-serif italic text-[14px] text-ink leading-snug mt-1">
-                      &ldquo;4 of 25 Spectra bookings change outcome&rdquo;
+                      4 of 25 bookings affected
                     </p>
                   </div>
 

@@ -12,12 +12,12 @@ export function WhyHereDrawer() {
 
   if (!drawerTarget) return null;
 
-  // Footer toggle: Rule trace (default) vs Plain language
+  // Footer toggle: Audit trace (default) vs Summary
   const footerToggle = (
     <div className="flex items-center justify-between w-full font-ui">
       <div className="flex items-center gap-1.5 text-[11px] text-ink-2">
         <span className="w-1.5 h-1.5 rounded-full bg-good shadow-[0_0_8px_rgba(99,204,121,0.6)]" />
-        <span>Solver Mode: CP-SAT Verified</span>
+        <span>Status: Policy Verified</span>
       </div>
 
       <div
@@ -33,7 +33,7 @@ export function WhyHereDrawer() {
               : 'text-ink-2 hover:text-ink'
           }`}
         >
-          Rule trace
+          Audit trace
         </button>
         <button
           onClick={() => setViewMode('plain')}
@@ -43,7 +43,7 @@ export function WhyHereDrawer() {
               : 'text-ink-2 hover:text-ink'
           }`}
         >
-          Plain language
+          Summary
         </button>
       </div>
     </div>
@@ -142,7 +142,7 @@ export function WhyHereDrawer() {
           /* View Mode 2: Plain Language AI Paraphrase */
           <div className="space-y-4">
             <div className="text-[12px] font-semibold text-ink uppercase tracking-wider">
-              Natural Language Explanation
+              Placement Summary
             </div>
 
             <div className="p-4 bg-surface/80 border border-line rounded-card text-ink space-y-3">

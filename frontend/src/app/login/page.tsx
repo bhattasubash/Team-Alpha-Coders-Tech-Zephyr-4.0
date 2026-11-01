@@ -167,7 +167,7 @@ export default function LoginPage() {
 
           <div className="relative z-10 p-4 sm:p-6 hidden md:block">
             <p className="font-serif italic text-[15px] text-[#9DB0AE] leading-snug max-w-xs">
-              Odisha pattachitra pigments, lagoon ink, and hard constraint guarantees.
+              Autumn 2026 academic timetable and venue allocation portal.
             </p>
           </div>
         </div>
@@ -191,7 +191,7 @@ export default function LoginPage() {
             {/* Fast-Track Role Rows for Instant Judge Evaluation */}
             <div className="space-y-1.5 mb-4">
               <span className="text-[12px] font-medium text-ink-2 block mb-1">
-                Select demo role for evaluation:
+                Select demo profile:
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
