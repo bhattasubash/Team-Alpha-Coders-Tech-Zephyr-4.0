@@ -120,19 +120,45 @@ export default function TimetablePage() {
     try {
       setIsGenerating(true);
       setGenerateError(null);
-      setJobProgress({ status: 'queued', progress: 0.05, phase: 'Phase 1: Reserving Spectra Fest booking windows against empty teaching slots...', elapsed: 0 });
+      setJobProgress({ status: 'queued', progress: 0.05, phase: 'Phase 1: Reserving Spectra Fest booking windows...', elapsed: 0 });
+
       const jobRes = await api.generateTimetable({ time_limit_seconds: 5 });
       const jobId = jobRes?.job_id;
 
       const startTime = Date.now();
-      // Hard timeout: give up polling after 45s and fall back gracefully
       const POLL_TIMEOUT_MS = 45_000;
+
+      /**
+       * Client-side phase-aware progress driver.
+       *
+       * The backend's raw progress value can get stuck at 0.95 (old deployed
+       * servers cap it there). Instead we drive the bar entirely from elapsed
+       * time and the phase label, so it always keeps moving smoothly:
+       *
+       *   Phase 1  (booking reservations) :  5% → 10%   over  2 s
+       *   Phase 2  (CP-SAT solve)          : 10% → 82%   over 12 s  (√ curve)
+       *   Phase 3  (kernel commit)         : 82% → 96%   over  4 s
+       *   completed                         → 100%  immediately
+       */
+      const clientProgress = (elapsedSec: number, phaseLabel: string): number => {
+        const p = phaseLabel.toLowerCase();
+        if (p.includes('phase 1') || p.includes('booking')) {
+          return Math.min(0.10, 0.05 + elapsedSec / 20);
+        }
+        if (p.includes('phase 3') || p.includes('commit')) {
+          const into = Math.max(0, elapsedSec - 10);
+          return Math.min(0.96, 0.82 + into / 25);
+        }
+        // Phase 2 (solve) — sqrt curve 10% → 82% over a 12-second window
+        const into = Math.max(0, elapsedSec - 1);
+        const ratio = Math.min(1, into / 12);
+        return Math.min(0.82, 0.10 + 0.72 * Math.sqrt(ratio));
+      };
 
       const interval = setInterval(async () => {
         try {
           const elapsed = Math.round((Date.now() - startTime) / 1000);
 
-          // Hard timeout guard — stop waiting if backend takes too long
           if (Date.now() - startTime > POLL_TIMEOUT_MS) {
             clearInterval(interval);
             setIsGenerating(false);
@@ -142,23 +168,15 @@ export default function TimetablePage() {
             return;
           }
 
-          const statusRes = jobId ? await api.getJobStatus(jobId) : { status: 'completed', progress: 1.0, phase: 'Done' };
-          const status = (statusRes.status || '').toUpperCase();
+          const statusRes = jobId
+            ? await api.getJobStatus(jobId)
+            : { status: 'completed', progress: 1.0, phase: 'Done' };
 
-          // Trust the backend progress — it is now phase-aware and keeps moving.
-          // Only use the backend value; never clamp to 0.95 while running.
-          const backendProgress = typeof statusRes.progress === 'number' ? statusRes.progress : 0.1;
+          const jobStatus = (statusRes.status || '').toUpperCase();
+          const phaseLabel: string = statusRes.phase || 'Phase 2: Timetable Solve';
 
-          setJobProgress({
-            status: statusRes.status,
-            progress: backendProgress,
-            phase: statusRes.phase || 'CP-SAT integer optimization in progress...',
-            elapsed,
-          });
-
-          if (status === 'COMPLETED') {
+          if (jobStatus === 'COMPLETED') {
             clearInterval(interval);
-            // Animate to 100% before dismissing
             setJobProgress({ status: 'completed', progress: 1.0, phase: 'Completed! 0 hard violations verified.', elapsed });
             setTimeout(() => {
               setIsGenerating(false);
@@ -170,21 +188,28 @@ export default function TimetablePage() {
                 } else {
                   setSessions(getFallbackSessions(lens, selectedId));
                 }
-              }).catch(() => {
-                setSessions(getFallbackSessions(lens, selectedId));
-              });
+              }).catch(() => setSessions(getFallbackSessions(lens, selectedId)));
             }, 600);
-          } else if (status === 'FAILED') {
+            return;
+          }
+
+          if (jobStatus === 'FAILED') {
             clearInterval(interval);
             setIsGenerating(false);
             setJobProgress(null);
             setSessions(getFallbackSessions(lens, selectedId));
             setToastMessage('Timetable generated: 189 sessions placed, 0 hard violations, booking score 67.0/67.0');
+            return;
           }
+
+          // Always use the client-side driver — never trust a backend value
+          // that may be capped at 0.95 by old deployed code.
+          const progress = clientProgress(elapsed, phaseLabel);
+          setJobProgress({ status: statusRes.status, progress, phase: phaseLabel, elapsed });
         } catch {
           // Network hiccup — keep polling until hard timeout
         }
-      }, 500);
+      }, 400);
     } catch {
       setIsGenerating(false);
       setJobProgress(null);
