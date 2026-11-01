@@ -8,7 +8,7 @@ Scheduling, venue management, and constraint validation engine built for **Tech 
 
 | Service | URL | Notes |
 |---------|-----|-------|
-| **Live Web Application** | **[team-alpha-coders-tech-zephyr-40.vercel.app](https://team-alpha-coders-tech-zephyr-40.vercel.app)** | Production Next.js 14 client on Vercel |
+| **Live Web Application** | **[team-alpha-coders-tech-zephyr-40.vercel.app](https://team-alpha-coders-tech-zephyr-40.vercel.app/login)** | Production Next.js 14 client on Vercel |
 | **Backend REST API** | **[cit-scheduler-backend.onrender.com](https://cit-scheduler-backend.onrender.com)** | FastAPI on Render (Docker / Python 3.13) |
 | **Health & Keep-Warm** | **[cit-scheduler-backend.onrender.com/api/health](https://cit-scheduler-backend.onrender.com/api/health)** | Live health status and solver availability check |
 | **Interactive OpenAPI Docs** | **[cit-scheduler-backend.onrender.com/docs](https://cit-scheduler-backend.onrender.com/docs)** | Swagger UI documentation |
