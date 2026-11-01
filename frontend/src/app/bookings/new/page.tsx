@@ -41,6 +41,22 @@ const CAMPUS_ROOMS: Room[] = [
   { id: 'CIVIL-LAB', name: 'Civil Engineering Lab', building: 'Civil Block', type: 'lab', capacity: 60, features: ['equipment'], accessible: true, allowed_uses: ['lab'] },
 ];
 
+function hourToPeriodStart(h: number): number | null {
+  const mapping: Record<number, number> = {
+    8: 1, 9: 2, 10: 3, 11: 4, 12: 5, 13: 5,
+    14: 6, 15: 7, 16: 8, 17: 9, 18: 10, 19: 11, 20: 12, 21: 13
+  };
+  return mapping[h] ?? null;
+}
+
+function hourToPeriodEnd(h: number): number | null {
+  const mapping: Record<number, number> = {
+    9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 5,
+    15: 6, 16: 7, 17: 8, 18: 9, 19: 10, 20: 11, 21: 12, 22: 13
+  };
+  return mapping[h] ?? null;
+}
+
 function parsePromptClient(text: string, availableRooms: Room[]) {
   const lower = (text || '').toLowerCase().trim();
 
@@ -57,7 +73,7 @@ function parsePromptClient(text: string, availableRooms: Room[]) {
     if (lhMatch) {
       vId = `LH-${lhMatch[1]}`;
       vProv = `Inferred from "${lhMatch[0].trim()}" (${vId}).`;
-    } else if (lower.includes('auditorium') || lower.includes('aud')) {
+    } else if (lower.includes('auditorium') || lower.includes('audi') || lower.includes('aud')) {
       vId = 'AUD';
       vProv = 'Inferred from "Auditorium".';
     } else if (lower.includes('open air') || lower.includes('oat')) {
@@ -69,6 +85,9 @@ function parsePromptClient(text: string, availableRooms: Room[]) {
     } else if (lower.includes('seminar hall 2') || lower.match(/\bsh[\s-]*2\b/)) {
       vId = 'SH-2';
       vProv = 'Inferred from "Seminar Hall 2".';
+    } else if (lower.includes('seminar hall') || lower.match(/\b(?:sh|seminar\s*room)\b/)) {
+      vId = 'SH-1';
+      vProv = 'Inferred from "Seminar Hall" (defaulted to SH-1).';
     } else if (lower.includes('physics lab') || lower.match(/\bphy[\s-]*lab\b/)) {
       vId = 'PHY-LAB';
       vProv = 'Inferred from "Physics Lab".';
@@ -135,7 +154,8 @@ function parsePromptClient(text: string, availableRooms: Room[]) {
   let pers: number[] | undefined;
   let pProv: string | undefined;
 
-  const pRange = lower.match(/(?:periods?|p)\s*(\d{1,2})\s*(?:to|-)\s*(?:periods?|p)?\s*(\d{1,2})/);
+  // 1. Explicit periods like P10 to P12, Period 6
+  const pRange = lower.match(/(?:periods?|p)\s*(\d{1,2})\s*(?:to|-|se)\s*(?:periods?|p)?\s*(\d{1,2})/);
   if (pRange) {
     const fp = parseInt(pRange[1], 10);
     const tp = parseInt(pRange[2], 10);
@@ -146,67 +166,164 @@ function parsePromptClient(text: string, availableRooms: Room[]) {
   }
 
   if (!pers) {
-    if (lower.match(/\b(?:10\s*(?:am)?\s*(?:se|to|-)\s*12\s*(?:pm|baje)?|10\s*baje\s*se\s*12\s*baje)\b/)) {
-      pers = [3, 4];
-      pProv = 'Periods P3-P4 inferred from "10:00 - 12:00".';
-    } else if (lower.match(/\b(?:9\s*(?:am)?\s*(?:se|to|-)\s*12\s*(?:pm|baje)?|9\s*baje\s*se\s*12\s*baje)\b/)) {
-      pers = [2, 3, 4];
-      pProv = 'Periods P2-P4 inferred from "09:00 - 12:00".';
-    } else if (lower.match(/\b(?:9\s*(?:am)?\s*(?:se|to|-)\s*11\s*(?:am|baje)?|9\s*baje\s*se\s*11\s*baje)\b/)) {
-      pers = [2, 3];
-      pProv = 'Periods P2-P3 inferred from "09:00 - 11:00".';
-    } else if (lower.match(/\b(?:8\s*(?:am)?\s*(?:se|to|-)\s*10\s*(?:am|baje)?|8\s*baje\s*se\s*10\s*baje)\b/)) {
-      pers = [1, 2];
-      pProv = 'Periods P1-P2 inferred from "08:00 - 10:00".';
-    } else if (lower.match(/\b(?:11\s*(?:am)?\s*(?:se|to|-)\s*1\s*(?:pm|baje)?|11\s*baje\s*se\s*1\s*baje)\b/)) {
-      pers = [4, 5];
-      pProv = 'Periods P4-P5 inferred from "11:00 - 13:00".';
-    } else if (lower.match(/\b(?:2\s*(?:pm)?\s*(?:se|to|-)\s*4\s*(?:pm|baje)?|2\s*baje\s*se\s*4\s*baje|14:00\s*(?:to|-)\s*16:00)\b/)) {
-      pers = [6, 7];
-      pProv = 'Periods P6-P7 inferred from "14:00 - 16:00 (2 PM - 4 PM)".';
-    } else if (lower.match(/\b(?:2\s*(?:pm)?\s*(?:se|to|-)\s*5\s*(?:pm|baje)?|2\s*baje\s*se\s*5\s*baje|14:00\s*(?:to|-)\s*17:00)\b/)) {
-      pers = [6, 7, 8];
-      pProv = 'Periods P6-P8 inferred from "14:00 - 17:00 (2 PM - 5 PM)".';
-    } else if (lower.match(/\b(?:2\s*(?:pm)?\s*(?:se|to|-)\s*6\s*(?:pm|baje)?|2\s*baje\s*se\s*6\s*baje|14:00\s*(?:to|-)\s*18:00)\b/)) {
-      pers = [6, 7, 8, 9];
-      pProv = 'Periods P6-P9 inferred from "14:00 - 18:00 (2 PM - 6 PM)".';
-    } else if (lower.match(/\b(?:3\s*(?:pm)?\s*(?:se|to|-)\s*5\s*(?:pm|baje)?|3\s*baje\s*se\s*5\s*baje|15:00\s*(?:to|-)\s*17:00)\b/)) {
-      pers = [7, 8];
-      pProv = 'Periods P7-P8 inferred from "15:00 - 17:00 (3 PM - 5 PM)".';
-    } else if (lower.match(/\b(?:4\s*(?:pm)?\s*(?:se|to|-)\s*6\s*(?:pm|baje)?|4\s*baje\s*se\s*6\s*baje|16:00\s*(?:to|-)\s*18:00)\b/)) {
-      pers = [8, 9];
-      pProv = 'Periods P8-P9 inferred from "16:00 - 18:00 (4 PM - 6 PM)".';
-    } else if (lower.match(/\b(?:6\s*(?:pm)?\s*(?:se|to|-)\s*8\s*(?:pm|baje)?|6\s*baje\s*se\s*8\s*baje|18:00\s*(?:to|-)\s*20:00)\b/)) {
-      pers = [10, 11];
-      pProv = 'Periods P10-P11 inferred from "18:00 - 20:00 (6 PM - 8 PM)".';
-    } else if (lower.match(/\b(?:6\s*(?:pm)?\s*(?:se|to|-)\s*9\s*(?:pm|baje)?|6\s*baje\s*se\s*9\s*baje|18:00\s*(?:to|-)\s*21:00)\b/)) {
-      pers = [10, 11, 12];
-      pProv = 'Periods P10-P12 inferred from "18:00 - 21:00 (6 PM - 9 PM)".';
-    } else if (lower.match(/\b(?:7\s*(?:pm)?\s*(?:se|to|-)\s*9\s*(?:pm|baje)?|7\s*baje\s*se\s*9\s*baje|19:00\s*(?:to|-)\s*21:00)\b/)) {
-      pers = [11, 12];
-      pProv = 'Periods P11-P12 inferred from "19:00 - 21:00 (7 PM - 9 PM)".';
-    } else if (lower.match(/\b(?:8\s*(?:pm)?\s*(?:se|to|-)\s*10\s*pm|20:00\s*(?:to|-)\s*22:00)\b/)) {
-      pers = [12, 13];
-      pProv = 'Periods P12-P13 inferred from "20:00 - 22:00 (8 PM - 10 PM)".';
-    } else if (lower.match(/\b(?:after\s*lunch|post\s*lunch|lunch\s*ke\s*baad)\b/)) {
-      pers = [6];
-      pProv = 'Period P6 inferred from "after lunch".';
-    } else {
-      const singleP = lower.match(/\b(?:period|p)\s*(\d{1,2})\b/);
-      if (singleP) {
-        const pNum = parseInt(singleP[1], 10);
-        if (pNum >= 1 && pNum <= 13) {
-          pers = [pNum];
-          pProv = `Period P${pNum} inferred from "${singleP[0]}".`;
+    const singleP = lower.match(/\b(?:period|p)\s*(\d{1,2})\b/);
+    if (singleP) {
+      const pNum = parseInt(singleP[1], 10);
+      if (pNum >= 1 && pNum <= 13) {
+        pers = [pNum];
+        pProv = `Period P${pNum} inferred from "${singleP[0]}".`;
+      }
+    }
+  }
+
+  // 2. Context markers
+  const isAm = /\b(?:subah|morning)\b/.test(lower);
+  const isPm = /\b(?:shaam|sham|saanjh|dopahar|raat|evening|afternoon|night)\b/.test(lower);
+
+  // 3. Contextual keywords
+  if (!pers && /\b(?:after\s*lunch|post\s*lunch|lunch\s*ke\s*baad)\b/.test(lower)) {
+    pers = [6];
+    pProv = 'Period P6 inferred from "after lunch" (14:00 - 15:00).';
+  }
+
+  // 4. Dynamic time range format: '6 se 8 baje tak', '10 am to 12 pm', '2 to 6', '10 se 1'
+  if (!pers) {
+    const rangeMatch = lower.match(
+      /\b(\d{1,2})(?::00)?\s*(am|pm|baje)?\s*(?:se|to|-)\s*(\d{1,2})(?::00)?\s*(am|pm|baje)?(?:\s*tak)?\b/
+    );
+    if (rangeMatch) {
+      const h1 = parseInt(rangeMatch[1], 10);
+      const tag1 = rangeMatch[2] || '';
+      const h2 = parseInt(rangeMatch[3], 10);
+      const tag2 = rangeMatch[4] || '';
+
+      const h1HasAm = tag1.includes('am');
+      const h1HasPm = tag1.includes('pm');
+      const h2HasAm = tag2.includes('am');
+      const h2HasPm = tag2.includes('pm');
+
+      const h1Am = h1HasAm || (isAm && !h1HasPm);
+      const h1Pm = h1HasPm || (isPm && !h1HasAm);
+      const h2Am = h2HasAm || (isAm && !h2HasPm);
+      const h2Pm = h2HasPm || (isPm && !h2HasAm);
+
+      let h1_24: number;
+      if (h1 >= 1 && h1 <= 7 && !h1HasAm) {
+        h1_24 = h1 + 12;
+      } else if (h1 >= 8 && h1 <= 11 && h1Pm) {
+        h1_24 = h1 + 12;
+      } else {
+        h1_24 = h1;
+      }
+
+      let h2_24: number;
+      if (h1_24 >= 13) {
+        if (h2 >= 1 && h2 <= 11 && !h2HasAm) {
+          h2_24 = h2 + 12;
+        } else if (h2 === 12) {
+          h2_24 = 24;
+        } else {
+          h2_24 = h2;
+        }
+      } else {
+        if (h2 >= 1 && h2 <= 7 && !h2HasAm) {
+          h2_24 = h2 + 12;
+        } else if (h2 >= 8 && h2 <= 11 && h2Pm) {
+          h2_24 = h2 + 12;
+        } else if (h2 === 12) {
+          h2_24 = 12;
+        } else {
+          h2_24 = h2;
         }
       }
+
+      const fp = hourToPeriodStart(h1_24);
+      const tp = hourToPeriodEnd(h2_24);
+      if (fp && tp && tp >= fp) {
+        pers = Array.from({ length: tp - fp + 1 }, (_, i) => fp + i);
+        pProv = `Periods P${fp}-P${tp} inferred from "${rangeMatch[0].trim()}".`;
+      }
+    }
+  }
+
+  // 5. Durations (e.g. "6 baje 2 ghante ke liye", "subah 9 baje seminar hall 2 ghante")
+  if (!pers) {
+    let durNum: number | null = null;
+    const durMatch = lower.match(/(\d+)\s*(?:hours|hour|ghante|ghanta)/);
+    if (durMatch) {
+      durNum = parseInt(durMatch[1], 10);
+    }
+
+    const timeMatch = lower.match(/\b(\d{1,2})(?::00)?\s*(am|pm|baje)\b/);
+    if (timeMatch && durNum) {
+      const rawStart = parseInt(timeMatch[1], 10);
+      const tag = timeMatch[2];
+      const hAm = tag.includes('am') || isAm;
+      const hPm = tag.includes('pm') || isPm;
+
+      let st_24: number;
+      if (rawStart >= 1 && rawStart <= 7 && !hAm) {
+        st_24 = rawStart + 12;
+      } else if (rawStart >= 8 && rawStart <= 11 && hPm) {
+        st_24 = rawStart + 12;
+      } else {
+        st_24 = rawStart;
+      }
+
+      const end_24 = st_24 + durNum;
+      const fp = hourToPeriodStart(st_24);
+      const tp = hourToPeriodEnd(end_24);
+      if (fp && tp && tp >= fp) {
+        pers = Array.from({ length: tp - fp + 1 }, (_, i) => fp + i);
+        pProv = `Periods P${fp}-P${tp} inferred from "${rawStart}:00 for ${durNum} hrs".`;
+      }
+    }
+  }
+
+  // 6. Single time mention
+  if (!pers) {
+    const timeMatch = lower.match(/\b(\d{1,2})(?::00)?\s*(am|pm|baje)\b/);
+    if (timeMatch) {
+      const rawH = parseInt(timeMatch[1], 10);
+      const tag = timeMatch[2];
+      const hAm = tag.includes('am') || isAm;
+      const hPm = tag.includes('pm') || isPm;
+
+      let h_24: number;
+      if (rawH >= 1 && rawH <= 7 && !hAm) {
+        h_24 = rawH + 12;
+      } else if (rawH >= 8 && rawH <= 11 && hPm) {
+        h_24 = rawH + 12;
+      } else {
+        h_24 = rawH;
+      }
+
+      const fp = hourToPeriodStart(h_24);
+      if (fp) {
+        pers = [fp];
+        pProv = `Period P${fp} inferred from "${rawH} ${tag}".`;
+      }
+    }
+  }
+
+  // 7. Context fallback if day provided without specific time
+  if (!pers) {
+    if (isAm) {
+      pers = [2, 3, 4];
+      pProv = 'Morning block P2-P4 inferred from "subah / morning".';
+    } else if (/\b(?:dopahar|afternoon)\b/.test(lower)) {
+      pers = [6, 7, 8];
+      pProv = 'Afternoon block P6-P8 inferred from "dopahar / afternoon".';
+    } else if (isPm || /\b(?:fest|rehearsal|battle)\b/.test(lower)) {
+      pers = [10, 11, 12];
+      pProv = 'Evening block P10-P12 inferred from evening / fest activity.';
     }
   }
 
   // 4. Detect Attendees
   let att: number | undefined;
   let aProv: string | undefined;
-  const attExplicit = lower.match(/(\d{1,4})\s*(?:people|pepole|students|participants|attendees|persons|folks|members|log|लोग|bacche|bache|seats)/);
+  const attExplicit = lower.match(/(\d{1,4})\s*(?:people|pepole|students|participants|attendees|persons|folks|members|log(?:on)?|लोग|bacche|bache|baccho|bacho|seats)/);
   if (attExplicit) {
     att = parseInt(attExplicit[1], 10);
     aProv = `Inferred from "${attExplicit[0].trim()}".`;
@@ -335,7 +452,7 @@ export default function NewBookingPage() {
   // Form Fields
   const [title, setTitle] = useState("Spectra '27 Dance Society Rehearsal");
   const [venueId, setVenueId] = useState<string>('AUD');
-  const [day, setDay] = useState<Day>('THU');
+  const [day, setDay] = useState<Day>('TUE');
   const [selectedPeriods, setSelectedPeriods] = useState<number[]>([10, 11, 12]);
   const [attendees, setAttendees] = useState<number>(200);
   const [category, setCategory] = useState<string>('club_event');
