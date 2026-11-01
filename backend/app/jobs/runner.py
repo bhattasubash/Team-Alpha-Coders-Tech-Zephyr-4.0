@@ -166,10 +166,16 @@ def run_timetable_solve_job(
             blocked_group_slots=blocked_groups,
         )
 
-        # Fast adaptive limits: with warm-start hints, feasibility is instant (<0.05s)
-        t_limit = max(3.0, float(time_limit_seconds))
-        feasibility_limit = 5.0 if hint_assignments else min(25.0, t_limit * 0.6)
-        optimize_limit = min(5.0, max(2.0, t_limit * 0.4))
+        # Supersonic adaptive limits ("Fast like a plane" ✈️)
+        # With a warm-start hint the CP-SAT feasibility check is instant (<0.05s).
+        # We perform a rapid polish pass and fast kernel assembly.
+        t_limit = max(1.0, float(time_limit_seconds))
+        if hint_assignments:
+            feasibility_limit = 0.05         # warm-start hint is verified baseline
+            optimize_limit = min(0.35, t_limit) # supersonic polish pass
+        else:
+            feasibility_limit = min(2.0, t_limit * 0.7)
+            optimize_limit = min(0.5, t_limit * 0.3)
         res = solver.solve_two_phase(
             feasibility_limit=feasibility_limit,
             optimize_limit=optimize_limit,
@@ -179,7 +185,7 @@ def run_timetable_solve_job(
         if res.assignments is None or res.schedule is None:
             if active_sched and "sessions" in active_sched:
                 logger.warning("Solver timed out without assignment; falling back to stored verified baseline.")
-                res = solver.solve_initial(hint_assignments=hint_assignments, time_limit_override=0.1)
+                res = solver.solve_initial(hint_assignments=hint_assignments, time_limit_override=0.05)
 
         if res.assignments is None or res.schedule is None:
             elapsed = round(time.time() - start_time, 2)
@@ -205,7 +211,7 @@ def run_timetable_solve_job(
         )
 
         exam_solver = ExamSolver(data)
-        exams_list = exam_solver.solve()
+        exams_list = exam_solver.solve(time_limit_override=0.25)
 
         booking_engine = BookingEngine(data, res.schedule)
         fest_week = booking_engine.decide_all()
@@ -330,7 +336,7 @@ def run_timetable_optimise_job(
         res = solver.solve_initial(
             include_soft_objective=True,
             hint_assignments=hint_assignments,
-            time_limit_override=float(time_limit_seconds),
+            time_limit_override=min(1.0, float(time_limit_seconds)),
         )
 
         if res.assignments is None or res.schedule is None:
@@ -356,7 +362,7 @@ def run_timetable_optimise_job(
         )
 
         exam_solver = ExamSolver(data)
-        exams_list = exam_solver.solve()
+        exams_list = exam_solver.solve(time_limit_override=0.25)
 
         booking_engine = BookingEngine(data, res.schedule)
         fest_week = booking_engine.decide_all()

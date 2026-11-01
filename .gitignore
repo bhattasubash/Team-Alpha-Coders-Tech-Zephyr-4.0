@@ -17,3 +17,4 @@ exports/*report*.json
 *.tsbuildinfo
 CrunchWeek_StarterPack/
 backend/scratch/
+.vscode/

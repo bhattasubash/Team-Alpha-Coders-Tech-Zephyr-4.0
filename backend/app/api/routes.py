@@ -1053,6 +1053,78 @@ def generate_exams(
 # Bookings Endpoints
 # =============================================================================
 
+def _get_all_merged_bookings() -> list[dict[str, Any]]:
+    """Retrieve all bookings merged from SQLite and dataset seed records with hydration."""
+    db_items = db_list_bookings()
+    data = get_active_dataset() or {}
+    if not data:
+        data_path = Path("data/cit_public.json")
+        if not data_path.exists():
+            data_path = Path(__file__).resolve().parents[3] / "data" / "cit_public.json"
+        if data_path.exists():
+            with open(data_path, encoding="utf-8") as f:
+                data = json.load(f)
+
+    dataset_requests = {req["id"]: req for req in data.get("booking_requests", [])}
+
+    sched = get_active_schedule() or {}
+    if not sched:
+        sched_path = Path("exports/schedule.json")
+        if not sched_path.exists():
+            sched_path = Path(__file__).resolve().parents[3] / "exports" / "schedule.json"
+        if sched_path.exists():
+            with open(sched_path, encoding="utf-8") as f:
+                sched = json.load(f)
+
+    decisions = {
+        b["request_id"]: b
+        for b in sched.get("fest_week", {}).get("bookings", [])
+    }
+
+    hydrated_items = []
+    seen_ids = set()
+
+    for it in db_items:
+        req_id = it.get("request_id") or it.get("id")
+        seen_ids.add(req_id)
+        base = dict(dataset_requests.get(req_id, {}))
+        base.update(it)
+        if "status" not in base:
+            base["status"] = it.get("status", "pending")
+        if "assigned_room" not in base or not base["assigned_room"]:
+            base["assigned_room"] = it.get("room_id") or it.get("allocated_room")
+        if "assigned_day" not in base or not base["assigned_day"]:
+            base["assigned_day"] = it.get("day") or it.get("allocated_day")
+        if "assigned_start_period" not in base or base["assigned_start_period"] is None:
+            base["assigned_start_period"] = it.get("start_period") or it.get("allocated_period")
+        if "assigned_end_period" not in base or base["assigned_end_period"] is None:
+            base["assigned_end_period"] = it.get("end_period")
+        hydrated_items.append(base)
+
+    for req in data.get("booking_requests", []):
+        rid = req["id"]
+        if rid in seen_ids:
+            continue
+        merged = dict(req)
+        dec = decisions.get(rid)
+        if dec:
+            merged["status"] = dec.get("status", "pending")
+            merged["assigned_room"] = dec.get("room_id")
+            merged["assigned_day"] = dec.get("day")
+            merged["assigned_start_period"] = dec.get("start_period")
+            merged["assigned_end_period"] = dec.get("end_period")
+            merged["reason"] = dec.get("reason", "")
+            merged["reason_codes"] = dec.get("reason_codes", [])
+            merged["conflicting_bookings"] = dec.get("conflicting_bookings", [])
+            merged["conflicting_sessions"] = dec.get("conflicting_sessions", [])
+            merged["alternative_offered"] = dec.get("alternative_offered")
+        else:
+            merged["status"] = "pending"
+        hydrated_items.append(merged)
+
+    return hydrated_items
+
+
 @router.get(
     "/api/bookings",
     response_model=BookingsListResponse,
@@ -1062,53 +1134,7 @@ def get_bookings(
     user: dict[str, Any] | None = Depends(get_optional_user),
 ) -> BookingsListResponse:
     """List all booking requests and their current statuses."""
-    items = db_list_bookings()
-    data = get_active_dataset() or {}
-    dataset_requests = {req["id"]: req for req in data.get("booking_requests", [])}
-    sched = get_active_schedule() or {}
-    decisions = {
-        b["request_id"]: b
-        for b in sched.get("fest_week", {}).get("bookings", [])
-    }
-
-    if items:
-        # Hydrate DB items with full dataset request metadata (title, requester, requested_room, windows, attendance, etc.)
-        hydrated_items = []
-        for it in items:
-            req_id = it.get("request_id") or it.get("id")
-            base = dict(dataset_requests.get(req_id, {}))
-            base.update(it)
-            # Ensure assigned fields and decision fields are normalized
-            if "status" not in base:
-                base["status"] = it.get("status", "pending")
-            if "assigned_room" not in base or not base["assigned_room"]:
-                base["assigned_room"] = it.get("room_id") or it.get("allocated_room")
-            if "assigned_day" not in base or not base["assigned_day"]:
-                base["assigned_day"] = it.get("day") or it.get("allocated_day")
-            if "assigned_start_period" not in base or base["assigned_start_period"] is None:
-                base["assigned_start_period"] = it.get("start_period") or it.get("allocated_period")
-            if "assigned_end_period" not in base or base["assigned_end_period"] is None:
-                base["assigned_end_period"] = it.get("end_period")
-            hydrated_items.append(base)
-        items = hydrated_items
-    else:
-        for req in data.get("booking_requests", []):
-            merged = dict(req)
-            dec = decisions.get(req["id"])
-            if dec:
-                merged["status"] = dec.get("status", "pending")
-                merged["assigned_room"] = dec.get("room_id")
-                merged["assigned_day"] = dec.get("day")
-                merged["assigned_start_period"] = dec.get("start_period")
-                merged["assigned_end_period"] = dec.get("end_period")
-                merged["reason"] = dec.get("reason", "")
-                merged["reason_codes"] = dec.get("reason_codes", [])
-                merged["conflicting_bookings"] = dec.get("conflicting_bookings", [])
-                merged["conflicting_sessions"] = dec.get("conflicting_sessions", [])
-                merged["alternative_offered"] = dec.get("alternative_offered")
-            else:
-                merged["status"] = "pending"
-            items.append(merged)
+    items = _get_all_merged_bookings()
     return BookingsListResponse(count=len(items), bookings=items)
 
 
@@ -1160,6 +1186,104 @@ def parse_booking(
     )
 
 
+def _find_alternate_rooms(
+    target_room: str,
+    target_day: str,
+    from_p: int,
+    to_p: int,
+    attendance: int,
+    all_bookings: list[dict[str, Any]],
+    all_rooms: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Find alternate rooms with adequate capacity that are free during the requested periods."""
+    valid_rooms = []
+    for r in all_rooms:
+        r_id = r.get("id")
+        if not r_id or r_id == target_room:
+            continue
+        if r.get("capacity", 0) < attendance:
+            continue
+        clash = False
+        if r_id == "AUD" and target_day == "MON" and max(from_p, 4) <= min(to_p, 5):
+            clash = True
+        if not clash:
+            for eb in all_bookings:
+                if eb.get("status") in ("cancelled", "rejected"):
+                    continue
+                eb_r = eb.get("assigned_room") or eb.get("requested_room")
+                if eb_r != r_id:
+                    continue
+                eb_w = eb.get("windows", [])
+                eb_d = eb.get("assigned_day") or (eb_w[0].get("day") if eb_w else None)
+                eb_sp = eb.get("assigned_start_period") or (eb_w[0].get("from_period") if eb_w else None)
+                eb_ep = eb.get("assigned_end_period") or (eb_w[0].get("to_period") if eb_w else (eb_sp + eb.get("duration_periods", 1) - 1 if eb_sp else None))
+                if eb_d == target_day and eb_sp is not None and eb_ep is not None:
+                    if max(from_p, eb_sp) <= min(to_p, eb_ep):
+                        clash = True
+                        break
+        if not clash:
+            valid_rooms.append({
+                "room_id": r_id,
+                "name": r.get("name", r_id),
+                "capacity": r.get("capacity", 0),
+                "day": target_day,
+                "start_period": from_p,
+                "end_period": to_p,
+                "periods": list(range(from_p, to_p + 1)),
+                "reason": f"{r.get('name', r_id)} ({r.get('capacity', 0)} seats) is free on {target_day} during P{from_p}-P{to_p}.",
+            })
+            if len(valid_rooms) >= 3:
+                break
+    return valid_rooms
+
+
+def _find_slot_recommendation(
+    target_room: str,
+    target_day: str,
+    dur: int,
+    all_bookings: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Find the nearest free continuous slot for the target room."""
+    cand_starts = [6, 7, 8, 10, 11, 2, 3, 1, 9, 12]
+    days = [target_day] + [d for d in ["MON", "TUE", "WED", "THU", "FRI"] if d != target_day]
+
+    for d in days:
+        for sp in cand_starts:
+            ep = sp + dur - 1
+            if ep > 13:
+                continue
+            if dur > 1 and 5 in range(sp, ep + 1):
+                continue
+            if target_room == "AUD" and d == "MON" and max(sp, 4) <= min(ep, 5):
+                continue
+
+            clash = False
+            for eb in all_bookings:
+                if eb.get("status") in ("cancelled", "rejected"):
+                    continue
+                eb_r = eb.get("assigned_room") or eb.get("requested_room")
+                if eb_r != target_room:
+                    continue
+                eb_w = eb.get("windows", [])
+                eb_d = eb.get("assigned_day") or (eb_w[0].get("day") if eb_w else None)
+                eb_sp = eb.get("assigned_start_period") or (eb_w[0].get("from_period") if eb_w else None)
+                eb_ep = eb.get("assigned_end_period") or (eb_w[0].get("to_period") if eb_w else (eb_sp + eb.get("duration_periods", 1) - 1 if eb_sp else None))
+                if eb_d == d and eb_sp is not None and eb_ep is not None:
+                    if max(sp, eb_sp) <= min(ep, eb_ep):
+                        clash = True
+                        break
+            if not clash:
+                return {
+                    "room_id": target_room,
+                    "day": d,
+                    "start_period": sp,
+                    "end_period": ep,
+                    "periods": list(range(sp, ep + 1)),
+                    "reason": f"Available free slot in {target_room} on {d} during P{sp}-P{ep}.",
+                }
+    return None
+
+
 @router.post(
     "/api/bookings",
     response_model=BookingPrecheckResult,
@@ -1172,7 +1296,10 @@ def create_booking(
     """Submit structured booking request and run kernel pre-check."""
     data = get_active_dataset()
     if not data:
-        with open("data/cit_public.json", encoding="utf-8") as f:
+        data_path = Path("data/cit_public.json")
+        if not data_path.exists():
+            data_path = Path(__file__).resolve().parents[3] / "data" / "cit_public.json"
+        with open(data_path, encoding="utf-8") as f:
             data = json.load(f)
 
     room_obj = next((r for r in data.get("rooms", []) if r["id"] == req.requested_room), None)
@@ -1184,12 +1311,6 @@ def create_booking(
     if room_obj and req.room_types and room_obj.get("type") not in req.room_types:
         reasons.append("H6")
 
-    req_id = f"BR-NEW-{uuid.uuid4().hex[:6]}"
-    req_dict = req.model_dump()
-    req_dict["id"] = req_id
-    req_dict["requester"] = user.get("email", "unknown")
-    req_dict["role"] = user.get("role", "club")
-
     if reasons:
         return BookingPrecheckResult(
             legal=False,
@@ -1198,7 +1319,101 @@ def create_booking(
             details={"rules_violated": reasons},
         )
 
-    db_save_booking(request_id=req_id, request_data=req_dict, status="pending")
+    all_bookings = _get_all_merged_bookings()
+    dur = req.duration_periods or 1
+
+    # H4 Occupancy clash checks
+    for w in req.windows:
+        if req.requested_room == "AUD" and w.day == "MON":
+            if max(w.from_period, 4) <= min(w.to_period, 5):
+                rec = _find_slot_recommendation("AUD", "MON", dur, all_bookings)
+                details = {
+                    "rules_violated": ["H4"],
+                    "conflict_id": "INST-INAUGURATION",
+                    "conflict_title": "Spectra '27 Inauguration Ceremony",
+                }
+                reason_msg = "H4 Violation: Auditorium on MON P4-P5 is reserved for Spectra '27 Inauguration."
+                if rec:
+                    details["recommended_slot"] = rec
+                    reason_msg += f" Recommended free slot: {rec['room_id']} on {rec['day']} during P{rec['start_period']}-P{rec['end_period']}."
+                return BookingPrecheckResult(
+                    legal=False,
+                    reason_codes=["H4"],
+                    reason=reason_msg,
+                    details=details,
+                )
+
+    for b in all_bookings:
+        if b.get("status") in ("cancelled", "rejected"):
+            continue
+        b_room = b.get("assigned_room") or b.get("requested_room")
+        if not b_room or b_room != req.requested_room:
+            continue
+
+        b_windows = b.get("windows", [])
+        b_day = b.get("assigned_day") or (b_windows[0].get("day") if b_windows else None)
+        b_sp = b.get("assigned_start_period") or (b_windows[0].get("from_period") if b_windows else None)
+        b_ep = b.get("assigned_end_period") or (b_windows[0].get("to_period") if b_windows else (b_sp + b.get("duration_periods", 1) - 1 if b_sp else None))
+
+        if b_day is None or b_sp is None or b_ep is None:
+            continue
+
+        for w in req.windows:
+            if w.day == b_day and max(w.from_period, b_sp) <= min(w.to_period, b_ep):
+                raw_title = b.get("title") or b.get("event_name") or b.get("name")
+                conflict_title = str(raw_title).strip() if raw_title and str(raw_title).strip() not in ("undefined", "null", "None", "") else "Campus Event"
+                conflict_id = b.get("id") or b.get("request_id") or "BOOKING"
+                raw_req = b.get("requester_name") or b.get("requester")
+                conflict_req = str(raw_req).strip() if raw_req and str(raw_req).strip() not in ("undefined", "null", "None", "") else "Another User"
+                rec = _find_slot_recommendation(req.requested_room, w.day, dur, all_bookings)
+                alt_rooms = _find_alternate_rooms(req.requested_room, w.day, w.from_period, w.to_period, req.attendance, all_bookings, data.get("rooms", []))
+                details = {
+                    "rules_violated": ["H4"],
+                    "conflict_id": conflict_id,
+                    "conflict_title": conflict_title,
+                    "conflict_requester": conflict_req,
+                    "conflicting_periods": list(range(max(w.from_period, b_sp), min(w.to_period, b_ep) + 1)),
+                }
+                if alt_rooms:
+                    details["available_rooms"] = alt_rooms
+                reason_msg = f'H4 Violation: {req.requested_room} is already booked on {w.day} during periods P{b_sp}-P{b_ep} by {conflict_req} ("{conflict_title}", {conflict_id}). Two bookings cannot occupy this room simultaneously.'
+                if rec:
+                    details["recommended_slot"] = rec
+                    reason_msg += f" Recommended free slot: {rec['room_id']} on {rec['day']} during P{rec['start_period']}-P{rec['end_period']}."
+                return BookingPrecheckResult(
+                    legal=False,
+                    reason_codes=["H4"],
+                    reason=reason_msg,
+                    details=details,
+                )
+
+    req_id = f"BR-NEW-{uuid.uuid4().hex[:6].upper()}"
+    req_dict = req.model_dump()
+    req_dict["id"] = req_id
+    req_dict["requester"] = user.get("email", "unknown")
+    req_dict["requester_name"] = req.requester_name or user.get("name") or user.get("email", "unknown")
+    req_dict["role"] = user.get("role", "club")
+    req_title = req.title.strip() if req.title and req.title.strip() not in ("undefined", "null", "None", "") else "Campus Activity Booking"
+    req_dict["title"] = req_title
+
+    is_dean_or_admin = user.get("role") == "admin" or "dean" in user.get("email", "").lower()
+    status = "approved" if is_dean_or_admin else "pending"
+
+    decision_data = None
+    if is_dean_or_admin and req.windows:
+        first_w = req.windows[0]
+        decision_data = {
+            "request_id": req_id,
+            "room_id": req.requested_room,
+            "day": first_w.day,
+            "start_period": first_w.from_period,
+            "end_period": first_w.to_period,
+            "status": "approved",
+            "reason": "Direct administrative approval",
+            "reason_codes": ["VALID"],
+        }
+
+    db_save_booking(request_id=req_id, request_data=req_dict, status=status, decision_data=decision_data)
     log_audit(
         action="create_booking",
         proposal_id=None,
@@ -1209,7 +1424,7 @@ def create_booking(
     return BookingPrecheckResult(
         legal=True,
         reason_codes=["VALID"],
-        reason="Booking request passed kernel precheck and was queued for decision.",
+        reason="Booking request passed kernel precheck and was queued for decision." if status == "pending" else "Booking confirmed and approved.",
         details={"request_id": req_id},
     )
 

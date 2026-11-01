@@ -123,3 +123,74 @@ def test_parse_booking_text_with_classrooms(provider: LLMProvider):
     assert res.windows[0]["from_period"] == 3
     assert res.windows[0]["to_period"] == 4
     assert res.attendance == 50
+
+def test_double_booking_and_conflict_rejection():
+    """Verify that after room is booked, duplicate bookings for that slot are rejected with H4 violation."""
+    import sys
+    from unittest.mock import MagicMock
+    if "ortools" not in sys.modules:
+        sys.modules["ortools"] = MagicMock()
+        sys.modules["ortools.sat"] = MagicMock()
+        sys.modules["ortools.sat.python"] = MagicMock()
+        sys.modules["ortools.sat.python.cp_model"] = MagicMock()
+
+    from app.db.repository import reset_database
+    reset_database()
+    from app.api.routes import create_booking
+    from app.api.schemas import CreateBookingRequest, BookingWindow
+
+    user1 = {"email": "dance@cit.edu", "role": "club", "name": "Dance Society"}
+    user2 = {"email": "music@cit.edu", "role": "club", "name": "Music Club"}
+
+    # 1. First booking succeeds
+    req1 = CreateBookingRequest(
+        title="Dance Society Rehearsal",
+        requested_room="AUD",
+        attendance=200,
+        room_types=["auditorium"],
+        duration_periods=3,
+        windows=[BookingWindow(day="WED", from_period=10, to_period=12)],
+        requested_category="club_event",
+    )
+    res1 = create_booking(req1, user=user1)
+    assert res1.legal is True, f"Initial booking should pass, got {res1.reason}"
+
+    # 2. Overlapping booking on same venue and day must fail with H4
+    req2 = CreateBookingRequest(
+        title="Music Club Acoustic Night",
+        requested_room="AUD",
+        attendance=150,
+        room_types=["auditorium"],
+        duration_periods=2,
+        windows=[BookingWindow(day="WED", from_period=11, to_period=12)],
+        requested_category="club_event",
+    )
+    res2 = create_booking(req2, user=user2)
+    assert res2.legal is False, "Duplicate/overlapping booking must be rejected"
+    assert "H4" in res2.reason_codes
+    assert "already booked" in res2.reason
+    assert "Two bookings cannot occupy this room simultaneously" in res2.reason
+    assert res2.details.get("recommended_slot") is not None, "Must provide recommended free slot"
+    assert "Recommended free slot" in res2.reason
+    assert res2.details.get("conflict_title") not in (None, "undefined", "null", "")
+    assert "undefined" not in res2.reason
+    assert "available_rooms" in res2.details, "Must provide available alternate rooms"
+    assert len(res2.details["available_rooms"]) > 0, "Should find at least 1 free room like OAT for 150 attendees"
+
+    # 3. Inauguration period (AUD Mon P4-P5) must also fail with H4
+    req3 = CreateBookingRequest(
+        title="Unauthorized Inauguration Takeover",
+        requested_room="AUD",
+        attendance=50,
+        room_types=["auditorium"],
+        duration_periods=2,
+        windows=[BookingWindow(day="MON", from_period=4, to_period=5)],
+        requested_category="club_event",
+    )
+    res3 = create_booking(req3, user=user1)
+    assert res3.legal is False
+    assert "H4" in res3.reason_codes
+    assert "Spectra '27 Inauguration" in res3.reason
+    assert res3.details.get("recommended_slot") is not None, "Must provide recommended free slot for locked inauguration slot"
+    assert "Recommended free slot" in res3.reason
+

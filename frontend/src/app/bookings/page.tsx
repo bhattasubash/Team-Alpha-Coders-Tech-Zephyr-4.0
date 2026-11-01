@@ -22,10 +22,33 @@ export default function BookingsPage() {
   useEffect(() => {
     api.getBookings()
       .then((res) => {
-        if (Array.isArray(res?.bookings)) setBookings(res.bookings as any);
+        let list = Array.isArray(res?.bookings) ? res.bookings : [];
+        try {
+          if (typeof window !== 'undefined') {
+            const localStr = localStorage.getItem('cit_local_bookings');
+            if (localStr) {
+              const localArr = JSON.parse(localStr);
+              if (Array.isArray(localArr)) {
+                const existingIds = new Set(list.map((b: any) => b.id));
+                const extra = localArr.filter((b: any) => !existingIds.has(b.id));
+                list = [...extra, ...list];
+              }
+            }
+          }
+        } catch {}
+        setBookings(list as any);
         setApiError(null);
       })
       .catch((err) => {
+        try {
+          if (typeof window !== 'undefined') {
+            const localStr = localStorage.getItem('cit_local_bookings');
+            if (localStr) {
+              setBookings(JSON.parse(localStr));
+              return;
+            }
+          }
+        } catch {}
         setApiError({ code: err.code || 'HTTP_501', message: err.message || 'Bookings endpoint pending database integration.' });
       });
 
@@ -80,7 +103,7 @@ export default function BookingsPage() {
         // Same room and overlapping time
         if (r1 && r2 && r1 === r2 && d1 && d2 && d1 === d2) {
           if (Math.max(s1, s2) <= Math.min(e1, e2)) {
-            if (b1.status === 'approved' && b2.status === 'approved') {
+            if (b1.status !== 'rejected' && b2.status !== 'rejected') {
               conflicts.push(b2);
             } else if (b1.requested_room === b2.requested_room && (b1.conflicting_bookings?.includes(b2.id) || b2.conflicting_bookings?.includes(b1.id))) {
               conflicts.push(b2);
