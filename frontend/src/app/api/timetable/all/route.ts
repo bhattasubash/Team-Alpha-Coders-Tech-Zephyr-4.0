@@ -1,22 +1,23 @@
-import { NextResponse } from 'next/server';
-import { getHydratedSessions, getActiveSchedule } from '@/lib/server-data';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
-  const sched = getActiveSchedule();
-  const sessions = getHydratedSessions();
+const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://cit-scheduler-backend.onrender.com').replace(/\/$/, '');
 
-  return NextResponse.json({
-    dataset_id: sched.dataset_id || 'cit-public-v1',
-    team: sched.team || 'Team Alpha Coders',
-    sessions,
-    soft_penalties: {
-      S1: 8,
-      S2: 18,
-      S3: 0,
-      S4: 6,
-      S5: 125,
-      S6: 4,
-    },
-    soft_total: 161,
-  });
+export async function GET(req: NextRequest) {
+  try {
+    const auth = req.headers.get('authorization') || '';
+    const res = await fetch(`${BACKEND_URL}/api/timetable/all`, {
+      headers: {
+        'Authorization': auth,
+        'Accept': 'application/json',
+      },
+      cache: 'no-store',
+    });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: { code: 'BACKEND_UNREACHABLE', message: err?.message || 'Failed to reach scheduling backend' } },
+      { status: 502 }
+    );
+  }
 }

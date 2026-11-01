@@ -1,26 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getBookingsList } from '@/lib/server-data';
 
-export async function GET() {
-  const data = getBookingsList();
-  return NextResponse.json(data);
+const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://cit-scheduler-backend.onrender.com').replace(/\/$/, '');
+
+export async function GET(req: NextRequest) {
+  try {
+    const auth = req.headers.get('authorization') || '';
+    const { searchParams } = new URL(req.url);
+    const queryString = searchParams.toString();
+    const endpoint = queryString ? `${BACKEND_URL}/api/bookings?${queryString}` : `${BACKEND_URL}/api/bookings`;
+
+    const res = await fetch(endpoint, {
+      headers: {
+        'Authorization': auth,
+        'Accept': 'application/json',
+      },
+      cache: 'no-store',
+    });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: { code: 'BACKEND_UNREACHABLE', message: err?.message || 'Failed to reach scheduling backend' } },
+      { status: 502 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = req.headers.get('authorization') || '';
     const body = await req.json();
-    const id = `BR-${Math.floor(100 + Math.random() * 900)}`;
 
-    return NextResponse.json({
-      request_id: id,
-      status: 'pending',
-      message: 'Booking request registered for solver review. Capacity and role-caps validated.',
-      details: body,
+    const res = await fetch(`${BACKEND_URL}/api/bookings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': auth,
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
     });
-  } catch {
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (err: any) {
     return NextResponse.json(
-      { error: { code: 'INVALID_REQUEST', message: 'Malformed JSON payload' } },
-      { status: 400 }
+      { error: { code: 'BACKEND_UNREACHABLE', message: err?.message || 'Failed to reach scheduling backend' } },
+      { status: 502 }
     );
   }
 }

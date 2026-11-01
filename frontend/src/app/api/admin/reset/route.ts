@@ -1,9 +1,23 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST() {
-  return NextResponse.json({
-    status: 'ok',
-    message: 'Demo accounts and baseline schedule state restored to pristine state.',
-    dataset_id: 'cit-public-v1',
-  });
+const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://cit-scheduler-backend.onrender.com').replace(/\/$/, '');
+
+export async function POST(req: NextRequest) {
+  try {
+    const auth = req.headers.get('authorization') || '';
+    const res = await fetch(`${BACKEND_URL}/api/admin/reset`, {
+      method: 'POST',
+      headers: {
+        'Authorization': auth,
+        'Accept': 'application/json',
+      },
+    });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: { code: 'BACKEND_UNREACHABLE', message: err?.message || 'Failed to reach scheduling backend' } },
+      { status: 502 }
+    );
+  }
 }

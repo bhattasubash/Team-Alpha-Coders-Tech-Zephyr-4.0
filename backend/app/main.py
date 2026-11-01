@@ -23,8 +23,15 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.routes import router as api_router
 
 # Read CORS origins from environment variable, comma-separated
-cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
-allow_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+default_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "https://team-alpha-coders-tech-zephyr-40.vercel.app",
+]
+cors_origins_env = os.getenv("CORS_ORIGINS", "")
+extra_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+allow_origins = list(set(default_origins + extra_origins))
 
 
 @asynccontextmanager
@@ -54,6 +61,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
+    allow_origin_regex=r"^https://.*\.vercel\.app$|^http://localhost:\d+$|^http://127\.0\.0\.1:\d+$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

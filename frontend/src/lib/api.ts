@@ -32,12 +32,24 @@ export class ApiError extends Error {
 }
 
 const TOKEN_KEY = 'cit_scheduler_token';
+export const PRODUCTION_API_URL = 'https://cit-scheduler-backend.onrender.com';
 
 class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) || '';
+    if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) {
+      this.baseUrl = process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
+    } else if (typeof window !== 'undefined') {
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      this.baseUrl = isLocal ? 'http://localhost:8000' : PRODUCTION_API_URL;
+    } else {
+      this.baseUrl = PRODUCTION_API_URL;
+    }
+  }
+
+  getBaseUrl(): string {
+    return this.baseUrl;
   }
 
   getToken(): string | null {

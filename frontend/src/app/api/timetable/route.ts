@@ -1,33 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getHydratedSessions } from '@/lib/server-data';
+
+const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://cit-scheduler-backend.onrender.com').replace(/\/$/, '');
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const view = searchParams.get('view') || 'group';
-  const id = searchParams.get('id');
+  try {
+    const auth = req.headers.get('authorization') || '';
+    const { searchParams } = new URL(req.url);
+    const queryString = searchParams.toString();
+    const endpoint = queryString ? `${BACKEND_URL}/api/timetable?${queryString}` : `${BACKEND_URL}/api/timetable`;
 
-  const all = getHydratedSessions();
-
-  if (!id) {
-    return NextResponse.json({
-      view,
-      id: '',
-      sessions: all,
-      total: all.length,
+    const res = await fetch(endpoint, {
+      headers: {
+        'Authorization': auth,
+        'Accept': 'application/json',
+      },
+      cache: 'no-store',
     });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: { code: 'BACKEND_UNREACHABLE', message: err?.message || 'Failed to reach scheduling backend' } },
+      { status: 502 }
+    );
   }
-
-  const filtered = all.filter((s) => {
-    if (view === 'group') return s.groups.includes(id);
-    if (view === 'faculty') return s.faculty_id === id;
-    if (view === 'room') return s.room_id === id;
-    return true;
-  });
-
-  return NextResponse.json({
-    view,
-    id,
-    sessions: filtered,
-    total: filtered.length,
-  });
 }
