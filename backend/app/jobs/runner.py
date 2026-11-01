@@ -166,10 +166,18 @@ def run_timetable_solve_job(
             blocked_group_slots=blocked_groups,
         )
 
-        # Fast adaptive limits: with warm-start hints, feasibility is instant (<0.05s)
+        # Fast adaptive limits tuned for Render free-tier slow CPUs.
+        # With a warm-start hint the CP-SAT feasibility check is <0.1s; use
+        # the remaining budget for a short soft-optimisation polish only.
+        # Without a hint give just enough time to find a feasible placement
+        # then a brief polish pass.
         t_limit = max(3.0, float(time_limit_seconds))
-        feasibility_limit = 5.0 if hint_assignments else min(25.0, t_limit * 0.6)
-        optimize_limit = min(5.0, max(2.0, t_limit * 0.4))
+        if hint_assignments:
+            feasibility_limit = 0.5          # hint already valid; skip feasibility
+            optimize_limit = min(4.0, t_limit - 0.5)
+        else:
+            feasibility_limit = min(8.0, t_limit * 0.65)
+            optimize_limit = min(3.0, max(1.0, t_limit * 0.35))
         res = solver.solve_two_phase(
             feasibility_limit=feasibility_limit,
             optimize_limit=optimize_limit,

@@ -131,28 +131,31 @@ export default function TimetablePage() {
       /**
        * Client-side phase-aware progress driver.
        *
-       * The backend's raw progress value can get stuck at 0.95 (old deployed
-       * servers cap it there). Instead we drive the bar entirely from elapsed
-       * time and the phase label, so it always keeps moving smoothly:
+       * Never reads the backend's progress value — it can be stale/capped.
+       * Drives the bar from elapsed time + phase label:
        *
-       *   Phase 1  (booking reservations) :  5% → 10%   over  2 s
-       *   Phase 2  (CP-SAT solve)          : 10% → 82%   over 12 s  (√ curve)
-       *   Phase 3  (kernel commit)         : 82% → 96%   over  4 s
-       *   completed                         → 100%  immediately
+       *   Phase 1  (booking)   :  5% → 12%   over  1s   (fast)
+       *   Phase 2  (CP-SAT)    : 12% → 88%   over  8s   (√ curve, always moves)
+       *   Phase 3  (commit)    : 88% → 97%   over  2s
+       *   completed             → 100% immediately
+       *
+       * Total expected wall time with warm-start: ~5-8s on Render free tier.
        */
       const clientProgress = (elapsedSec: number, phaseLabel: string): number => {
         const p = phaseLabel.toLowerCase();
-        if (p.includes('phase 1') || p.includes('booking')) {
-          return Math.min(0.10, 0.05 + elapsedSec / 20);
+        if (p.includes('phase 1') || p.includes('booking') || p.includes('reservation')) {
+          // Phase 1 is sub-second — animate 5% → 12% over 1s
+          return Math.min(0.12, 0.05 + elapsedSec * 0.07);
         }
         if (p.includes('phase 3') || p.includes('commit')) {
-          const into = Math.max(0, elapsedSec - 10);
-          return Math.min(0.96, 0.82 + into / 25);
+          // Phase 3 is fast (~1s) — animate 88% → 97%
+          const into = Math.max(0, elapsedSec - 5);
+          return Math.min(0.97, 0.88 + into * 0.045);
         }
-        // Phase 2 (solve) — sqrt curve 10% → 82% over a 12-second window
-        const into = Math.max(0, elapsedSec - 1);
-        const ratio = Math.min(1, into / 12);
-        return Math.min(0.82, 0.10 + 0.72 * Math.sqrt(ratio));
+        // Phase 2 (CP-SAT solve) — sqrt curve over 8s window: fast start, never freezes
+        const into = Math.max(0, elapsedSec - 0.5);
+        const ratio = Math.min(1, into / 8);
+        return Math.min(0.88, 0.12 + 0.76 * Math.sqrt(ratio));
       };
 
       const interval = setInterval(async () => {
