@@ -490,6 +490,7 @@ export default function NewBookingPage() {
   const [submissionError, setSubmissionError] = useState<{
     code: string;
     message: string;
+    recommendedSlot?: any;
   } | null>(null);
   const [apiError, setApiError] = useState<{ code: string; message: string } | null>(null);
 
@@ -843,6 +844,136 @@ export default function NewBookingPage() {
     disabledReason = 'Disabled: Select at least one period (P1 to P13).';
   }
 
+  const getPeriodRangeClock = (periods: number[]): string => {
+    if (!periods || periods.length === 0) return '';
+    const sp = Math.min(...periods);
+    const ep = Math.max(...periods);
+    const startHours: Record<number, string> = {
+      1: '08:00', 2: '09:00', 3: '10:00', 4: '11:00', 5: '12:00',
+      6: '14:00', 7: '15:00', 8: '16:00', 9: '17:00', 10: '18:00',
+      11: '19:00', 12: '20:00', 13: '21:00'
+    };
+    const endHours: Record<number, string> = {
+      1: '09:00', 2: '10:00', 3: '11:00', 4: '12:00', 5: '14:00',
+      6: '15:00', 7: '16:00', 8: '17:00', 9: '18:00', 10: '19:00',
+      11: '20:00', 12: '21:00', 13: '22:00'
+    };
+    return `${startHours[sp] || '08:00'} to ${endHours[ep] || '22:00'}`;
+  };
+
+  // Dynamically compute recommended clash-free new slots when a requested slot is locked
+  const recommendedSlots = React.useMemo(() => {
+    const duration = selectedPeriods.length > 0 ? selectedPeriods.length : 2;
+    const requestedStart = selectedPeriods.length > 0 ? Math.min(...selectedPeriods) : 4;
+
+    const results: Array<{
+      type: 'same_venue_time' | 'same_venue_day' | 'alternate_venue';
+      tag: string;
+      venue: string;
+      venueName: string;
+      day: Day;
+      periods: number[];
+      timeClock: string;
+      reason: string;
+    }> = [];
+
+    const DAYS: Day[] = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
+
+    const isSlotAvailable = (vId: string, d: Day, pers: number[]): boolean => {
+      if (vId === 'AUD' && d === 'MON' && pers.some((p) => p === 4 || p === 5)) {
+        return false;
+      }
+      if (pers.length > 1 && pers.includes(5)) {
+        return false;
+      }
+      for (const b of existingBookings) {
+        if (b.status === 'cancelled' || b.status === 'rejected') continue;
+        const bRoom = getBookingRoom(b);
+        const bDay = getBookingDay(b);
+        if (bRoom === vId && bDay === d) {
+          const range = getBookingPeriodRange(b);
+          if (range && pers.some((p) => p >= range.startP && p <= range.endP)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    };
+
+    // 1. Same venue, different free time on same day
+    const validCandidateBlocks: number[][] = [];
+    const candidateStarts = [6, 7, 8, 10, 11, 2, 3, 1, 9, 12];
+    for (const start of candidateStarts) {
+      if (start + duration - 1 <= 13) {
+        const pers = Array.from({ length: duration }, (_, i) => start + i);
+        if (pers.every((p) => selectedPeriods.includes(p))) continue;
+        if (isSlotAvailable(venueId, day, pers)) {
+          validCandidateBlocks.push(pers);
+        }
+      }
+    }
+
+    validCandidateBlocks.sort((a, b) => Math.abs(a[0] - requestedStart) - Math.abs(b[0] - requestedStart));
+
+    for (const pers of validCandidateBlocks.slice(0, 2)) {
+      const isPost = pers[0] > requestedStart;
+      results.push({
+        type: 'same_venue_time',
+        tag: isPost ? 'Later Today' : 'Earlier Today',
+        venue: venueId,
+        venueName: currentRoom?.name || venueId,
+        day: day,
+        periods: pers,
+        timeClock: getPeriodRangeClock(pers),
+        reason: `${venueId} is available today at ${pers.map((p) => `P${p}`).join('-')} (${getPeriodRangeClock(pers)}).`,
+      });
+    }
+
+    // 2. Same venue, same time on other days
+    for (const nextDay of DAYS) {
+      if (nextDay === day) continue;
+      if (isSlotAvailable(venueId, nextDay, selectedPeriods)) {
+        results.push({
+          type: 'same_venue_day',
+          tag: `Same Time on ${nextDay}`,
+          venue: venueId,
+          venueName: currentRoom?.name || venueId,
+          day: nextDay,
+          periods: selectedPeriods,
+          timeClock: getPeriodRangeClock(selectedPeriods),
+          reason: `${venueId} is completely free at this time on ${nextDay}.`,
+        });
+        if (results.filter((r) => r.type === 'same_venue_day').length >= 1) break;
+      }
+    }
+
+    // 3. Alternate venue at requested time
+    const altVenues = rooms.filter((r) => {
+      if (r.id === venueId) return false;
+      if (r.capacity < attendees) return false;
+      if (needsWheelchair && !r.accessible) return false;
+      return true;
+    });
+
+    for (const altRoom of altVenues) {
+      if (isSlotAvailable(altRoom.id, day, selectedPeriods)) {
+        results.push({
+          type: 'alternate_venue',
+          tag: 'Alternate Venue',
+          venue: altRoom.id,
+          venueName: altRoom.name || altRoom.id,
+          day: day,
+          periods: selectedPeriods,
+          timeClock: getPeriodRangeClock(selectedPeriods),
+          reason: `${altRoom.name} (${altRoom.capacity} seats) is free on ${day} at ${getPeriodRangeClock(selectedPeriods)}.`,
+        });
+        if (results.filter((r) => r.type === 'alternate_venue').length >= 2) break;
+      }
+    }
+
+    return results;
+  }, [existingBookings, venueId, day, selectedPeriods, rooms, currentRoom, attendees, needsWheelchair]);
+
   // Nearest Valid Alternatives dynamically computed
   const alternatives: Array<{
     venue: string;
@@ -852,64 +983,32 @@ export default function NewBookingPage() {
     capacity: number;
     reason: string;
   }> = React.useMemo(() => {
-    const startP = selectedPeriods.length > 0 ? Math.min(...selectedPeriods) : 10;
-    const endP = selectedPeriods.length > 0 ? Math.max(...selectedPeriods) : 12;
-
-    const alts: Array<{
-      venue: string;
-      venueName: string;
-      day: Day;
-      periods: number[];
-      capacity: number;
-      reason: string;
-    }> = [];
-
-    const candidates = rooms.filter((r) => {
-      if (r.id === venueId) return false;
-      if (r.allowed_uses && !r.allowed_uses.includes('event') && !r.allowed_uses.includes('club')) return false;
-      if (r.capacity < attendees) return false;
-      if (needsWheelchair && !r.accessible) return false;
-      return true;
-    });
-
-    for (const r of candidates) {
-      let isBusy = false;
-      for (const b of existingBookings) {
-        if (b.status === 'cancelled' || b.status === 'rejected') continue;
-        const bRoom = getBookingRoom(b);
-        const bDay = getBookingDay(b);
-        const range = getBookingPeriodRange(b);
-        if (bRoom === r.id && bDay === day && range && Math.max(startP, range.startP) <= Math.min(endP, range.endP)) {
-          isBusy = true;
-          break;
-        }
-      }
-      if (!isBusy) {
-        alts.push({
-          venue: r.id,
-          venueName: r.name || r.id,
-          day: day,
-          periods: selectedPeriods,
-          capacity: r.capacity,
-          reason: `Free event venue (${r.capacity} seats) on ${day} during requested periods with zero clashes.`,
-        });
-      }
-      if (alts.length >= 3) break;
+    // If recommendedSlots has options, convert them directly to alternatives
+    if (recommendedSlots.length > 0) {
+      return recommendedSlots.map((r) => {
+        const roomObj = rooms.find((rm) => rm.id === r.venue);
+        return {
+          venue: r.venue,
+          venueName: r.venueName,
+          day: r.day,
+          periods: r.periods,
+          capacity: roomObj?.capacity || attendees,
+          reason: r.reason,
+        };
+      });
     }
 
-    if (alts.length === 0) {
-      alts.push({
+    return [
+      {
         venue: 'OAT',
         venueName: 'Open Air Theatre',
         day: day,
         periods: selectedPeriods,
         capacity: 800,
         reason: 'Free outdoor amphitheater with stage & PA system, seats up to 800.',
-      });
-    }
-
-    return alts;
-  }, [rooms, existingBookings, venueId, day, selectedPeriods, attendees, needsWheelchair]);
+      },
+    ];
+  }, [recommendedSlots, rooms, day, selectedPeriods, attendees]);
 
 
   const handleSubmit = async () => {
@@ -940,6 +1039,7 @@ export default function NewBookingPage() {
         setSubmissionError({
           code: res.reason_codes?.[0] || 'CONSTRAINT_VIOLATION',
           message: res.reason || 'Booking request violates kernel constraints.',
+          recommendedSlot: res.details?.recommended_slot,
         });
         return;
       }
@@ -1149,7 +1249,7 @@ export default function NewBookingPage() {
                 </p>
               </div>
             </div>
-            <div className="pt-2 flex items-center gap-3">
+            <div className="pt-2 flex flex-wrap items-center gap-3">
               <Button
                 variant="secondary"
                 onClick={() => setSubmissionState('idle')}
@@ -1157,6 +1257,22 @@ export default function NewBookingPage() {
               >
                 Return to Editor & Adjust Parameters
               </Button>
+
+              {submissionError.recommendedSlot && (
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setVenueId(submissionError.recommendedSlot.room_id);
+                    setDay(submissionError.recommendedSlot.day);
+                    setSelectedPeriods(submissionError.recommendedSlot.periods);
+                    setSubmissionState('idle');
+                    setSubmissionError(null);
+                  }}
+                  className="h-8 text-[12px] bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  ⚡ Apply Recommended Free Slot ({submissionError.recommendedSlot.room_id} {submissionError.recommendedSlot.day} P{submissionError.recommendedSlot.start_period}-P{submissionError.recommendedSlot.end_period})
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -1485,13 +1601,25 @@ export default function NewBookingPage() {
                     <button
                       key={p}
                       type="button"
-                      disabled={isLocked}
                       onClick={() => {
-                        if (!isLocked) togglePeriod(p);
+                        if (isLocked) {
+                          // Auto-jump to the top recommended free slot on click
+                          const rec = recommendedSlots.find((r) => r.type === 'same_venue_time') || recommendedSlots[0];
+                          if (rec) {
+                            setVenueId(rec.venue);
+                            setDay(rec.day);
+                            setSelectedPeriods(rec.periods);
+                            removeGuessed('venue');
+                            removeGuessed('day');
+                            removeGuessed('periods');
+                          }
+                        } else {
+                          togglePeriod(p);
+                        }
                       }}
                       className={`h-12 flex flex-col items-center justify-center rounded-cell border text-[11px] font-medium font-ui transition-all relative select-none ${
                         isLocked
-                          ? 'bg-bad/10 border-bad text-bad cursor-not-allowed shadow-none'
+                          ? 'bg-bad/10 border-bad text-bad hover:bg-bad/20 cursor-pointer shadow-none'
                           : isSelected
                           ? 'bg-ink text-paper border-ink font-bold shadow-xs'
                           : isEvening
@@ -1502,7 +1630,7 @@ export default function NewBookingPage() {
                       }`}
                       title={
                         isLocked
-                          ? `LOCKED: Already booked by ${lockInfo?.requester} ("${lockInfo?.title}") [${lockInfo?.id}]`
+                          ? `LOCKED: Already booked by ${lockInfo?.requester} ("${lockInfo?.title}"). Click to auto-switch to nearest available slot!`
                           : `Period P${p} (${p < 10 ? `${7 + p}:00 - ${8 + p}:00` : `${8 + p}:00 - ${9 + p}:00`})`
                       }
                     >
@@ -1527,8 +1655,68 @@ export default function NewBookingPage() {
                       {venueId} is locked on {day} during: {Array.from(lockedPeriodsMap.entries()).map(([p, info]) => `P${p} (${info.title})`).join(', ')}
                     </span>
                     <span className="text-bad/80 block text-[11px]">
-                      Locked periods are disabled to prevent double-booking. Please choose alternate periods or select another free venue.
+                      Locked periods are already occupied. Click any locked period button or choose a recommended slot below.
                     </span>
+                  </div>
+                </div>
+              )}
+
+              {/* RECOMMENDED NEW SLOTS COMPONENT */}
+              {(!isOccupancyOk || selectedPeriods.some((p) => lockedPeriodsMap.has(p))) && recommendedSlots.length > 0 && (
+                <div className="p-3.5 bg-amber-500/10 border border-amber-500/40 rounded-card space-y-2.5 animate-fadeIn">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-amber-500/20 pb-2">
+                    <div className="flex items-center gap-1.5 text-amber-900 font-semibold text-[13px]">
+                      <span className="text-[16px]">💡</span>
+                      <span>
+                        Slot {selectedPeriods.map((p) => `P${p}`).join('-')} is locked in {venueId}. Recommended free slots:
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-amber-800 font-mono font-medium">1-Click Slot Resolution</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
+                    {recommendedSlots.map((rec, idx) => (
+                      <div
+                        key={idx}
+                        className="p-2.5 bg-surface border border-amber-300/80 hover:border-amber-500 rounded-cell flex flex-col justify-between gap-2 shadow-2xs transition-all hover:shadow-xs"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="text-[10px] font-mono uppercase tracking-wider font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                              {rec.tag}
+                            </span>
+                            <span className="text-[11px] font-mono text-ink font-semibold">
+                              {rec.day}
+                            </span>
+                          </div>
+                          <div className="text-[13px] font-bold text-ink">
+                            {rec.venue} &middot; {rec.periods.map((p) => `P${p}`).join('-')}
+                          </div>
+                          <div className="text-[11px] text-ink-2 font-mono">
+                            {rec.timeClock}
+                          </div>
+                          <p className="text-[10px] text-ink-2 mt-1 leading-tight line-clamp-2">
+                            {rec.reason}
+                          </p>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="h-7 text-[11px] font-medium w-full bg-amber-50 border-amber-400 text-amber-950 hover:bg-amber-200 transition-colors"
+                          onClick={() => {
+                            setVenueId(rec.venue);
+                            setDay(rec.day);
+                            setSelectedPeriods(rec.periods);
+                            removeGuessed('venue');
+                            removeGuessed('day');
+                            removeGuessed('periods');
+                          }}
+                        >
+                          ⚡ Switch to this slot
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

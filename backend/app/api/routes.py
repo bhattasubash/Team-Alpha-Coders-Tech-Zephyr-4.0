@@ -1168,6 +1168,53 @@ def parse_booking(
     )
 
 
+def _find_slot_recommendation(
+    target_room: str,
+    target_day: str,
+    dur: int,
+    all_bookings: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Find the nearest free continuous slot for the target room."""
+    cand_starts = [6, 7, 8, 10, 11, 2, 3, 1, 9, 12]
+    days = [target_day] + [d for d in ["MON", "TUE", "WED", "THU", "FRI"] if d != target_day]
+
+    for d in days:
+        for sp in cand_starts:
+            ep = sp + dur - 1
+            if ep > 13:
+                continue
+            if dur > 1 and 5 in range(sp, ep + 1):
+                continue
+            if target_room == "AUD" and d == "MON" and max(sp, 4) <= min(ep, 5):
+                continue
+
+            clash = False
+            for eb in all_bookings:
+                if eb.get("status") in ("cancelled", "rejected"):
+                    continue
+                eb_r = eb.get("assigned_room") or eb.get("requested_room")
+                if eb_r != target_room:
+                    continue
+                eb_w = eb.get("windows", [])
+                eb_d = eb.get("assigned_day") or (eb_w[0].get("day") if eb_w else None)
+                eb_sp = eb.get("assigned_start_period") or (eb_w[0].get("from_period") if eb_w else None)
+                eb_ep = eb.get("assigned_end_period") or (eb_w[0].get("to_period") if eb_w else (eb_sp + eb.get("duration_periods", 1) - 1 if eb_sp else None))
+                if eb_d == d and eb_sp is not None and eb_ep is not None:
+                    if max(sp, eb_sp) <= min(ep, eb_ep):
+                        clash = True
+                        break
+            if not clash:
+                return {
+                    "room_id": target_room,
+                    "day": d,
+                    "start_period": sp,
+                    "end_period": ep,
+                    "periods": list(range(sp, ep + 1)),
+                    "reason": f"Available free slot in {target_room} on {d} during P{sp}-P{ep}.",
+                }
+    return None
+
+
 @router.post(
     "/api/bookings",
     response_model=BookingPrecheckResult,
@@ -1203,18 +1250,30 @@ def create_booking(
             details={"rules_violated": reasons},
         )
 
+    all_bookings = _get_all_merged_bookings()
+    dur = req.duration_periods or 1
+
     # H4 Occupancy clash checks
     for w in req.windows:
         if req.requested_room == "AUD" and w.day == "MON":
             if max(w.from_period, 4) <= min(w.to_period, 5):
+                rec = _find_slot_recommendation("AUD", "MON", dur, all_bookings)
+                details = {
+                    "rules_violated": ["H4"],
+                    "conflict_id": "INST-INAUGURATION",
+                    "conflict_title": "Spectra '27 Inauguration Ceremony",
+                }
+                reason_msg = "H4 Violation: Auditorium on MON P4-P5 is reserved for Spectra '27 Inauguration."
+                if rec:
+                    details["recommended_slot"] = rec
+                    reason_msg += f" Recommended free slot: {rec['room_id']} on {rec['day']} during P{rec['start_period']}-P{rec['end_period']}."
                 return BookingPrecheckResult(
                     legal=False,
                     reason_codes=["H4"],
-                    reason="H4 Violation: Auditorium on MON P4-P5 is reserved for Spectra '27 Inauguration.",
-                    details={"rules_violated": ["H4"], "conflict_id": "INST-INAUGURATION", "conflict_title": "Spectra '27 Inauguration Ceremony"},
+                    reason=reason_msg,
+                    details=details,
                 )
 
-    all_bookings = _get_all_merged_bookings()
     for b in all_bookings:
         if b.get("status") in ("cancelled", "rejected"):
             continue
@@ -1235,17 +1294,23 @@ def create_booking(
                 conflict_title = b.get("title") or b.get("event_name") or b.get("id") or "Existing Booking"
                 conflict_id = b.get("id") or b.get("request_id") or "BOOKING"
                 conflict_req = b.get("requester_name") or b.get("requester") or "Another User"
+                rec = _find_slot_recommendation(req.requested_room, w.day, dur, all_bookings)
+                details = {
+                    "rules_violated": ["H4"],
+                    "conflict_id": conflict_id,
+                    "conflict_title": conflict_title,
+                    "conflict_requester": conflict_req,
+                    "conflicting_periods": list(range(max(w.from_period, b_sp), min(w.to_period, b_ep) + 1)),
+                }
+                reason_msg = f'H4 Violation: {req.requested_room} is already booked on {w.day} during periods P{b_sp}-P{b_ep} by {conflict_req} ("{conflict_title}", {conflict_id}). Two bookings cannot occupy this room simultaneously.'
+                if rec:
+                    details["recommended_slot"] = rec
+                    reason_msg += f" Recommended free slot: {rec['room_id']} on {rec['day']} during P{rec['start_period']}-P{rec['end_period']}."
                 return BookingPrecheckResult(
                     legal=False,
                     reason_codes=["H4"],
-                    reason=f'H4 Violation: {req.requested_room} is already booked on {w.day} during periods P{b_sp}-P{b_ep} by {conflict_req} ("{conflict_title}", {conflict_id}). Two bookings cannot occupy this room simultaneously.',
-                    details={
-                        "rules_violated": ["H4"],
-                        "conflict_id": conflict_id,
-                        "conflict_title": conflict_title,
-                        "conflict_requester": conflict_req,
-                        "conflicting_periods": list(range(max(w.from_period, b_sp), min(w.to_period, b_ep) + 1)),
-                    },
+                    reason=reason_msg,
+                    details=details,
                 )
 
     req_id = f"BR-NEW-{uuid.uuid4().hex[:6].upper()}"

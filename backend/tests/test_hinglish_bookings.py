@@ -170,6 +170,8 @@ def test_double_booking_and_conflict_rejection():
     assert "H4" in res2.reason_codes
     assert "already booked" in res2.reason
     assert "Two bookings cannot occupy this room simultaneously" in res2.reason
+    assert res2.details.get("recommended_slot") is not None, "Must provide recommended free slot"
+    assert "Recommended free slot" in res2.reason
 
     # 3. Inauguration period (AUD Mon P4-P5) must also fail with H4
     req3 = CreateBookingRequest(
@@ -185,4 +187,6 @@ def test_double_booking_and_conflict_rejection():
     assert res3.legal is False
     assert "H4" in res3.reason_codes
     assert "Spectra '27 Inauguration" in res3.reason
+    assert res3.details.get("recommended_slot") is not None, "Must provide recommended free slot for locked inauguration slot"
+    assert "Recommended free slot" in res3.reason
 
