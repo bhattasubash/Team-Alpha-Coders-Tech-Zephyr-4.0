@@ -50,30 +50,44 @@ export function toWhyHereTarget(item: ScheduledSession | BookingRequest | WhyHer
   }
 
   // It's a ScheduledSession
-  const session = item as ScheduledSession;
-  const dayName = session.day === 'MON' ? 'Monday' : session.day === 'TUE' ? 'Tuesday' : session.day === 'WED' ? 'Wednesday' : session.day === 'THU' ? 'Thursday' : 'Friday';
+  const s = item as any;
+  const sId = s.id || s.sessionId || s.session_id || 'session';
+  const cId = s.courseId || s.course_id || 'Session';
+  const cTitle = s.courseTitle || s.course_name || cId;
+  const rId = s.roomId || s.room_id || 'Academic Venue';
+  const rName = s.roomName || s.room_name || rId;
+  const day = s.day || 'MON';
+  const dayName =
+    day === 'MON' ? 'Monday' :
+    day === 'TUE' ? 'Tuesday' :
+    day === 'WED' ? 'Wednesday' :
+    day === 'THU' ? 'Thursday' :
+    day === 'FRI' ? 'Friday' : 'Saturday';
+  const startP = Number(s.startPeriod ?? s.start_period ?? 1);
+  const dur = Number(s.duration ?? 1);
+  const facName = s.facultyName || s.faculty_name || s.facultySurname || s.facultyId || s.faculty_id || 'Faculty';
 
   return {
-    id: session.id,
-    title: `${session.courseId} in ${session.roomId}, ${dayName} P${session.startPeriod}`,
-    subtitle: `${session.courseTitle || session.courseId} &middot; ${session.facultyName || session.facultySurname || session.facultyId || 'Faculty'}`,
-    room: session.roomId,
-    roomName: session.roomName || session.roomId,
-    day: session.day,
-    startPeriod: session.startPeriod,
-    duration: session.duration,
-    status: session.state === 'violation' ? 'violation' : 'placed',
-    statusLabel: session.state === 'violation' ? 'VIOLATION' : 'VALID',
+    id: sId,
+    title: `${cId} in ${rId}, ${dayName} P${startP}`,
+    subtitle: `${cTitle} &middot; ${facName}`,
+    room: rId,
+    roomName: rName,
+    day: day as Day,
+    startPeriod: startP,
+    duration: dur,
+    status: s.state === 'violation' ? 'violation' : 'placed',
+    statusLabel: s.state === 'violation' ? 'VIOLATION' : 'VALID',
     placedRow: {
-      period: `P${session.startPeriod} (${7 + session.startPeriod}:00 - ${8 + session.startPeriod}:00)`,
+      period: `P${startP} (${7 + startP}:00 - ${8 + startP}:00)`,
       statusLabel: 'Placed here',
       ruleCode: 'VALID',
-      reason: `Assigned by CP-SAT solver satisfying institutional timetable constraints. Venue capacity: ${(session as any).capacity || 90}+.`,
+      reason: `Assigned by CP-SAT solver satisfying institutional timetable constraints. Venue capacity: ${s.capacity || 90}+.`,
     },
     otherPeriodRows: [], // Removed all fake hardcoded period rows with fabricated reasons
-    whyThisRoom: `${session.roomId} (${session.roomName || 'Academic Venue'}) matches curriculum requirements. Complete room preference proof is maintained in the solver journal.`,
+    whyThisRoom: `${rId} (${rName}) matches curriculum requirements. Complete room preference proof is maintained in the solver journal.`,
     plainLanguage: {
-      heading: `${session.courseId} scheduled in ${session.roomId} on ${dayName} at Period P${session.startPeriod}.`,
+      heading: `${cId} scheduled in ${rId} on ${dayName} at Period P${startP}.`,
       body: 'Explanation engine loading... Backend constraint proof and alternative slot evaluation are being compiled.',
     },
   };
@@ -199,16 +213,52 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const openDrawer = (target: ScheduledSession | BookingRequest | WhyHereTarget) => {
+    if (!target) return;
     const normalized = toWhyHereTarget(target);
     setDrawerTarget(normalized);
 
-    const isSession = 'courseId' in target || 'startPeriod' in target;
-    const isBooking = 'requested_category' in target || 'attendance' in target;
+    const isSession =
+      'courseId' in target ||
+      'startPeriod' in target ||
+      'course_id' in target ||
+      'start_period' in target ||
+      'session_id' in target;
+    const isBooking =
+      'requested_category' in target ||
+      'attendance' in target ||
+      'submitted_at' in target;
 
     if (isSession) {
-      const session = target as ScheduledSession;
+      const s = target as any;
+      const sId = s.id || s.sessionId || s.session_id || '';
+      const cId = s.courseId || s.course_id || '';
+      const cTitle = s.courseTitle || s.course_name || cId;
+      const fId = s.facultyId || s.faculty_id || '';
+      const fName = s.facultyName || s.faculty_name || fId;
+      const rId = s.roomId || s.room_id || '';
+      const rName = s.roomName || s.room_name || rId;
+      const startP = Number(s.startPeriod ?? s.start_period ?? 1);
+      const dur = Number(s.duration ?? 1);
+
+      const session: ScheduledSession = {
+        id: sId,
+        sessionId: sId,
+        courseId: cId,
+        courseTitle: cTitle,
+        facultyId: fId,
+        facultyName: fName,
+        facultySurname: s.facultySurname || fName,
+        roomId: rId,
+        roomName: rName,
+        day: (s.day || 'MON') as Day,
+        startPeriod: startP,
+        duration: dur,
+        kind: s.kind || 'lecture',
+        state: s.state || 'lecture',
+        groups: Array.isArray(s.groups) ? s.groups : [],
+      };
       setDrawerSession(session);
-      const sessionId = session.id || (session as any).sessionId;
+      const sessionId = sId;
       if (sessionId) {
         // Fetch real explanation from solver API
         api.explainSession(sessionId)

@@ -71,10 +71,10 @@ export default function ExamsPage() {
     if (courseQuery.trim()) {
       const q = courseQuery.toLowerCase().trim();
       const matchQuery =
-        ex.id.toLowerCase().includes(q) ||
-        ex.course_ids.some((c) => c.toLowerCase().includes(q)) ||
-        ex.groups.some((g) => g.toLowerCase().includes(q)) ||
-        ex.room_id.toLowerCase().includes(q);
+        String(ex?.id || '').toLowerCase().includes(q) ||
+        (ex?.course_ids || []).some((c: string) => String(c || '').toLowerCase().includes(q)) ||
+        (ex?.groups || []).some((g: string) => String(g || '').toLowerCase().includes(q)) ||
+        String(ex?.room_id || '').toLowerCase().includes(q);
       if (!matchQuery) return false;
     }
 

@@ -421,7 +421,7 @@ class TimetableSolver:
                 soft_penalty=total_soft,
                 soft_penalties=soft_dict,
                 solve_time_seconds=0.01,
-                is_optimal=False,
+                is_proven_optimal=False,
             )
 
         # Phase 2: Soft optimization with hint

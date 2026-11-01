@@ -612,6 +612,7 @@ def get_job_status(
         best_soft_penalty=int(job["best_soft_score"]) if job.get("best_soft_score") is not None else None,
         solver_status=job.get("solver_status") or "UNKNOWN",
         seconds=metrics["elapsed"],
+        error_message=job.get("error_message"),
     )
 
 

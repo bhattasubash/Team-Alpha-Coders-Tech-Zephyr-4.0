@@ -140,6 +140,7 @@ class JobStatusResponse(BaseModel):
     best_soft_penalty: int | None = None
     solver_status: str
     seconds: float
+    error_message: str | None = None
 
 
 # -----------------------------------------------------------------------------
