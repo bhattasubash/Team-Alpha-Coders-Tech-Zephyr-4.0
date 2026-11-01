@@ -1,0 +1,97 @@
+[
+  {
+    "email": "admin@cit.edu",
+    "login_status": 200,
+    "token_role": "admin",
+    "expected_role": "admin",
+    "me_status": 200,
+    "me_data": {
+      "email": "admin@cit.edu",
+      "name": "Admin User",
+      "role": "admin",
+      "faculty_id": null,
+      "department": null,
+      "club_name": null,
+      "profile": {
+        "title": "System Administrator"
+      }
+    },
+    "pass": true
+  },
+  {
+    "email": "dean@cit.edu",
+    "login_status": 200,
+    "token_role": "admin",
+    "expected_role": "admin",
+    "me_status": 200,
+    "me_data": {
+      "email": "dean@cit.edu",
+      "name": "Dean of Academic Affairs",
+      "role": "admin",
+      "faculty_id": null,
+      "department": null,
+      "club_name": null,
+      "profile": {
+        "title": "Dean of Academic Affairs"
+      }
+    },
+    "pass": true
+  },
+  {
+    "email": "coordinator@cit.edu",
+    "login_status": 200,
+    "token_role": "department_coordinator",
+    "expected_role": "department_coordinator",
+    "me_status": 200,
+    "me_data": {
+      "email": "coordinator@cit.edu",
+      "name": "Dept Coordinator",
+      "role": "department_coordinator",
+      "faculty_id": null,
+      "department": "CSE",
+      "club_name": null,
+      "profile": {
+        "department": "CSE"
+      }
+    },
+    "pass": true
+  },
+  {
+    "email": "faculty@cit.edu",
+    "login_status": 200,
+    "token_role": "faculty",
+    "expected_role": "faculty",
+    "me_status": 200,
+    "me_data": {
+      "email": "faculty@cit.edu",
+      "name": "Faculty Member",
+      "role": "faculty",
+      "faculty_id": "F01",
+      "department": null,
+      "club_name": null,
+      "profile": {
+        "faculty_id": "F01"
+      }
+    },
+    "pass": true
+  },
+  {
+    "email": "club@cit.edu",
+    "login_status": 200,
+    "token_role": "club",
+    "expected_role": "club",
+    "me_status": 200,
+    "me_data": {
+      "email": "club@cit.edu",
+      "name": "Club Representative",
+      "role": "club",
+      "faculty_id": null,
+      "department": null,
+      "club_name": "Coding Club",
+      "profile": {
+        "club_name": "Coding Club"
+      }
+    },
+    "pass": true
+  }
+]

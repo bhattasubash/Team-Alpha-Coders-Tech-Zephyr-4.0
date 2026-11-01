@@ -1,0 +1,10 @@
+{
+  "trials": 1500,
+  "elapsed_seconds": 5.635734558105469,
+  "legal_count": 230,
+  "illegal_count": 1270,
+  "false_positives_count": 0,
+  "false_negatives_count": 0,
+  "false_positives_sample": [],
+  "false_negatives_sample": []
+}

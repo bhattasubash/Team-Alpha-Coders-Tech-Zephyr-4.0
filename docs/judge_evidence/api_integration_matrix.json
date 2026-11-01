@@ -1,0 +1,906 @@
+{
+  "full_flow": {
+    "login": "PASS",
+    "validation": {
+      "status": "PASS",
+      "hard_violations": 41,
+      "soft_penalty": null
+    },
+    "bookings_decide": {
+      "status": "PASS",
+      "approved": null,
+      "booking_score": 67.0
+    },
+    "disruption_preview": {
+      "status": "PASS",
+      "proposal_id": "prop-60ea6bb1",
+      "moved_count": 14,
+      "forced_moves": 13
+    },
+    "proposal_approve": {
+      "status_code": 200,
+      "pass": true
+    },
+    "export": {
+      "status_code": 200,
+      "pass": true,
+      "sessions_count": 190
+    }
+  },
+  "rbac_matrix": [
+    {
+      "method": "GET",
+      "path": "/api/meta",
+      "role": "admin",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/meta",
+      "role": "coordinator",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/meta",
+      "role": "faculty",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/meta",
+      "role": "club",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/meta",
+      "role": "no_token",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/meta",
+      "role": "tampered_token",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "role": "admin",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "role": "coordinator",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "role": "faculty",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "role": "club",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "role": "no_token",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "role": "tampered_token",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/timetable/all",
+      "role": "admin",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/timetable/all",
+      "role": "coordinator",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/timetable/all",
+      "role": "faculty",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/timetable/all",
+      "role": "club",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/timetable/all",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/timetable/all",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/timetable/generate",
+      "role": "admin",
+      "expected": 200,
+      "actual": 202,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/timetable/generate",
+      "role": "coordinator",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/timetable/generate",
+      "role": "faculty",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/timetable/generate",
+      "role": "club",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/timetable/generate",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/timetable/generate",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/timetable/optimise",
+      "role": "admin",
+      "expected": 200,
+      "actual": 409,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/timetable/optimise",
+      "role": "coordinator",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/timetable/optimise",
+      "role": "faculty",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/timetable/optimise",
+      "role": "club",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/timetable/optimise",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/timetable/optimise",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/validation/official",
+      "role": "admin",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/validation/official",
+      "role": "coordinator",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/validation/official",
+      "role": "faculty",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/validation/official",
+      "role": "club",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/validation/official",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/validation/official",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings/decide",
+      "role": "admin",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings/decide",
+      "role": "coordinator",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings/decide",
+      "role": "faculty",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings/decide",
+      "role": "club",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings/decide",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings/decide",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/reset",
+      "role": "admin",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/reset",
+      "role": "coordinator",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/reset",
+      "role": "faculty",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/reset",
+      "role": "club",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/reset",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/reset",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/dataset",
+      "role": "admin",
+      "expected": 200,
+      "actual": 422,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/dataset",
+      "role": "coordinator",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/dataset",
+      "role": "faculty",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/dataset",
+      "role": "club",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/dataset",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/dataset",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/export/schedule.json",
+      "role": "admin",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/export/schedule.json",
+      "role": "coordinator",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/export/schedule.json",
+      "role": "faculty",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/export/schedule.json",
+      "role": "club",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/export/schedule.json",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/export/schedule.json",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/proposals/prop-60ea6bb1/approve",
+      "role": "admin",
+      "expected": 200,
+      "actual": 400,
+      "pass": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/proposals/prop-60ea6bb1/approve",
+      "role": "coordinator",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/proposals/prop-60ea6bb1/approve",
+      "role": "faculty",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/proposals/prop-60ea6bb1/approve",
+      "role": "club",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/proposals/prop-60ea6bb1/approve",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/proposals/prop-60ea6bb1/approve",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/sessions/MA101-AB-L1/move",
+      "role": "admin",
+      "expected": 200,
+      "actual": 422,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/sessions/MA101-AB-L1/move",
+      "role": "coordinator",
+      "expected": 200,
+      "actual": 422,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/sessions/MA101-AB-L1/move",
+      "role": "faculty",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/sessions/MA101-AB-L1/move",
+      "role": "club",
+      "expected": 403,
+      "actual": 403,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/sessions/MA101-AB-L1/move",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/sessions/MA101-AB-L1/move",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/bookings",
+      "role": "admin",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/bookings",
+      "role": "coordinator",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/bookings",
+      "role": "faculty",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/bookings",
+      "role": "club",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/bookings",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/bookings",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings",
+      "role": "admin",
+      "expected": 200,
+      "actual": 422,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings",
+      "role": "coordinator",
+      "expected": 200,
+      "actual": 422,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings",
+      "role": "faculty",
+      "expected": 200,
+      "actual": 422,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings",
+      "role": "club",
+      "expected": 200,
+      "actual": 422,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings/BR-01/cancel",
+      "role": "admin",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings/BR-01/cancel",
+      "role": "coordinator",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings/BR-01/cancel",
+      "role": "faculty",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings/BR-01/cancel",
+      "role": "club",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings/BR-01/cancel",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/bookings/BR-01/cancel",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/rooms/free?day=THU&period=6",
+      "role": "admin",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/rooms/free?day=THU&period=6",
+      "role": "coordinator",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/rooms/free?day=THU&period=6",
+      "role": "faculty",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/rooms/free?day=THU&period=6",
+      "role": "club",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/rooms/free?day=THU&period=6",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/rooms/free?day=THU&period=6",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/dashboard",
+      "role": "admin",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/dashboard",
+      "role": "coordinator",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/dashboard",
+      "role": "faculty",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/dashboard",
+      "role": "club",
+      "expected": 200,
+      "actual": 200,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/dashboard",
+      "role": "no_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/dashboard",
+      "role": "tampered_token",
+      "expected": 401,
+      "actual": 401,
+      "pass": true
+    }
+  ],
+  "malformed_inputs": [
+    {
+      "test": "Broken JSON",
+      "method": "POST",
+      "path": "/api/bookings/parse",
+      "expected_status": 422,
+      "actual_status": 422,
+      "pass": true
+    },
+    {
+      "test": "Wrong dataset ID",
+      "method": "POST",
+      "path": "/api/disruptions/preview",
+      "expected_status": 422,
+      "actual_status": 422,
+      "pass": true
+    },
+    {
+      "test": "Negative period",
+      "method": "GET",
+      "path": "/api/rooms/free?day=THU&period=-5",
+      "expected_status": 422,
+      "actual_status": 200,
+      "pass": false
+    },
+    {
+      "test": "Period 99",
+      "method": "GET",
+      "path": "/api/rooms/free?day=THU&period=99",
+      "expected_status": 422,
+      "actual_status": 200,
+      "pass": false
+    },
+    {
+      "test": "Unknown session ID",
+      "method": "GET",
+      "path": "/api/sessions/UNKNOWN_999/legal-slots",
+      "expected_status": 404,
+      "actual_status": 200,
+      "pass": false
+    },
+    {
+      "test": "Huge Text (100KB)",
+      "method": "POST",
+      "path": "/api/bookings/parse",
+      "expected_status": 200,
+      "actual_status": 200,
+      "pass": true
+    },
+    {
+      "test": "Path traversal in session ID",
+      "method": "GET",
+      "path": "/api/sessions/..%2F..%2Fetc%2Fpasswd/legal-slots",
+      "expected_status": 404,
+      "actual_status": 404,
+      "pass": true
+    }
+  ]
+}

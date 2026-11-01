@@ -77,7 +77,7 @@ export function Rail() {
     <>
       {/* Desktop & Tablet Sidebar */}
       <aside
-        className={`hidden sm:flex flex-col flex-shrink-0 h-screen sticky top-0 bg-rail text-[#E8E6DD] border-r border-[#1C3739] z-30 select-none transition-all duration-200 ${
+        className={`hidden sm:flex flex-col flex-shrink-0 fixed left-0 top-0 bottom-0 h-screen bg-rail text-[#E8E6DD] border-r border-[#1C3739] z-30 select-none transition-all duration-200 ${
           isSidebarCollapsed ? 'w-16' : 'w-16 lg:w-[232px]'
         }`}
       >

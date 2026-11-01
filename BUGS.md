@@ -101,3 +101,48 @@ No invented bugs. Only real issues found and fixed during development.
 - Root cause: Stored schedule JSON (from `exports/schedule.json` and solver output) stores raw session slot assignments `{"session_id", "day", "start_period", "room_id"}`. The API contract schema `TimetableAllResponse` requires hydrated `SessionAssignment` models including course catalog details and soft score metrics.
 - Fix: Created `hydrate_sessions(raw_sessions, data)` in `backend/app/api/routes.py` to join assignments with static session metadata from `cit_public.json`, and computed soft penalties dynamically using `validator.run(data, sched)`.
 - Confirmation: Executed `pytest backend/tests/test_persistence_and_jobs.py::test_admin_reset_seeds_database`; passed with 200 OK and valid 189 hydrated sessions.
+
+---
+
+### 2026-11-01 06:10 IST: log_audit() parameter mismatch caused 500 error on 6 critical routes (DEF-01)
+- Symptom: `POST /api/bookings`, `POST /api/bookings/decide`, `POST /api/bookings/{id}/cancel`, `POST /api/sessions/{id}/move`, `POST /api/exams/generate`, and `POST /api/admin/dataset` raised `TypeError: log_audit() got an unexpected keyword argument 'user_id'`.
+- Root cause: `log_audit()` in `repository.py` defined parameters `(action, proposal_id, proposer_id, approver_id, detail, conn)`, but `routes.py` invoked it with `user_id=...` and `details=...`.
+- Fix: Normalized all call sites in `backend/app/api/routes.py` to `(action, proposal_id, proposer_id, approver_id, detail)` and added defensive `**kwargs` mapping in `log_audit()`.
+- Confirmation: Executed `scripts/judge/test_api_integration.py`. Full API happy flow passed with 0 errors across all routes.
+
+---
+
+### 2026-11-01 06:12 IST: Optimizer hint extraction failed during "Keep optimising" (DEF-06)
+- Symptom: "Keep optimising" background job failed on live host and discarded warm-start hints.
+- Root cause: `runner.py:245` checked `s["id"]` instead of `s["session_id"]`, resulting in empty hint dictionaries and causing CP-SAT to drop baseline assignments and attempt a cold solve that timed out on throttled host CPUs.
+- Fix: Updated hint extraction in `backend/app/jobs/runner.py` to `(s.get("session_id") or s.get("id"))` and increased solver `feasibility_limit` to 60.0s.
+- Confirmation: Tested hint extraction and verified warm-start CP-SAT solver configuration.
+
+---
+
+### 2026-11-01 06:14 IST: Placement checker lunch boundary and missing H11/H12/H13 parity errors (DEF-07)
+- Symptom: `parity_placement.py` detected 22 false negatives and 12 false positives between the drag-and-drop placement checker and the official validator.
+- Root cause: `engine.py:51` checked `period <= lunch < period + dur` instead of `period <= lunch < period + dur - 1`, incorrectly blocking valid single-period sessions placed at Period 5. Additionally, elective basket sync (H11), faculty daily limit (H12), and fest week reservations (H13) were omitted from `what_blocks()`.
+- Fix: Corrected lunch period boundary math in `backend/app/explain/engine.py` and implemented H11, H12, and H13 checks.
+- Confirmation: Executed `scripts/judge/parity_placement.py` for 1,500 random moves; achieved 0 false positives and 0 false negatives (100% parity).
+
+---
+
+### 2026-11-01 06:16 IST: Faculty booking submission bypassed API and Dean dashboard lacked pending approvals
+- Symptom: Submitting a booking as faculty fired a native browser `alert()` without sending an API request; Dean dashboard did not show submitted bookings; Dean account saw "Pending Dean approval" alert.
+- Root cause: `NewBookingPage` had hardcoded `alert()` without calling `api.createBooking()`; `/api/dashboard` only counted in-memory reschedule proposals and ignored database bookings; `DashboardPage` lacked a review ledger.
+- Fix:
+  1. Connected `api.createBooking()` and `api.parseBooking()` in `NewBookingPage`.
+  2. Implemented 4-stage UI state screens (`idle`, `submitting`, `success`, `error`) replacing all `alert()` modals.
+  3. Differentiated Dean/Admin status ("Approved & Committed") vs Faculty/Club status ("Submitted: Queued for Dean Office Review").
+  4. Added `POST /api/bookings/{id}/review` endpoint with self-approval guards and audit logging.
+  5. Added an interactive "Pending Submissions Awaiting Dean Approval" ledger with "Approve" and "Reject" buttons on the Dean dashboard.
+- Confirmation: Type-checked with `npx tsc --noEmit` (0 errors) and ran `test_api_integration.py`.
+
+---
+
+### 2026-11-01 06:18 IST: Desktop navigation sidebar scrolled with page content instead of remaining sticky
+- Symptom: Navigation rail in `AppShell` scrolled out of view when scrolling down long timetables or dashboards.
+- Root cause: `overflow-x: hidden` on the root container in `AppShell.tsx` established a new clipping context that disabled `position: sticky` on child elements per CSS specification.
+- Fix: Converted desktop `<aside>` in `Rail.tsx` to `fixed left-0 top-0 bottom-0 h-screen z-30` and added corresponding left padding (`sm:pl-16 lg:pl-[232px]`) to the main content container in `AppShell.tsx`.
+- Confirmation: Verified fixed layout responsiveness at 1440px, 1024px, 768px, and 390px.

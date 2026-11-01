@@ -322,13 +322,19 @@ def update_proposal_status(
 
 def log_audit(
     action: str,
-    proposal_id: str | None,
-    proposer_id: str,
-    approver_id: str | None,
+    proposal_id: str | None = None,
+    proposer_id: str = "system",
+    approver_id: str | None = None,
     detail: dict[str, Any] | None = None,
     conn: sqlite3.Connection | None = None,
+    **kwargs: Any,
 ) -> None:
     """Record an entry in the immutable audit log."""
+    if "user_id" in kwargs and proposer_id == "system":
+        proposer_id = str(kwargs["user_id"])
+    if "details" in kwargs and detail is None:
+        detail = kwargs["details"]
+
     c = get_db(conn)
     now = datetime.now(UTC).isoformat()
     detail_json = json.dumps(detail or {})

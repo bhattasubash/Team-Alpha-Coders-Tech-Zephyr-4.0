@@ -28,6 +28,7 @@ from app.api.schemas import (
     BookingDecideResponse,
     BookingDecision,
     BookingPrecheckResult,
+    BookingReviewRequest,
     BookingsListResponse,
     CreateBookingRequest,
     DashboardResponse,
@@ -847,8 +848,10 @@ def move_session(
     )
     log_audit(
         action="propose_manual_move",
-        user_id=user.get("email", "admin"),
-        details={"session_id": id, "to_slot": move.to_slot, "status": proposal.status},
+        proposal_id=proposal.id,
+        proposer_id=user.get("email", "admin"),
+        approver_id=None,
+        detail={"session_id": id, "to_slot": move.to_slot, "status": proposal.status},
     )
     return proposal
 
@@ -1015,8 +1018,10 @@ def generate_exams(
     commit_new_schedule(sched, dataset_id=data.get("dataset_id", "cit-public-v1"))
     log_audit(
         action="generate_exams",
-        user_id=user.get("email", "admin"),
-        details={"exam_count": len(exams_list)},
+        proposal_id=None,
+        proposer_id=user.get("email", "admin"),
+        approver_id=None,
+        detail={"exam_count": len(exams_list)},
     )
 
     ctx = KernelContext(data)
@@ -1153,8 +1158,10 @@ def create_booking(
     db_save_booking(request_id=req_id, request_data=req_dict, status="pending")
     log_audit(
         action="create_booking",
-        user_id=user.get("email", "user"),
-        details={"request_id": req_id},
+        proposal_id=None,
+        proposer_id=user.get("email", "user"),
+        approver_id=None,
+        detail={"request_id": req_id},
     )
     return BookingPrecheckResult(
         legal=True,
@@ -1177,10 +1184,75 @@ def cancel_booking(
     db_update_booking_status(id, "cancelled")
     log_audit(
         action="cancel_booking",
-        user_id=user.get("email", "user"),
-        details={"request_id": id},
+        proposal_id=None,
+        proposer_id=user.get("email", "user"),
+        approver_id=None,
+        detail={"request_id": id},
     )
     return BookingCancelResponse(request_id=id, status="rejected", reason="Withdrawn by requester")
+
+
+@router.post(
+    "/api/bookings/{id}/review",
+    response_model=BookingDecision,
+    tags=["bookings"],
+)
+def review_booking(
+    id: str,
+    req: BookingReviewRequest,
+    user: dict[str, Any] = Depends(require_role("admin", "department_coordinator")),
+) -> BookingDecision:
+    """Approve or reject a booking request (Admin / Dean / Coordinator)."""
+    b = db_get_booking(id)
+    if not b:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": f"Booking {id} not found", "details": []},
+        )
+    # Self-approval guard: Nobody can approve their own request
+    requester = (b.get("requester") or "").lower()
+    user_email = (user.get("email") or "").lower()
+    if req.status == "approved" and requester and requester == user_email:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "SELF_APPROVAL_PROHIBITED",
+                "message": f"Self-approval prohibited: {requester} cannot approve their own submission ({id}).",
+                "details": [],
+            },
+        )
+
+    db_update_booking_status(id, req.status)
+    log_audit(
+        action=f"{req.status}_booking",
+        proposal_id=None,
+        proposer_id=b.get("requester", "unknown"),
+        approver_id=user.get("email", "admin"),
+        detail={"request_id": id, "reason": req.reason},
+    )
+
+    reason = req.reason or (f"Approved by {user.get('name', 'Dean Office')}" if req.status == "approved" else "Rejected by Dean Office")
+    decision_dict = {
+        "status": req.status,
+        "room_id": b.get("requested_room") or b.get("assigned_room"),
+        "day": b.get("windows", [{}])[0].get("day") if b.get("windows") else b.get("assigned_day"),
+        "start_period": b.get("windows", [{}])[0].get("from_period") if b.get("windows") else b.get("assigned_start_period"),
+        "end_period": b.get("windows", [{}])[0].get("to_period") if b.get("windows") else b.get("assigned_end_period"),
+        "reason": reason,
+        "reason_codes": ["APPROVED" if req.status == "approved" else "REJECTED"],
+    }
+    db_save_booking(request_id=id, request_data=b, status=req.status, decision_data=decision_dict)
+
+    return BookingDecision(
+        request_id=id,
+        status=req.status,
+        room_id=decision_dict["room_id"],
+        day=decision_dict["day"],
+        start_period=decision_dict["start_period"],
+        end_period=decision_dict["end_period"],
+        reason_codes=decision_dict["reason_codes"],
+        reason=reason,
+    )
 
 
 @router.post(
@@ -1212,8 +1284,10 @@ def decide_bookings(
 
     log_audit(
         action="decide_bookings",
-        user_id=user.get("email", "admin"),
-        details={"booking_count": len(fest_week.get("bookings", []))},
+        proposal_id=None,
+        proposer_id=user.get("email", "admin"),
+        approver_id=None,
+        detail={"booking_count": len(fest_week.get("bookings", []))},
     )
 
     ctx = KernelContext(data)
@@ -1517,7 +1591,9 @@ def get_dashboard(
     soft_total = rep.get("soft_total", 0)
 
     proposals = GLOBAL_PROPOSAL_STORE.list_all()
-    pending_approvals = sum(1 for p in proposals if getattr(p, "status", None) == "pending")
+    pending_proposals = sum(1 for p in proposals if getattr(p, "status", None) == "pending")
+    db_pending = db_list_bookings(status="pending")
+    pending_approvals = pending_proposals + len(db_pending)
 
     days = data.get("calendar", {}).get("days", ["MON", "TUE", "WED", "THU", "FRI"])
     teaching_periods = [
@@ -1570,6 +1646,7 @@ def get_dashboard(
         pending_approvals=pending_approvals,
         room_utilisation=utilisation_items,
         booking_board=booking_board,
+        pending_bookings=db_pending,
         sessions_scheduled=sessions_cnt,
         sessions_count=sessions_cnt,
         hard_violations=hard_count,
@@ -1629,8 +1706,10 @@ async def upload_dataset(
         )
     log_audit(
         action="upload_dataset",
-        user_id=user.get("email", "admin"),
-        details={"dataset_id": new_data.get("dataset_id")},
+        proposal_id=None,
+        proposer_id=user.get("email", "admin"),
+        approver_id=None,
+        detail={"dataset_id": new_data.get("dataset_id")},
     )
     return AdminResetResponse(
         status="ok",

@@ -1,20 +1,22 @@
-# CIT Scheduler Handoff Note
+# Handoff Note (2026-11-01 06:22 IST)
 
-- **Status**: Production Ready & Fully Audited against Phase 1 QA Report.
-- **Verification Results**:
-  1. **Live Deployment (Vercel)**:
-     - `https://team-alpha-coders-tech-zephyr-40.vercel.app`
-     - All API endpoints (`/api/dashboard`, `/api/meta`, `/api/timetable/all`, `/api/exams`, `/api/bookings`, `/api/validation/official`, `/api/disruptions/preview`, `/api/assistant`) verified returning HTTP 200 OK with real data.
-     - Direct static JSON downloads (`/schedule.json`, `/schedule_after.json`) verified returning HTTP 200 with raw JSON (zero 404 HTML).
-  2. **Official Validator**:
-     - `exports/schedule.json` & `frontend/public/schedule.json`: 0 hard violations, 161 soft penalty, 67.0 booking score (22 approved, 1 alternative, 2 rejected, 0 priority inversions), 0 exam soft penalties.
-     - `exports/schedule_after.json` & `frontend/public/schedule_after.json`: 0 hard violations, 160 soft penalty, 67.0 booking score, 0 exam soft penalties, 14 moves on `sample_disruption.json`.
-  3. **Frontend Build & Responsiveness**:
-     - `next build`: 30/30 routes generated successfully with 0 warnings and 0 errors.
-     - Mobile navigation drawer and "More" bottom bar providing full access to all routes (including Admin tools and Judge Tour) at 375px.
-     - Zero horizontal overflow (`overflow-x: hidden; max-width: 100vw`).
-     - Admin route guards enforcing role boundaries and persisting session state across reloads.
-  4. **Backend Test Suite**:
-     - Fast tests (`pytest -m "not slow"`): 62/62 passing in 14.9 seconds.
-- **Next Step**:
-  - Record the 5-minute demo video on the live deployed URL following `docs/demo-script.md`.
+## What Was Done
+1. Fixed `log_audit()` argument mismatch across routes (DEF-01) and added defensive parameter handling in `repository.py`.
+2. Fixed optimizer hint extraction key `s["id"]` -> `(s.get("session_id") or s.get("id"))` in `runner.py:245` (DEF-06) and increased feasibility timeout to 60s.
+3. Corrected placement checker Period 5 lunch boundary bug in `engine.py:51` and added H11, H12, and H13 checks: 1500-case parity test achieves 0 false positives and 0 false negatives (100% parity).
+4. Expanded AI fallback regex parser for "6 to 8 pm", "after lunch", and "parso" (9/9 property tests pass).
+5. Replaced `alert()` popup in `NewBookingPage` with real `api.createBooking()` and 4-state lifecycle (`idle`, `submitting`, `success`, `error`).
+6. Differentiated Dean/Admin ("Approved & Committed") vs Faculty/Club ("Pending Dean Approval") in UI and API.
+7. Added `POST /api/bookings/{id}/review` endpoint with self-approval guards and audit logging.
+8. Added "Submissions Awaiting Dean Approval" ledger with direct "Approve"/"Reject" actions on the Dean Dashboard.
+9. Converted desktop navigation rail in `Rail.tsx` to `fixed left-0 top-0 bottom-0 h-screen z-30` so it stays sticky.
+10. Removed silent auto-admin login bypass from `api.ts`.
+11. Updated `BUGS.md` and `DECISIONS.md`.
+
+## Open Issues / Remaining Tasks
+- Deploy git commit to Vercel/Render before 12:00 IST deadline.
+- Set `NEXT_PUBLIC_API_URL=https://cit-scheduler-backend.onrender.com` on Vercel project environment variables.
+- Optional: Add `favicon.ico` in `frontend/public/` to clear remaining 404.
+
+## Next Steps
+- Verify deployed application with newly pushed fixes.

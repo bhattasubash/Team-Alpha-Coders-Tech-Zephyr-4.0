@@ -217,3 +217,16 @@ Separate `forced_moves` (sessions whose baseline slot is directly invalidated by
   - Architecture integrity: All data modifications route through repository functions (`commit_new_schedule`, `save_proposal`, `update_proposal_status`, `log_audit`).
   - Worker lifecycle: `POST /api/timetable/generate` enforces mutual exclusion (HTTP 409 Conflict if another solve is active), spawns the solver, and returns HTTP 202 Accepted. `GET /api/jobs/{id}` returns live progress metrics. Upon completion, the kernel automatically commits the new schedule version and writes an audit log entry.
 - **Cost**: Single active solver execution at any given time (enforced by design via HTTP 409).
+
+---
+
+### 2026-11-01 06:20 IST: Decision 9 - Full Real-Time Booking Lifecycle, Role State Screens, and Fixed Navigation Rail
+
+- **Decision**:
+  1. **Individual Booking Review API & Persistence**: Add `POST /api/bookings/{id}/review` allowing Admin/Dean and Department Coordinators to approve or reject individual booking requests with immutable SQLite audit logging. Enforce self-approval prohibition (HTTP 403 Forbidden if requester attempts to approve their own request).
+  2. **Audit Logging Parameter Defense**: Refactor `log_audit()` in `backend/app/db/repository.py` to accept keyword arguments with safe fallbacks and normalize all call sites in `backend/app/api/routes.py` to prevent any runtime `TypeError`.
+  3. **Role-Aware State Machine**: Replace native browser `alert()` pop-ups in `frontend/src/app/bookings/new/page.tsx` with a 4-state lifecycle (`idle`, `submitting`, `success`, `error`), distinguishing Dean self-managed bookings ("Approved & Committed") from Faculty/Club submissions ("Queued for Dean Office Review").
+  4. **Dean Dashboard Submissions Ledger**: Update `GET /api/dashboard` to count database pending bookings alongside reschedule proposals and render an interactive "Submissions Awaiting Dean Approval" ledger with direct "Approve" and "Reject" actions on the Dean dashboard.
+  5. **Strict Fixed Sidebar Architecture**: Convert desktop navigation rail in `Rail.tsx` to `fixed left-0 top-0 bottom-0 h-screen z-30` with matching main content padding, overcoming CSS `overflow-x: hidden` sticky cancellation.
+- **Why**: Fixes broken Faculty-to-Dean workflow, ensures multi-user role isolation without silent admin bypass, and provides transparent UX state feedback.
+- **Cost**: None. All changes remain fully self-contained and zero-dependency.

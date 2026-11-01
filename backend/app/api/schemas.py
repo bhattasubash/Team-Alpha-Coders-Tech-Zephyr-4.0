@@ -325,6 +325,11 @@ class BookingPrecheckResult(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
 
 
+class BookingReviewRequest(BaseModel):
+    status: Literal["approved", "rejected"]
+    reason: str | None = None
+
+
 class BookingDecision(BaseModel):
     request_id: str
     status: Literal["approved", "rejected", "alternative_offered"]
@@ -429,6 +434,7 @@ class DashboardResponse(BaseModel):
     pending_approvals: int
     room_utilisation: list[RoomUtilisationItem]
     booking_board: list[dict[str, Any]]
+    pending_bookings: list[dict[str, Any]] = Field(default_factory=list)
     sessions_scheduled: int | None = None
     sessions_count: int | None = None
     hard_violations: int | None = None

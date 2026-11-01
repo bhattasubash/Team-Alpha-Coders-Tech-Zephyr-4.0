@@ -574,6 +574,9 @@ class LLMProvider:
         elif re.search(r"\b(?:kal|tomorrow)\b", lower):
             day = "TUE"
             day_provenance = "Inferred from 'tomorrow'"
+        elif re.search(r"\b(?:parso|day after tomorrow)\b", lower):
+            day = "WED"
+            day_provenance = "Inferred from 'parso' (Wednesday)"
 
         # 3. Periods extraction
         from_period: int | None = None
@@ -585,6 +588,22 @@ class LLMProvider:
             provenance["duration_periods"] = (
                 f"Inferred from 'periods {from_period} to {to_period}' ({to_period - from_period + 1} periods)"
             )
+        elif re.search(r"\b(?:6\s*(?:pm|baje)?\s*(?:for\s*)?2\s*(?:hours|ghante))\b", lower):
+            from_period = 10
+            to_period = 11
+            provenance["duration_periods"] = "Inferred from 6 PM for 2 hours (18:00 - 20:00 -> P10 to P11)"
+        elif re.search(r"\b(?:6\s*(?:pm)?\s*(?:to|-)\s*8\s*pm|18:00\s*(?:to|-)\s*20:00|6\s*baje\s*se\s*8\s*baje)\b", lower):
+            from_period = 10
+            to_period = 11
+            provenance["duration_periods"] = "Inferred from evening hours (18:00 - 20:00 -> P10 to P11)"
+        elif re.search(r"\b(?:after\s*lunch|post\s*lunch|lunch\s*ke\s*baad)\b", lower):
+            from_period = 6
+            to_period = 6
+            provenance["duration_periods"] = "Inferred from 'after lunch' (Period P6, 14:00 - 15:00)"
+        elif re.search(r"\b(?:10\s*(?:am)?\s*(?:to|-)\s*12\s*(?:pm)?|10\s*baje\s*se\s*12\s*baje)\b", lower):
+            from_period = 3
+            to_period = 4
+            provenance["duration_periods"] = "Inferred from morning hours (10:00 - 12:00 -> P3 to P4)"
         elif re.search(r"\b(?:6\s*(?:pm)?\s*(?:to|-)\s*9\s*pm|18:00|6\s*baje\s*se\s*9\s*baje)\b", lower):
             from_period = 10
             to_period = 12

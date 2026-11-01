@@ -14,18 +14,26 @@ import { CampusVenueMap } from '@/components/ui/CampusVenueMap';
 import { Role, ScheduledSession, DEMO_USERS } from '@/data/types';
 
 export default function DashboardPage() {
-  const { role, setRole, openDrawer } = useApp();
+  const { role, user, setRole, openDrawer } = useApp();
 
   // Real backend metrics
   const [dashboardData, setDashboardData] = useState<any | null>(null);
   const [apiError, setApiError] = useState<{ code: string; message: string } | null>(null);
   const [mondaySessions, setMondaySessions] = useState<ScheduledSession[]>([]);
+  const [pendingBookings, setPendingBookings] = useState<any[]>([]);
+  const [reviewMessage, setReviewMessage] = useState<string | null>(null);
   const [isDebug, setIsDebug] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsDebug(new URLSearchParams(window.location.search).get('debug') === '1');
     }
+
+    api.getBookings('pending').then((res) => {
+      if (Array.isArray(res?.bookings)) {
+        setPendingBookings(res.bookings.filter((b: any) => b.status === 'pending' || b.status === 'alternative_offered'));
+      }
+    }).catch(() => {});
 
     api.getDashboard()
       .then((data) => {
@@ -173,6 +181,22 @@ export default function DashboardPage() {
   };
 
   const currentActions = roleActions[role] || roleActions.admin;
+
+  const handleReview = async (bookingId: string, status: 'approved' | 'rejected') => {
+    try {
+      await api.reviewBooking(bookingId, status);
+      setPendingBookings((prev) => prev.filter((b) => b.id !== bookingId));
+      setReviewMessage(`Request ${bookingId} ${status} successfully. Canonical schedule updated.`);
+      setDashboardData((prev: any) => prev ? {
+        ...prev,
+        pending_approvals: Math.max(0, (prev.pending_approvals || 1) - 1),
+      } : prev);
+      setTimeout(() => setReviewMessage(null), 5000);
+    } catch (err: any) {
+      setReviewMessage(err?.message || `Failed to ${status} request.`);
+      setTimeout(() => setReviewMessage(null), 5000);
+    }
+  };
 
   return (
     <AppShell>
@@ -368,8 +392,97 @@ export default function DashboardPage() {
 
             {/* 8/4 TWO-COLUMN LAYOUT */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Left Column (8 cols): Role-Adaptive Action List (Large text rows, NOT cards) */}
-              <div className="lg:col-span-8 glass-panel rounded-panel p-6 shadow-card space-y-4">
+              {/* Left Column (8 cols): Pending Dean Approvals + Role-Adaptive Action List */}
+              <div className="lg:col-span-8 space-y-6">
+                {/* Pending Dean Approvals Section (Admin & Coordinator) */}
+                {(role === 'admin' || role === 'department_coordinator') && (
+                  <div className="glass-panel rounded-panel p-6 shadow-card space-y-4 border border-line">
+                    <div className="flex items-baseline justify-between border-b border-line pb-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-2.5 h-2.5 rounded-full bg-violet animate-pulse" />
+                        <h2 className="font-serif text-[24px] leading-[28px] text-ink">
+                          Pending Submissions Awaiting Dean Approval
+                        </h2>
+                      </div>
+                      <span className="text-[12px] font-mono px-2 py-0.5 rounded-pill bg-raised text-ink border border-line font-medium">
+                        {pendingBookings.length} pending
+                      </span>
+                    </div>
+
+                    {reviewMessage && (
+                      <div className="p-3 bg-raised border border-violet/40 rounded-card text-[13px] text-ink flex items-center justify-between">
+                        <span>{reviewMessage}</span>
+                        <button onClick={() => setReviewMessage(null)} className="text-[11px] text-ink-2 hover:underline">Dismiss</button>
+                      </div>
+                    )}
+
+                    {pendingBookings.length === 0 ? (
+                      <div className="py-6 text-center text-ink-2 font-serif italic text-[14px]">
+                        No pending requests awaiting approval &middot; All submitted venue bookings have been decided.
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-line overflow-x-auto">
+                        {pendingBookings.slice(0, 5).map((b) => {
+                          const isSelf = user?.email && b.requester && b.requester.toLowerCase() === user.email.toLowerCase();
+                          const win = b.windows?.[0] || {};
+                          return (
+                            <div key={b.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 -mx-2 px-2 hover:bg-raised/40 rounded-card transition-colors">
+                              <div className="space-y-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-[12px] font-semibold text-ink">{b.id}</span>
+                                  <span className="text-[11px] font-mono text-ink-2 uppercase px-1.5 py-0.2 rounded bg-raised border border-line">
+                                    {b.role || 'faculty'}
+                                  </span>
+                                  <span className="text-[13px] font-semibold text-ink truncate">{b.title}</span>
+                                </div>
+                                <div className="text-[12px] text-ink-2 flex items-center gap-2 flex-wrap">
+                                  <span>Venue: <strong className="text-ink font-medium">{b.requested_room || b.assigned_room || 'Any'}</strong></span>
+                                  <span>&middot;</span>
+                                  <span>Slot: <strong className="text-ink font-medium">{win.day || b.assigned_day || 'THU'} P{win.from_period || b.assigned_start_period || 10}-P{win.to_period || b.assigned_end_period || 12}</strong></span>
+                                  <span>&middot;</span>
+                                  <span>Requester: <strong className="text-ink font-medium">{b.requester}</strong></span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
+                                {isSelf ? (
+                                  <span className="text-[11px] text-ink-2 italic font-serif">Self-submission (requires another admin)</span>
+                                ) : (
+                                  <>
+                                    <Button
+                                      variant="secondary"
+                                      onClick={() => handleReview(b.id, 'rejected')}
+                                      className="h-8 text-[12px] px-3 text-bad hover:bg-t-bad"
+                                    >
+                                      Reject
+                                    </Button>
+                                    <Button
+                                      variant="primary"
+                                      onClick={() => handleReview(b.id, 'approved')}
+                                      className="h-8 text-[12px] px-3"
+                                    >
+                                      Approve
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {pendingBookings.length > 5 && (
+                          <div className="pt-3 text-right">
+                            <Link href="/bookings" className="text-[12px] font-medium text-violet hover:underline">
+                              View all {pendingBookings.length} requests in Bookings &rarr;
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Role-Adaptive Action List (Large text rows, NOT cards) */}
+                <div className="glass-panel rounded-panel p-6 shadow-card space-y-4">
                 <div className="flex items-baseline justify-between border-b border-line pb-3">
                   <div>
                     <h2 className="font-serif text-[26px] leading-[30px] text-ink">
@@ -412,6 +525,7 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
+              </div>
               </div>
 
               {/* Right Rail (4 cols): Conflict Radar & Today's Schedule Timeline with Now-Line */}

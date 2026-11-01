@@ -48,35 +48,45 @@ export default function BookingsPage() {
   });
 
   // Action: Approve
-  const handleApprove = (booking: BookingRequest) => {
-    setBookings((prev) =>
-      prev.map((b) =>
-        b.id === booking.id
-          ? {
-              ...b,
-              status: 'approved',
-              reason: 'Approved and committed to canonical timetable. Venue slot reserved.',
-            }
-          : b
-      )
-    );
-    setToastMessage(`Committed. ${booking.id} (${booking.title}) approved for ${booking.requested_room}.`);
+  const handleApprove = async (booking: BookingRequest) => {
+    try {
+      await api.reviewBooking(booking.id, 'approved');
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === booking.id
+            ? {
+                ...b,
+                status: 'approved',
+                reason: 'Approved and committed to canonical timetable. Venue slot reserved.',
+              }
+            : b
+        )
+      );
+      setToastMessage(`Committed. ${booking.id} (${booking.title}) approved for ${booking.requested_room}.`);
+    } catch (err: any) {
+      setToastMessage(err?.message || `Failed to approve ${booking.id}`);
+    }
   };
 
   // Action: Reject
-  const handleReject = (booking: BookingRequest) => {
-    setBookings((prev) =>
-      prev.map((b) =>
-        b.id === booking.id
-          ? {
-              ...b,
-              status: 'rejected',
-              reason: 'Rejected by administration. Venue capacity or timing requirements not met.',
-            }
-          : b
-      )
-    );
-    setToastMessage(`Rejected ${booking.id}. Venue released.`);
+  const handleReject = async (booking: BookingRequest) => {
+    try {
+      await api.reviewBooking(booking.id, 'rejected');
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === booking.id
+            ? {
+                ...b,
+                status: 'rejected',
+                reason: 'Rejected by administration. Venue capacity or timing requirements not met.',
+              }
+            : b
+        )
+      );
+      setToastMessage(`Rejected ${booking.id}. Venue released.`);
+    } catch (err: any) {
+      setToastMessage(err?.message || `Failed to reject ${booking.id}`);
+    }
   };
 
   // Action: Overrule with reason

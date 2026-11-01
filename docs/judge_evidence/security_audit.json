@@ -1,0 +1,64 @@
+{
+  "jwt_structure": {
+    "parts_count": 3,
+    "valid_jwt": true
+  },
+  "jwt_claims": {
+    "sub": "club@cit.edu",
+    "role": "club",
+    "exp": 1793520193
+  },
+  "jwt_has_exp": true,
+  "jwt_role_in_token": true,
+  "tampered_token_rejected": true,
+  "role_escalation_status": 422,
+  "role_escalation_defended": true,
+  "llm_rate_limiting": {
+    "burst_count": 15,
+    "status_codes": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200
+    ],
+    "has_429_rate_limiting": false,
+    "vulnerability": true
+  },
+  "injection_tests": [
+    {
+      "name": "SQL Injection",
+      "status_code": 403,
+      "source": null,
+      "injection_detected": false
+    },
+    {
+      "name": "JSON Injection",
+      "status_code": 200,
+      "source": "fallback",
+      "injection_detected": null
+    },
+    {
+      "name": "XSS Payload",
+      "status_code": 200,
+      "source": "fallback",
+      "injection_detected": null
+    },
+    {
+      "name": "Template Injection",
+      "status_code": 200,
+      "source": "fallback",
+      "injection_detected": null
+    }
+  ]
+}

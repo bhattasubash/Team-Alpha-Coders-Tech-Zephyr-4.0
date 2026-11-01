@@ -1,0 +1,8 @@
+Differential Fuzzing Results
+Timestamp: 2026-11-01 05:24:24
+Total Cases: 5000
+Seed: 20261101
+Elapsed Time: 23.26s
+Mismatches: 0
+
+PERFECT PARITY: 0 mismatches across 5000 cases.

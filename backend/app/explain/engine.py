@@ -27,6 +27,7 @@ class ExplainEngine:
             self.assign, _ = to_assign(schedule)
         else:
             self.assign = dict(schedule)  # type: ignore
+        self.sched = schedule if isinstance(schedule, dict) else {}
         self.ctx = KernelContext(data)
 
     def what_blocks(self, session_id: str, day: str, period: int, room_id: str) -> list[str]:
@@ -48,7 +49,7 @@ class ExplainEngine:
         # Teaching hours & lunch
         if period < 1 or period + dur - 1 > LAST_TEACHING:
             blocked.append("H9")
-        if period <= self.ctx.lunch < period + dur:
+        if period <= self.ctx.lunch < period + dur - 1:
             blocked.append("H9")
         if kind == "lab" and period not in self.ctx.lab_starts:
             blocked.append("H9")
@@ -80,6 +81,52 @@ class ExplainEngine:
             if fid and (day, p) in self.ctx.fac_un.get(fid, set()):
                 blocked.append("H7")
                 break
+
+        # Faculty daily workload limit (H12)
+        if fid:
+            fac_info = self.ctx.fac.get(fid, {})
+            max_daily = fac_info.get("max_hours_per_day", 4)
+            current_day_hours = dur
+            for other_id, (o_day, _, _) in self.assign.items():
+                if other_id == session_id:
+                    continue
+                if o_day == day:
+                    other_s = self.ctx.sessions.get(other_id)
+                    if other_s and other_s.get("faculty_id") == fid:
+                        current_day_hours += other_s.get("duration", 1)
+            if current_day_hours > max_daily:
+                blocked.append("H12")
+
+        # Basket slot synchronization (H11)
+        basket = s.get("basket_slot")
+        if basket:
+            for other_id, (o_day, o_start, _) in self.assign.items():
+                if other_id == session_id:
+                    continue
+                other_s = self.ctx.sessions.get(other_id)
+                if other_s and other_s.get("basket_slot") == basket:
+                    if o_day != day or o_start != period:
+                        blocked.append("H11")
+                        break
+
+        # Check fest bookings clash (H13)
+        fest_bookings = self.ctx.data.get("booking_requests", [])
+        sched_fest = self.sched.get("fest_week", {}).get("bookings", []) if isinstance(self.sched, dict) else []
+        for b in sched_fest:
+            if b.get("status") != "approved":
+                continue
+            b_day = b.get("day")
+            b_start = b.get("start_period")
+            b_end = b.get("end_period")
+            if not (b_day and b_start and b_end):
+                continue
+            b_periods = set(range(b_start, b_end + 1))
+            if b_day == day and (target_periods & b_periods):
+                if b.get("room_id") == room_id:
+                    blocked.append("H13")
+                req = next((r for r in fest_bookings if r.get("id") == b.get("request_id")), None)
+                if req and (groups & set(req.get("mandatory_for_groups", []))):
+                    blocked.append("H13")
 
         # Timetable collisions with other sessions
         for other_id, (o_day, o_start, o_room) in self.assign.items():

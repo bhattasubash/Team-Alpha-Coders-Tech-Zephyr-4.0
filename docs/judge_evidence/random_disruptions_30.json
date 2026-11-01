@@ -1,0 +1,606 @@
+[
+  {
+    "scenario": "01_sample_disruption",
+    "status": "FEASIBLE",
+    "solve_time_s": 20.950418949127197,
+    "solver_status": "OPTIMAL",
+    "moved_count": 14,
+    "forced_moves": 14,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 14,
+      "time_changed": 1,
+      "room_only_changed": 13,
+      "moved_ids": [
+        "CE302-L1",
+        "CS203-L2",
+        "EC303-L2",
+        "HS101-A-L1",
+        "HS101-A-L2",
+        "ME201-L1",
+        "ME203-L1",
+        "ME203-L2",
+        "ME203-L3",
+        "ME301-L1",
+        "PH101-B-L2",
+        "PH101-C-L2",
+        "PH101-D-L1",
+        "PH101-D-L3"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "02_fac_unavail_full_day",
+    "status": "FEASIBLE",
+    "solve_time_s": 20.800460815429688,
+    "solver_status": "OPTIMAL",
+    "moved_count": 2,
+    "forced_moves": 2,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 2,
+      "time_changed": 2,
+      "room_only_changed": 0,
+      "moved_ids": [
+        "CS101-C-L2",
+        "CS101-D-L2"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "03_fac_unavail_partial",
+    "status": "FEASIBLE",
+    "solve_time_s": 19.28835368156433,
+    "solver_status": "OPTIMAL",
+    "moved_count": 0,
+    "forced_moves": 0,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 0,
+      "time_changed": 0,
+      "room_only_changed": 0,
+      "moved_ids": []
+    },
+    "pass": true
+  },
+  {
+    "scenario": "04_room_unavail_partial",
+    "status": "FEASIBLE",
+    "solve_time_s": 20.984165906906128,
+    "solver_status": "OPTIMAL",
+    "moved_count": 1,
+    "forced_moves": 1,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 1,
+      "time_changed": 0,
+      "room_only_changed": 1,
+      "moved_ids": [
+        "MA101-AB-L1"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "05_room_unavail_full_day",
+    "status": "FEASIBLE",
+    "solve_time_s": 17.460333108901978,
+    "solver_status": "OPTIMAL",
+    "moved_count": 2,
+    "forced_moves": 2,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 2,
+      "time_changed": 0,
+      "room_only_changed": 2,
+      "moved_ids": [
+        "HS101-D-L2",
+        "MA101-A-T1"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "06_remove_session",
+    "status": "FEASIBLE",
+    "solve_time_s": 15.808751106262207,
+    "solver_status": "OPTIMAL",
+    "moved_count": 0,
+    "forced_moves": 1,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 0,
+      "time_changed": 0,
+      "room_only_changed": 0,
+      "moved_ids": []
+    },
+    "pass": true
+  },
+  {
+    "scenario": "07_add_session_no_fixed",
+    "status": "FEASIBLE",
+    "solve_time_s": 23.893054008483887,
+    "solver_status": "OPTIMAL",
+    "moved_count": 0,
+    "forced_moves": 0,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 0,
+      "time_changed": 0,
+      "room_only_changed": 0,
+      "moved_ids": []
+    },
+    "pass": true
+  },
+  {
+    "scenario": "08_add_session_fixed_slot",
+    "status": "FEASIBLE",
+    "solve_time_s": 25.22228741645813,
+    "solver_status": "OPTIMAL",
+    "moved_count": 1,
+    "forced_moves": 0,
+    "knock_on_moves": 1,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 1,
+      "time_changed": 1,
+      "room_only_changed": 0,
+      "moved_ids": [
+        "CS191-D-P1"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "09_add_faculty_and_session",
+    "status": "FEASIBLE",
+    "solve_time_s": 21.64760947227478,
+    "solver_status": "OPTIMAL",
+    "moved_count": 0,
+    "forced_moves": 0,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 0,
+      "time_changed": 0,
+      "room_only_changed": 0,
+      "moved_ids": []
+    },
+    "pass": true
+  },
+  {
+    "scenario": "10_several_changes",
+    "status": "FEASIBLE",
+    "solve_time_s": 21.13293719291687,
+    "solver_status": "OPTIMAL",
+    "moved_count": 0,
+    "forced_moves": 0,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 0,
+      "time_changed": 0,
+      "room_only_changed": 0,
+      "moved_ids": []
+    },
+    "pass": true
+  },
+  {
+    "scenario": "11_touching_elective_basket",
+    "status": "FEASIBLE",
+    "solve_time_s": 20.800763845443726,
+    "solver_status": "OPTIMAL",
+    "moved_count": 1,
+    "forced_moves": 1,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 1,
+      "time_changed": 0,
+      "room_only_changed": 1,
+      "moved_ids": [
+        "OE301-L1"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "12_touching_3h_lab",
+    "status": "FEASIBLE",
+    "solve_time_s": 23.24014949798584,
+    "solver_status": "OPTIMAL",
+    "moved_count": 0,
+    "forced_moves": 0,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 0,
+      "time_changed": 0,
+      "room_only_changed": 0,
+      "moved_ids": []
+    },
+    "pass": true
+  },
+  {
+    "scenario": "13_touching_accessible_session",
+    "status": "FEASIBLE",
+    "solve_time_s": 22.364633798599243,
+    "solver_status": "OPTIMAL",
+    "moved_count": 1,
+    "forced_moves": 1,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 1,
+      "time_changed": 0,
+      "room_only_changed": 1,
+      "moved_ids": [
+        "ME201-L1"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "14_faculty_daily_limit",
+    "status": "FEASIBLE",
+    "solve_time_s": 26.90252184867859,
+    "solver_status": "OPTIMAL",
+    "moved_count": 0,
+    "forced_moves": 0,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 0,
+      "time_changed": 0,
+      "room_only_changed": 0,
+      "moved_ids": []
+    },
+    "pass": true
+  },
+  {
+    "scenario": "15_fac_F05_MON",
+    "status": "FEASIBLE",
+    "solve_time_s": 23.501227140426636,
+    "solver_status": "OPTIMAL",
+    "moved_count": 0,
+    "forced_moves": 0,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 0,
+      "time_changed": 0,
+      "room_only_changed": 0,
+      "moved_ids": []
+    },
+    "pass": true
+  },
+  {
+    "scenario": "16_fac_F08_TUE",
+    "status": "FEASIBLE",
+    "solve_time_s": 22.216318130493164,
+    "solver_status": "OPTIMAL",
+    "moved_count": 1,
+    "forced_moves": 1,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 1,
+      "time_changed": 1,
+      "room_only_changed": 0,
+      "moved_ids": [
+        "CS204-L3"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "17_fac_F10_WED",
+    "status": "FEASIBLE",
+    "solve_time_s": 21.807127475738525,
+    "solver_status": "OPTIMAL",
+    "moved_count": 0,
+    "forced_moves": 0,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 0,
+      "time_changed": 0,
+      "room_only_changed": 0,
+      "moved_ids": []
+    },
+    "pass": true
+  },
+  {
+    "scenario": "18_fac_F12_THU",
+    "status": "FEASIBLE",
+    "solve_time_s": 22.82206654548645,
+    "solver_status": "OPTIMAL",
+    "moved_count": 1,
+    "forced_moves": 1,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 1,
+      "time_changed": 1,
+      "room_only_changed": 0,
+      "moved_ids": [
+        "EC303-L3"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "19_fac_F15_FRI",
+    "status": "FEASIBLE",
+    "solve_time_s": 22.657935619354248,
+    "solver_status": "OPTIMAL",
+    "moved_count": 1,
+    "forced_moves": 1,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 1,
+      "time_changed": 1,
+      "room_only_changed": 0,
+      "moved_ids": [
+        "EE202-L3"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "20_fac_F18_MON",
+    "status": "FEASIBLE",
+    "solve_time_s": 21.933801651000977,
+    "solver_status": "OPTIMAL",
+    "moved_count": 0,
+    "forced_moves": 0,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 0,
+      "time_changed": 0,
+      "room_only_changed": 0,
+      "moved_ids": []
+    },
+    "pass": true
+  },
+  {
+    "scenario": "21_fac_F20_TUE",
+    "status": "FEASIBLE",
+    "solve_time_s": 23.03864860534668,
+    "solver_status": "OPTIMAL",
+    "moved_count": 1,
+    "forced_moves": 1,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 1,
+      "time_changed": 1,
+      "room_only_changed": 0,
+      "moved_ids": [
+        "MA101-D-T1"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "22_fac_F25_WED",
+    "status": "FEASIBLE",
+    "solve_time_s": 22.62569832801819,
+    "solver_status": "OPTIMAL",
+    "moved_count": 1,
+    "forced_moves": 1,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 1,
+      "time_changed": 1,
+      "room_only_changed": 0,
+      "moved_ids": [
+        "ME201-L3"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "23_fac_F30_THU",
+    "status": "FEASIBLE",
+    "solve_time_s": 24.121729373931885,
+    "solver_status": "OPTIMAL",
+    "moved_count": 0,
+    "forced_moves": 0,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 0,
+      "time_changed": 0,
+      "room_only_changed": 0,
+      "moved_ids": []
+    },
+    "pass": true
+  },
+  {
+    "scenario": "24_fac_F35_FRI",
+    "status": "FEASIBLE",
+    "solve_time_s": 26.05561113357544,
+    "solver_status": "OPTIMAL",
+    "moved_count": 0,
+    "forced_moves": 0,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 0,
+      "time_changed": 0,
+      "room_only_changed": 0,
+      "moved_ids": []
+    },
+    "pass": true
+  },
+  {
+    "scenario": "25_multi_room_closure",
+    "status": "FEASIBLE",
+    "solve_time_s": 24.66509699821472,
+    "solver_status": "OPTIMAL",
+    "moved_count": 3,
+    "forced_moves": 3,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 3,
+      "time_changed": 0,
+      "room_only_changed": 3,
+      "moved_ids": [
+        "CE202-L3",
+        "CE302-L1",
+        "CS301-L3"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "26_multi_fac_travel",
+    "status": "FEASIBLE",
+    "solve_time_s": 25.155390739440918,
+    "solver_status": "OPTIMAL",
+    "moved_count": 0,
+    "forced_moves": 0,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 0,
+      "time_changed": 0,
+      "room_only_changed": 0,
+      "moved_ids": []
+    },
+    "pass": true
+  },
+  {
+    "scenario": "27_mixed_disruption_week",
+    "status": "FEASIBLE",
+    "solve_time_s": 25.55408811569214,
+    "solver_status": "OPTIMAL",
+    "moved_count": 1,
+    "forced_moves": 2,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 1,
+      "time_changed": 1,
+      "room_only_changed": 0,
+      "moved_ids": [
+        "EC291-P1"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "28_INFEASIBLE_all_rooms_down",
+    "status": "FEASIBLE",
+    "solve_time_s": 23.76777744293213,
+    "solver_status": "OPTIMAL",
+    "moved_count": 28,
+    "forced_moves": 28,
+    "knock_on_moves": 0,
+    "proven_minimum": true,
+    "hard_violations": 0,
+    "stability_official": {
+      "sessions_moved": 28,
+      "time_changed": 28,
+      "room_only_changed": 0,
+      "moved_ids": [
+        "CE202-L1",
+        "CE204-L2",
+        "CS101-B-L2",
+        "CS101-D-L1",
+        "CS201-L2",
+        "CS203-L2",
+        "CS302-L3",
+        "CS303-L1",
+        "EC201-L1",
+        "EC201-T1",
+        "EC204-L1",
+        "EE201-L3",
+        "EE203-L1",
+        "EE204-L2",
+        "EE303-L2",
+        "HS101-A-L2",
+        "HS101-D-L2",
+        "HS201-H1-L2",
+        "MA101-A-T1",
+        "MA101-CD-L1",
+        "ME202-L1",
+        "ME202-T1",
+        "ME203-L2",
+        "ME204-L2",
+        "ME301-L2",
+        "ME302-L1",
+        "PH101-A-L1",
+        "PH101-B-L1"
+      ]
+    },
+    "pass": true
+  },
+  {
+    "scenario": "29_INFEASIBLE_faculty_all_week",
+    "status": "INFEASIBLE",
+    "solve_time_s": 0.09742593765258789,
+    "conflict_info": [
+      "Session CS101-A-L1 has 0 legal slots (Faculty F01, Room types ['classroom', 'lecture_hall', 'auditorium'])",
+      "Session CS101-A-L2 has 0 legal slots (Faculty F01, Room types ['classroom', 'lecture_hall', 'auditorium'])",
+      "Session CS101-B-L1 has 0 legal slots (Faculty F01, Room types ['classroom', 'lecture_hall', 'auditorium'])",
+      "Session CS101-B-L2 has 0 legal slots (Faculty F01, Room types ['classroom', 'lecture_hall', 'auditorium'])",
+      "Session CS301-L1 has 0 legal slots (Faculty F01, Room types ['classroom', 'lecture_hall', 'auditorium'])",
+      "Session CS301-L2 has 0 legal slots (Faculty F01, Room types ['classroom', 'lecture_hall', 'auditorium'])",
+      "Session CS301-L3 has 0 legal slots (Faculty F01, Room types ['classroom', 'lecture_hall', 'auditorium'])"
+    ],
+    "is_deliberate_infeasible": true,
+    "pass": true
+  },
+  {
+    "scenario": "30_INFEASIBLE_fixed_slot_conflict",
+    "status": "INFEASIBLE",
+    "solve_time_s": 0.11587238311767578,
+    "conflict_info": [
+      "Session IMPOSSIBLE-L1 has 0 legal slots (Faculty F02, Room types ['classroom'])"
+    ],
+    "is_deliberate_infeasible": true,
+    "pass": true
+  }
+]

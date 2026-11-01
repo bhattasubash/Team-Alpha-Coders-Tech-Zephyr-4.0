@@ -1,0 +1,317 @@
+[
+  {
+    "mode": "fallback_parser",
+    "text": "auditorium 6 to 8 pm for 100 people Thursday",
+    "description": "6 to 8 pm is P10 to P11",
+    "expected": {
+      "from": 10,
+      "to": 11,
+      "day": "THU"
+    },
+    "actual": {
+      "from": 10,
+      "to": 11,
+      "day": "THU",
+      "room": "AUD",
+      "att": 100
+    },
+    "passed": true
+  },
+  {
+    "mode": "fallback_parser",
+    "text": "seminar hall after lunch Friday for 50 people",
+    "description": "after lunch is P6",
+    "expected": {
+      "from": 6,
+      "to": 6,
+      "day": "FRI"
+    },
+    "actual": {
+      "from": 6,
+      "to": 6,
+      "day": "FRI",
+      "room": null,
+      "att": 50
+    },
+    "passed": true
+  },
+  {
+    "mode": "fallback_parser",
+    "text": "kal shaam seminar hall chahiye 80 log",
+    "description": "Hinglish: kal shaam (tomorrow evening)",
+    "expected": {
+      "from": 10,
+      "to": 12,
+      "day": "TUE"
+    },
+    "actual": {
+      "from": 10,
+      "to": 12,
+      "day": "TUE",
+      "room": null,
+      "att": 80
+    },
+    "passed": true
+  },
+  {
+    "mode": "fallback_parser",
+    "text": "parso subah 10 baje se 12 baje tak lab 50 students",
+    "description": "Hinglish: parso subah (day after tomorrow morning)",
+    "expected": {
+      "from": 3,
+      "to": 4,
+      "day": "WED"
+    },
+    "actual": {
+      "from": 3,
+      "to": 4,
+      "day": "WED",
+      "room": null,
+      "att": 50
+    },
+    "passed": true
+  },
+  {
+    "mode": "fallback_parser",
+    "text": "seminar hall kal 6 baje 2 ghante 100 log mic chahiye",
+    "description": "Hinglish: 6 baje 2 ghante (6pm for 2 hours)",
+    "expected": {
+      "from": 10,
+      "to": 11,
+      "day": "TUE"
+    },
+    "actual": {
+      "from": 10,
+      "to": 11,
+      "day": "TUE",
+      "room": null,
+      "att": 100
+    },
+    "passed": true
+  },
+  {
+    "mode": "fallback_parser",
+    "text": "Monday 7 to 9 pm rehearsal 40 people OAT",
+    "description": "7 to 9 pm is P11 to P12",
+    "expected": {
+      "from": 11,
+      "to": 12,
+      "day": "MON"
+    },
+    "actual": {
+      "from": 11,
+      "to": 12,
+      "day": "MON",
+      "room": "OAT",
+      "att": 40
+    },
+    "passed": true
+  },
+  {
+    "mode": "fallback_parser",
+    "text": "auditorium 2 to 6 pm Wednesday 200 people",
+    "description": "2 to 6 pm is P6 to P9",
+    "expected": {
+      "from": 6,
+      "to": 9,
+      "day": "WED"
+    },
+    "actual": {
+      "from": 6,
+      "to": 9,
+      "day": "WED",
+      "room": "AUD",
+      "att": 200
+    },
+    "passed": true
+  },
+  {
+    "mode": "fallback_parser",
+    "text": "hall from 10 pm till midnight",
+    "description": "10 pm to midnight (beyond P13)",
+    "expected": {
+      "from": null,
+      "to": null,
+      "day": null
+    },
+    "actual": {
+      "from": null,
+      "to": null,
+      "day": null,
+      "room": null,
+      "att": null
+    },
+    "passed": true
+  },
+  {
+    "mode": "fallback_parser",
+    "text": "auditorium 9 am to 12 pm Tuesday",
+    "description": "9 am to 12 pm is P2 to P4",
+    "expected": {
+      "from": 2,
+      "to": 4,
+      "day": "TUE"
+    },
+    "actual": {
+      "from": 2,
+      "to": 4,
+      "day": "TUE",
+      "room": "AUD",
+      "att": null
+    },
+    "passed": true
+  },
+  {
+    "mode": "deployed_api_fallback",
+    "text": "auditorium 6 to 8 pm for 100 people Thursday",
+    "description": "6 to 8 pm is P10 to P11",
+    "expected": {
+      "from": 10,
+      "to": 11,
+      "day": "THU"
+    },
+    "actual": {
+      "from": 10,
+      "to": 12,
+      "day": "THU",
+      "source": "fallback"
+    },
+    "passed": false
+  },
+  {
+    "mode": "deployed_api_fallback",
+    "text": "seminar hall after lunch Friday for 50 people",
+    "description": "after lunch is P6",
+    "expected": {
+      "from": 6,
+      "to": 6,
+      "day": "FRI"
+    },
+    "actual": {
+      "from": 10,
+      "to": 12,
+      "day": "FRI",
+      "source": "fallback"
+    },
+    "passed": false
+  },
+  {
+    "mode": "deployed_api_fallback",
+    "text": "kal shaam seminar hall chahiye 80 log",
+    "description": "Hinglish: kal shaam (tomorrow evening)",
+    "expected": {
+      "from": 10,
+      "to": 12,
+      "day": "TUE"
+    },
+    "actual": {
+      "from": 10,
+      "to": 12,
+      "day": "TUE",
+      "source": "fallback"
+    },
+    "passed": true
+  },
+  {
+    "mode": "deployed_api_fallback",
+    "text": "parso subah 10 baje se 12 baje tak lab 50 students",
+    "description": "Hinglish: parso subah (day after tomorrow morning)",
+    "expected": {
+      "from": 3,
+      "to": 4,
+      "day": "WED"
+    },
+    "actual": {
+      "from": null,
+      "to": null,
+      "day": null,
+      "source": "fallback"
+    },
+    "passed": false
+  },
+  {
+    "mode": "deployed_api_fallback",
+    "text": "seminar hall kal 6 baje 2 ghante 100 log mic chahiye",
+    "description": "Hinglish: 6 baje 2 ghante (6pm for 2 hours)",
+    "expected": {
+      "from": 10,
+      "to": 11,
+      "day": "TUE"
+    },
+    "actual": {
+      "from": 10,
+      "to": 12,
+      "day": "TUE",
+      "source": "fallback"
+    },
+    "passed": false
+  },
+  {
+    "mode": "deployed_api_fallback",
+    "text": "Monday 7 to 9 pm rehearsal 40 people OAT",
+    "description": "7 to 9 pm is P11 to P12",
+    "expected": {
+      "from": 11,
+      "to": 12,
+      "day": "MON"
+    },
+    "actual": {
+      "from": 11,
+      "to": 12,
+      "day": "MON",
+      "source": "fallback"
+    },
+    "passed": true
+  },
+  {
+    "mode": "deployed_api_fallback",
+    "text": "auditorium 2 to 6 pm Wednesday 200 people",
+    "description": "2 to 6 pm is P6 to P9",
+    "expected": {
+      "from": 6,
+      "to": 9,
+      "day": "WED"
+    },
+    "actual": {
+      "from": 6,
+      "to": 9,
+      "day": "WED",
+      "source": "fallback"
+    },
+    "passed": true
+  },
+  {
+    "mode": "deployed_api_fallback",
+    "text": "hall from 10 pm till midnight",
+    "description": "10 pm to midnight (beyond P13)",
+    "expected": {
+      "from": null,
+      "to": null,
+      "day": null
+    },
+    "actual": {
+      "from": null,
+      "to": null,
+      "day": null,
+      "source": "fallback"
+    },
+    "passed": true
+  },
+  {
+    "mode": "deployed_api_fallback",
+    "text": "auditorium 9 am to 12 pm Tuesday",
+    "description": "9 am to 12 pm is P2 to P4",
+    "expected": {
+      "from": 2,
+      "to": 4,
+      "day": "TUE"
+    },
+    "actual": {
+      "from": 2,
+      "to": 4,
+      "day": "TUE",
+      "source": "fallback"
+    },
+    "passed": true
+  }
+]

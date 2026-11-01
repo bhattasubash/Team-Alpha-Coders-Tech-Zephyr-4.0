@@ -1,0 +1,62 @@
+[
+  {
+    "test": "Hostile status approved injection",
+    "passed": true,
+    "reasons": [
+      "Rejected by Pydantic 422 schema validation"
+    ],
+    "submit_status": 422,
+    "submit_data": {
+      "status_code": 422,
+      "text": "{\"error\":{\"code\":\"INVALID_INPUT\",\"message\":\"Request validation failed\",\"details\":[{\"type\":\"missing\",\"loc\":[\"body\",\"requested_category\"],\"msg\":\"Field required\",\"input\":{\"title\":\"Adversarial Test\",\"attendance\":50,\"duration_periods\":2,\"windows\":[{\"day\":\"MON\",\"from_period\":10,\"to_period\":12}],\"room_types\":[\"auditorium\"],\"requested_room\":\"AUD\",\"needs\":[],\"mandatory_for_groups\":[],\"status\":\"approved\",\"role\":\"admin\",\"effective_category\":\"institute_event\"}}]}}"
+    }
+  },
+  {
+    "test": "Non-existent room",
+    "passed": true,
+    "reasons": [
+      "Rejected by Pydantic 422 schema validation"
+    ],
+    "submit_status": 422,
+    "submit_data": {
+      "status_code": 422,
+      "text": "{\"error\":{\"code\":\"INVALID_INPUT\",\"message\":\"Request validation failed\",\"details\":[{\"type\":\"missing\",\"loc\":[\"body\",\"requested_category\"],\"msg\":\"Field required\",\"input\":{\"title\":\"Adversarial Test\",\"attendance\":50,\"duration_periods\":2,\"windows\":[{\"day\":\"MON\",\"from_period\":10,\"to_period\":12}],\"room_types\":[\"auditorium\"],\"requested_room\":\"GHOST_ROOM_999\",\"needs\":[],\"mandatory_for_groups\":[]}}]}}"
+    }
+  },
+  {
+    "test": "Astronomical attendance (10^9)",
+    "passed": true,
+    "reasons": [
+      "Rejected by Pydantic 422 schema validation"
+    ],
+    "submit_status": 422,
+    "submit_data": {
+      "status_code": 422,
+      "text": "{\"error\":{\"code\":\"INVALID_INPUT\",\"message\":\"Request validation failed\",\"details\":[{\"type\":\"missing\",\"loc\":[\"body\",\"requested_category\"],\"msg\":\"Field required\",\"input\":{\"title\":\"Adversarial Test\",\"attendance\":1000000000,\"duration_periods\":2,\"windows\":[{\"day\":\"MON\",\"from_period\":10,\"to_period\":12}],\"room_types\":[\"auditorium\"],\"requested_room\":\"AUD\",\"needs\":[],\"mandatory_for_groups\":[]}}]}}"
+    }
+  },
+  {
+    "test": "XSS attack in title and text",
+    "passed": true,
+    "reasons": [
+      "Rejected by Pydantic 422 schema validation"
+    ],
+    "submit_status": 422,
+    "submit_data": {
+      "status_code": 422,
+      "text": "{\"error\":{\"code\":\"INVALID_INPUT\",\"message\":\"Request validation failed\",\"details\":[{\"type\":\"missing\",\"loc\":[\"body\",\"requested_category\"],\"msg\":\"Field required\",\"input\":{\"title\":\"<script>alert('pwned')</script>\",\"attendance\":50,\"duration_periods\":2,\"windows\":[{\"day\":\"MON\",\"from_period\":10,\"to_period\":12}],\"room_types\":[\"auditorium\"],\"requested_room\":\"AUD\",\"needs\":[],\"mandatory_for_groups\":[],\"notes\":\"<img src=x onerror=alert(1)>\"}}]}}"
+    }
+  },
+  {
+    "test": "Invalid slot Sunday P15",
+    "passed": true,
+    "reasons": [
+      "Rejected by Pydantic 422 schema validation"
+    ],
+    "submit_status": 422,
+    "submit_data": {
+      "status_code": 422,
+      "text": "{\"error\":{\"code\":\"INVALID_INPUT\",\"message\":\"Request validation failed\",\"details\":[{\"type\":\"missing\",\"loc\":[\"body\",\"requested_category\"],\"msg\":\"Field required\",\"input\":{\"title\":\"Adversarial Test\",\"attendance\":50,\"duration_periods\":2,\"windows\":[{\"day\":\"SUN\",\"from_period\":15,\"to_period\":17}],\"room_types\":[\"auditorium\"],\"requested_room\":\"AUD\",\"needs\":[],\"mandatory_for_groups\":[]}}]}}"
+    }
+  }
+]

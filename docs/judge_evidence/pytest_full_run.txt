@@ -1,0 +1,108 @@
+============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-8.3.3, pluggy-1.7.0 -- C:\Users\SUBASH\Desktop\iit bhuwneshwor final\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\SUBASH\Desktop\iit bhuwneshwor final\backend
+configfile: pyproject.toml
+plugins: anyio-4.15.1, platformdirs-4.14.0, asyncio-0.24.0
+asyncio: mode=Mode.STRICT, default_loop_scope=None
+collecting ... python.exe : C:\Users\SUBASH\Desktop\iit bhuwneshwor 
+final\backend\venv\Lib\site-packages\pytest_asyncio\plugin.py:208: PytestDeprecationWarning: The configuration option 
+"asyncio_default_fixture_loop_scope" is unset.
+At line:1 char:53
++ ... wor final"; & backend\venv\Scripts\python.exe -m pytest backend/tests ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (C:\Users\SUBASH...cope" is unset.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of 
+pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop 
+scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", 
+"class", "module", "package", "session"
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+collected 70 items
+
+backend\tests\test_ai_safety.py::test_injection_rejected PASSED          [  1%]
+backend\tests\test_ai_safety.py::test_injection_variants_rejected PASSED [  2%]
+backend\tests\test_ai_safety.py::test_normal_booking_parsed PASSED       [  4%]
+backend\tests\test_ai_safety.py::test_scene_5_demo_booking_parsed PASSED [  5%]
+backend\tests\test_ai_safety.py::test_fallback_parser_standalone PASSED  [  7%]
+backend\tests\test_ai_safety.py::test_api_bookings_parse_endpoint PASSED [  8%]
+backend\tests\test_ai_safety.py::test_api_bookings_parse_injection_blocked PASSED [ 10%]
+backend\tests\test_ai_safety.py::test_assistant_informational_query PASSED [ 11%]
+backend\tests\test_ai_safety.py::test_assistant_refuses_modifications PASSED [ 12%]
+backend\tests\test_api_contract.py::test_openapi_loads_successfully PASSED [ 14%]
+backend\tests\test_api_contract.py::test_health_endpoint PASSED          [ 15%]
+backend\tests\test_api_contract.py::test_login_demo_user PASSED          [ 17%]
+backend\tests\test_api_contract.py::test_login_invalid_credentials_returns_401_with_error_envelope PASSED [ 18%]
+backend\tests\test_api_contract.py::test_unauthenticated_protected_endpoint PASSED [ 20%]
+backend\tests\test_api_contract.py::test_forbidden_role_access PASSED    [ 21%]
+backend\tests\test_api_contract.py::test_unimplemented_endpoints_return_501_with_error_envelope PASSED [ 22%]
+backend\tests\test_api_contract.py::test_not_found_returns_404_with_error_envelope PASSED [ 24%]
+backend\tests\test_api_contract.py::test_validation_error_returns_422_with_invalid_input_envelope PASSED [ 25%]
+backend\tests\test_bookings.py::test_effective_category_and_outranks PASSED [ 27%]
+backend\tests\test_bookings.py::test_booking_engine_decide_all PASSED    [ 28%]
+backend\tests\test_bookings.py::test_booking_find_alternative PASSED     [ 30%]
+backend\tests\test_bookings.py::test_booking_reservations_consistency_across_seeds PASSED [ 31%]
+backend\tests\test_exams.py::test_exam_solver_all_constraints PASSED     [ 32%]
+backend\tests\test_health.py::test_health_returns_ok PASSED              [ 34%]
+backend\tests\test_kernel.py::test_h1_unscheduled PASSED                 [ 35%]
+backend\tests\test_kernel.py::test_h1_unknown_session PASSED             [ 37%]
+backend\tests\test_kernel.py::test_h2_faculty_conflict PASSED            [ 38%]
+backend\tests\test_kernel.py::test_h3_group_conflict PASSED              [ 40%]
+backend\tests\test_kernel.py::test_h4_room_conflict PASSED               [ 41%]
+backend\tests\test_kernel.py::test_h5_capacity PASSED                    [ 42%]
+backend\tests\test_kernel.py::test_h6_room_type PASSED                   [ 44%]
+backend\tests\test_kernel.py::test_h7_faculty_unavailable PASSED         [ 45%]
+backend\tests\test_kernel.py::test_h8_room_unavailable PASSED            [ 47%]
+backend\tests\test_kernel.py::test_h9_period_out_of_range PASSED         [ 48%]
+backend\tests\test_kernel.py::test_h9_crosses_lunch PASSED               [ 50%]
+backend\tests\test_kernel.py::test_h9_lab_wrong_start PASSED             [ 51%]
+backend\tests\test_kernel.py::test_h10_accessibility PASSED              [ 52%]
+backend\tests\test_kernel.py::test_h11_basket_slot_mismatch PASSED       [ 54%]
+backend\tests\test_kernel.py::test_h12_faculty_daily_limit PASSED        [ 55%]
+backend\tests\test_kernel.py::test_h14_fixed_slot PASSED                 [ 57%]
+backend\tests\test_kernel.py::test_soft_s1_faculty_preference PASSED     [ 58%]
+backend\tests\test_kernel.py::test_soft_s5_underutilized PASSED          [ 60%]
+backend\tests\test_kernel.py::test_soft_s6_last_period PASSED            [ 61%]
+backend\tests\test_kernel.py::test_differential_validator_agreement PASSED [ 62%]
+backend\tests\test_kernel.py::test_b1_booking_status PASSED              [ 64%]
+backend\tests\test_kernel.py::test_b2_booking_override PASSED            [ 65%]
+backend\tests\test_kernel.py::test_b3_cancelled_approved PASSED          [ 67%]
+backend\tests\test_kernel.py::test_h13_booking_checks PASSED             [ 68%]
+backend\tests\test_kernel.py::test_priority_inversion_detection PASSED   [ 70%]
+backend\tests\test_kernel.py::test_e1_exam_scheduled PASSED              [ 71%]
+backend\tests\test_kernel.py::test_e2_exam_room PASSED                   [ 72%]
+backend\tests\test_kernel.py::test_exam_h3_group_conflict PASSED         [ 74%]
+backend\tests\test_kernel.py::test_exam_h4_room_conflict PASSED          [ 75%]
+backend\tests\test_kernel.py::test_exam_h5_half_capacity PASSED          [ 77%]
+backend\tests\test_kernel.py::test_exam_soft_penalty PASSED              [ 78%]
+backend\tests\test_kernel.py::test_soft_s2_group_gaps PASSED             [ 80%]
+backend\tests\test_kernel.py::test_soft_s3_group_overload PASSED         [ 81%]
+backend\tests\test_kernel.py::test_soft_s4_same_course_lectures PASSED   [ 82%]
+backend\tests\test_kernel.py::test_soft_s4_basket_lectures PASSED        [ 84%]
+backend\tests\test_persistence_and_jobs.py::test_admin_reset_seeds_database PASSED [ 85%]
+backend\tests\test_persistence_and_jobs.py::test_get_nonexistent_job_returns_404 PASSED [ 87%]
+backend\tests\test_persistence_and_jobs.py::test_job_concurrency_control_409 PASSED [ 88%]
+backend\tests\test_persistence_and_jobs.py::test_job_lifecycle_concurrency_and_commit PASSED [ 90%]
+backend\tests\test_reschedule.py::test_reschedule_solver_sample_disruption PASSED [ 91%]
+backend\tests\test_reschedule.py::test_reschedule_infeasible_conflict_explanation PASSED [ 92%]
+backend\tests\test_reschedule.py::test_proposal_pipeline_self_approval_and_admin_flow PASSED [ 94%]
+backend\tests\test_reschedule.py::test_api_disruptions_preview_and_proposals PASSED [ 95%]
+backend\tests\test_solver.py::test_domain_pruning PASSED                 [ 97%]
+backend\tests\test_solver.py::test_solve_feasibility_zero_hard_violations PASSED [ 98%]
+backend\tests\test_solver.py::test_solve_two_phase_soft_objective PASSED [100%]
+
+============================== warnings summary ===============================
+backend\venv\Lib\site-packages\starlette\testclient.py:40
+  C:\Users\SUBASH\Desktop\iit bhuwneshwor final\backend\venv\Lib\site-packages\starlette\testclient.py:40: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+tests/test_ai_safety.py: 4 warnings
+tests/test_api_contract.py: 7 warnings
+tests/test_persistence_and_jobs.py: 44 warnings
+tests/test_reschedule.py: 2 warnings
+  C:\Users\SUBASH\Desktop\iit bhuwneshwor final\backend\venv\Lib\site-packages\jose\jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 70 passed, 58 warnings in 292.94s (0:04:52) =================

@@ -113,7 +113,7 @@ def run_timetable_solve_job(
             blocked_group_slots=blocked_groups,
         )
 
-        feasibility_limit = max(35.0, float(time_limit_seconds) * 0.75)
+        feasibility_limit = max(60.0, float(time_limit_seconds) * 0.75)
         optimize_limit = max(5.0, float(time_limit_seconds) * 0.25)
         res = solver.solve_two_phase(
             feasibility_limit=feasibility_limit,
@@ -241,9 +241,9 @@ def run_timetable_optimise_job(
         hint_assignments = None
         if active_sched and "sessions" in active_sched:
             hint_assignments = {
-                s["id"]: (s["day"], s["start_period"], s["room_id"])
+                (s.get("session_id") or s.get("id")): (s["day"], s["start_period"], s["room_id"])
                 for s in active_sched["sessions"]
-                if "id" in s and "day" in s and "start_period" in s and "room_id" in s
+                if (s.get("session_id") or s.get("id")) and "day" in s and "start_period" in s and "room_id" in s
             }
 
         elapsed = round(time.time() - start_time, 2)

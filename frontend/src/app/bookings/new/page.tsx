@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useApp } from '@/context/AppContext';
 import { AppShell } from '@/components/layout/AppShell';
 import { KernelStamp } from '@/components/ui/KernelStamp';
 import { Button } from '@/components/ui/Button';
@@ -20,7 +21,26 @@ const CAMPUS_ROOMS: Room[] = [
 ];
 
 export default function NewBookingPage() {
+  const { role, user } = useApp();
   const [rooms, setRooms] = useState<Room[]>(CAMPUS_ROOMS);
+  const [submissionState, setSubmissionState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [submittedBooking, setSubmittedBooking] = useState<{
+    id: string;
+    title: string;
+    venueId: string;
+    venueName: string;
+    day: Day;
+    periods: number[];
+    attendees: number;
+    requester: string;
+    status: string;
+    statusLabel: string;
+    reason: string;
+  } | null>(null);
+  const [submissionError, setSubmissionError] = useState<{
+    code: string;
+    message: string;
+  } | null>(null);
   const [apiError, setApiError] = useState<{ code: string; message: string } | null>(null);
 
   useEffect(() => {
@@ -295,6 +315,65 @@ export default function NewBookingPage() {
     },
   ];
 
+
+  const handleSubmit = async () => {
+    if (!isFormValid) return;
+    setSubmissionState('submitting');
+    setSubmissionError(null);
+
+    const startP = selectedPeriods.length > 0 ? Math.min(...selectedPeriods) : 10;
+    const endP = selectedPeriods.length > 0 ? Math.max(...selectedPeriods) : 12;
+    const durationPeriods = endP - startP + 1;
+    const isDeanOrAdmin = role === 'admin' || user?.email?.toLowerCase().includes('dean');
+
+    const payload = {
+      title,
+      requested_room: venueId,
+      attendance: attendees,
+      room_types: currentRoom?.type ? [currentRoom.type] : ['auditorium', 'seminar_hall', 'open_air_theatre'],
+      needs: needsWheelchair ? ['wheelchair_accessible'] : [],
+      duration_periods: durationPeriods,
+      windows: [{ day, from_period: startP, to_period: endP }],
+      requested_category: category,
+    };
+
+    try {
+      const res = await api.createBooking(payload);
+      if (res && res.legal === false) {
+        setSubmissionState('error');
+        setSubmissionError({
+          code: res.reason_codes?.[0] || 'CONSTRAINT_VIOLATION',
+          message: res.reason || 'Booking request violates kernel constraints.',
+        });
+        return;
+      }
+
+      const reqId = res?.details?.request_id || `BR-NEW-${Date.now().toString(36).slice(-4).toUpperCase()}`;
+      setSubmittedBooking({
+        id: reqId,
+        title,
+        venueId,
+        venueName: currentRoom?.name || venueId,
+        day,
+        periods: selectedPeriods,
+        attendees,
+        requester: user?.email || 'user@cit.edu',
+        status: isDeanOrAdmin ? 'approved' : 'pending',
+        statusLabel: isDeanOrAdmin ? 'Approved & Committed' : 'Pending Dean Office Review',
+        reason: isDeanOrAdmin
+          ? 'Self-managed booking registered by Dean Office and locked in timetable.'
+          : 'Request queued in Dean Office dashboard for administrative review and room allocation.',
+      });
+      setSubmissionState('success');
+    } catch (err: any) {
+      setSubmissionState('error');
+      setSubmissionError({
+        code: err?.code || 'HTTP_ERROR',
+        message: err?.message || 'Server error while submitting request.',
+      });
+    }
+  };
+
   return (
     <AppShell>
       <div className="space-y-6 max-w-6xl pb-16 select-none">
@@ -341,6 +420,121 @@ export default function NewBookingPage() {
           </div>
         </div>
 
+        
+        {/* SUCCESS STATE SCREEN */}
+        {submissionState === 'success' && submittedBooking && (
+          <div className="bg-surface border-2 border-good/60 rounded-panel p-6 sm:p-8 shadow-card space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-line pb-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-good/20 text-good flex items-center justify-center font-bold text-sm">✓</span>
+                  <span className="text-[12px] font-mono tracking-wider uppercase text-good font-semibold">
+                    Request Committed to Ledger
+                  </span>
+                </div>
+                <h2 className="font-serif text-[28px] leading-[32px] text-ink">
+                  {submittedBooking.title}
+                </h2>
+                <p className="text-[14px] text-ink-2 font-serif italic max-w-xl">
+                  {submittedBooking.reason}
+                </p>
+              </div>
+
+              <div className="text-right sm:self-start">
+                <div className="inline-block px-3 py-1.5 rounded-pill text-[12px] font-mono font-semibold uppercase tracking-wide border shadow-xs"
+                  style={{
+                    backgroundColor: submittedBooking.status === 'approved' ? 'rgba(46, 125, 50, 0.12)' : 'rgba(30, 64, 175, 0.12)',
+                    borderColor: submittedBooking.status === 'approved' ? 'rgba(46, 125, 50, 0.4)' : 'rgba(30, 64, 175, 0.4)',
+                    color: submittedBooking.status === 'approved' ? '#2e7d32' : '#1d4ed8',
+                  }}
+                >
+                  {submittedBooking.statusLabel}
+                </div>
+                <span className="block text-[11px] font-mono text-ink-2 mt-1">
+                  ID: {submittedBooking.id}
+                </span>
+              </div>
+            </div>
+
+            {/* Spec grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-raised rounded-card border border-line text-[13px]">
+              <div>
+                <span className="text-ink-2 text-[11px] uppercase font-mono block">Venue</span>
+                <span className="font-medium text-ink">{submittedBooking.venueName} ({submittedBooking.venueId})</span>
+              </div>
+              <div>
+                <span className="text-ink-2 text-[11px] uppercase font-mono block">Day & Period</span>
+                <span className="font-medium text-ink">{submittedBooking.day}, {submittedBooking.periods.map(p => `P${p}`).join(', ')}</span>
+              </div>
+              <div>
+                <span className="text-ink-2 text-[11px] uppercase font-mono block">Attendees</span>
+                <span className="font-medium text-ink">{submittedBooking.attendees} students</span>
+              </div>
+              <div>
+                <span className="text-ink-2 text-[11px] uppercase font-mono block">Requester</span>
+                <span className="font-medium text-ink truncate block" title={submittedBooking.requester}>
+                  {submittedBooking.requester}
+                </span>
+              </div>
+            </div>
+
+            {/* Kernel stamp & Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+              <div className="flex items-center gap-2 text-[12px] text-ink-2">
+                <KernelStamp label="Verified by kernel" />
+                <span>Deterministic precheck: 0 hard violations &middot; Rule B1 satisfied</span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setSubmissionState('idle');
+                    setSubmittedBooking(null);
+                  }}
+                  className="h-9 text-[13px]"
+                >
+                  Submit another request
+                </Button>
+                <Link href="/bookings">
+                  <Button variant="primary" className="h-9 text-[13px]">
+                    Track in Bookings Ledger &rarr;
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ERROR STATE SCREEN */}
+        {submissionState === 'error' && submissionError && (
+          <div className="p-6 bg-t-bad border-2 border-bad/50 rounded-panel text-ink space-y-4 shadow-card">
+            <div className="flex items-start gap-3">
+              <span className="w-7 h-7 rounded-full bg-bad/20 text-bad flex items-center justify-center font-bold text-base flex-shrink-0">!</span>
+              <div className="space-y-1">
+                <span className="text-[12px] font-mono tracking-wider uppercase text-bad font-semibold block">
+                  Kernel Constraint Blocked [{submissionError.code}]
+                </span>
+                <h3 className="font-serif text-[20px] text-bad font-normal">
+                  Submission Blocked: Hard Constraint Violated
+                </h3>
+                <p className="text-[14px] text-ink font-ui">
+                  {submissionError.message}
+                </p>
+              </div>
+            </div>
+            <div className="pt-2 flex items-center gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => setSubmissionState('idle')}
+                className="h-8 text-[12px]"
+              >
+                Return to Editor & Adjust Parameters
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* AI Service Failure Warning Banner (Proves manual form always works) */}
         {aiErrorMessage && (
           <div className="p-4 bg-t-bad border border-bad/50 rounded-panel text-[13px] text-bad flex items-start justify-between gap-3">
@@ -360,6 +554,8 @@ export default function NewBookingPage() {
           </div>
         )}
 
+        {submissionState !== 'success' && (
+          <>
         {/* Two Tabs: "Describe it" and "Fill the form" */}
         <div className="flex items-center gap-8 border-b border-line pb-2 text-[14px] font-medium font-ui">
           <button
@@ -824,19 +1020,19 @@ export default function NewBookingPage() {
                 <div className="flex items-center gap-3 self-end sm:self-auto">
                   <Button
                     variant="primary"
-                    disabled={!isFormValid}
-                    onClick={() => {
-                      alert(`Submitted request for "${title}" in ${venueId}. Status: Pending Dean Office approval.`);
-                    }}
+                    disabled={!isFormValid || submissionState === 'submitting'}
+                    onClick={handleSubmit}
                     className="h-10 text-[14px] px-6"
                   >
-                    Submit request
+                    {submissionState === 'submitting' ? 'Verifying with Kernel...' : 'Submit request'}
                   </Button>
                 </div>
               </div>
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
     </AppShell>
   );
