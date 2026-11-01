@@ -362,10 +362,29 @@ class ApiClient {
   }
 
   async askAssistant(message: string): Promise<any> {
-    return this.request<any>('/api/assistant', {
-      method: 'POST',
-      body: JSON.stringify({ message }),
-    });
+    try {
+      return await this.request<any>('/api/assistant', {
+        method: 'POST',
+        body: JSON.stringify({ message }),
+      });
+    } catch (err) {
+      // If direct backend request fails (e.g. backend booting or CORS), fallback to Next.js route
+      if (typeof window !== 'undefined') {
+        try {
+          const res = await fetch('/api/assistant', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message }),
+          });
+          if (res.ok) {
+            return await res.json();
+          }
+        } catch {
+          // Pass through original error
+        }
+      }
+      throw err;
+    }
   }
 
   // --- Validation, Health & Dashboard Endpoints ---
