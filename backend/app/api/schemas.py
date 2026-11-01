@@ -308,6 +308,7 @@ class BookingWindow(BaseModel):
 
 
 class CreateBookingRequest(BaseModel):
+    title: str | None = None
     requested_room: str | None = None
     attendance: int
     room_types: list[str]
@@ -317,6 +318,7 @@ class CreateBookingRequest(BaseModel):
     mandatory_for_groups: list[str] = Field(default_factory=list)
     requested_category: str
     series_id: str | None = None
+    requester_name: str | None = None
 
 
 class BookingPrecheckResult(BaseModel):

@@ -501,8 +501,31 @@ export default function NewBookingPage() {
     }).catch(() => {});
 
     api.getBookings().then((res) => {
-      if (Array.isArray(res?.bookings)) setExistingBookings(res.bookings);
-    }).catch(() => {});
+      let list = Array.isArray(res?.bookings) ? res.bookings : [];
+      try {
+        if (typeof window !== 'undefined') {
+          const localStr = localStorage.getItem('cit_local_bookings');
+          if (localStr) {
+            const localArr = JSON.parse(localStr);
+            if (Array.isArray(localArr)) {
+              const existingIds = new Set(list.map((b: any) => b.id));
+              const extra = localArr.filter((b: any) => !existingIds.has(b.id));
+              list = [...extra, ...list];
+            }
+          }
+        }
+      } catch {}
+      setExistingBookings(list);
+    }).catch(() => {
+      try {
+        if (typeof window !== 'undefined') {
+          const localStr = localStorage.getItem('cit_local_bookings');
+          if (localStr) {
+            setExistingBookings(JSON.parse(localStr));
+          }
+        }
+      } catch {}
+    });
   }, []);
   const [activeTab, setActiveTab] = useState<'describe' | 'manual'>('describe');
 
@@ -687,7 +710,62 @@ export default function NewBookingPage() {
     }
   };
 
+  const getBookingPeriodRange = (b: any): { startP: number; endP: number } | null => {
+    const startP = b.assigned_start_period ?? b.windows?.[0]?.from_period ?? b.start_period ?? b.from_period;
+    const endP = b.assigned_end_period ?? b.windows?.[0]?.to_period ?? b.end_period ?? b.to_period ?? (typeof startP === 'number' ? startP + (b.duration_periods || 1) - 1 : null);
+    if (typeof startP === 'number' && typeof endP === 'number') {
+      return { startP, endP };
+    }
+    return null;
+  };
+
+  const getBookingRoom = (b: any): string => b.assigned_room || b.requested_room || b.room || '';
+  const getBookingDay = (b: any): string => b.assigned_day || b.windows?.[0]?.day || b.requested_day || b.day || '';
+
+  // All locked periods for the currently selected venue and day
+  const lockedPeriodsMap = React.useMemo(() => {
+    const map = new Map<number, { title: string; id: string; requester: string; status: string }>();
+
+    // 1. Campus-wide reserved blocks (Spectra '27 Inauguration Ceremony in AUD on Mon P4-P5)
+    if (venueId === 'AUD' && day === 'MON') {
+      const inau = {
+        title: "Spectra '27 Inauguration Ceremony",
+        id: 'INST-INAUGURATION',
+        requester: "Dean's Office",
+        status: 'approved',
+      };
+      map.set(4, inau);
+      map.set(5, inau);
+    }
+
+    // 2. All active bookings (both approved and pending) for this room & day
+    for (const b of existingBookings) {
+      if (b.status === 'cancelled' || b.status === 'rejected') continue;
+      const bRoom = getBookingRoom(b);
+      const bDay = getBookingDay(b);
+      if (bRoom === venueId && bDay === day) {
+        const range = getBookingPeriodRange(b);
+        if (range) {
+          for (let p = range.startP; p <= range.endP; p++) {
+            if (p >= 1 && p <= 13) {
+              map.set(p, {
+                title: b.title || b.event_name || b.id || 'Booked Slot',
+                id: b.id || 'BOOKING',
+                requester: b.requester_name || b.requester || 'Campus Organization',
+                status: b.status || 'pending',
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return map;
+  }, [existingBookings, venueId, day]);
+
   const togglePeriod = (p: number) => {
+    // If period is locked, prevent selection
+    if (lockedPeriodsMap.has(p)) return;
     removeGuessed('periods');
     if (selectedPeriods.includes(p)) {
       if (selectedPeriods.length > 1) {
@@ -707,28 +785,35 @@ export default function NewBookingPage() {
     ? `H5 Valid: Requested attendees (${attendees}) fits within ${currentRoom.id} capacity (${currentRoom.capacity}).`
     : `H5 Violation: Requested attendees (${attendees}) exceeds ${currentRoom.id} maximum safe capacity (${currentRoom.capacity}).`;
 
-  // 2. Room occupancy check (H4) against all approved bookings & inauguration
-  const isAUDMondayClash =
-    venueId === 'AUD' && day === 'MON' && selectedPeriods.some((p) => p === 4 || p === 5);
-
-  const conflictingBooking = existingBookings.find((b) => {
-    if (b.status !== 'approved') return false;
-    const bRoom = b.assigned_room || b.requested_room;
-    const bDay = b.assigned_day || b.windows?.[0]?.day;
-    const bSp = b.assigned_start_period ?? b.windows?.[0]?.from_period;
-    const bEp = b.assigned_end_period ?? (b.windows?.[0]?.to_period ?? (bSp ? bSp + (b.duration_periods || 1) - 1 : null));
-    if (bRoom === venueId && bDay === day && bSp && bEp) {
-      return selectedPeriods.some((p) => p >= bSp && p <= bEp);
+  // 2. Room occupancy check (H4) against all active bookings & inauguration
+  const conflictingBooking = React.useMemo(() => {
+    if (venueId === 'AUD' && day === 'MON' && selectedPeriods.some((p) => p === 4 || p === 5)) {
+      return {
+        id: 'INST-INAUGURATION',
+        title: "Spectra '27 Inauguration Ceremony",
+        requester_name: "Dean's Office",
+        status: 'approved',
+      };
     }
-    return false;
-  });
 
-  const isOccupancyOk = !conflictingBooking && !isAUDMondayClash;
+    return existingBookings.find((b) => {
+      if (b.status === 'cancelled' || b.status === 'rejected') return false;
+      const bRoom = getBookingRoom(b);
+      const bDay = getBookingDay(b);
+      if (bRoom === venueId && bDay === day) {
+        const range = getBookingPeriodRange(b);
+        if (range) {
+          return selectedPeriods.some((p) => p >= range.startP && p <= range.endP);
+        }
+      }
+      return false;
+    });
+  }, [existingBookings, venueId, day, selectedPeriods]);
+
+  const isOccupancyOk = !conflictingBooking;
   const occupancyReason = isOccupancyOk
     ? `H4 Valid: ${currentRoom.id} is free on ${day} during periods ${selectedPeriods.map((p) => `P${p}`).join(", ")}.`
-    : conflictingBooking
-    ? `H4 Violation: ${venueId} is already booked on ${day} by "${conflictingBooking.title}" (${conflictingBooking.id}). Two bookings cannot occupy this room simultaneously.`
-    : `H4 Violation: Clashes with Spectra '27 Inauguration (AUD, Mon P4-P5).`;
+    : `H4 Violation: ${venueId} is already booked on ${day} by "${conflictingBooking.title || 'Active Booking'}" (${conflictingBooking.id || 'Active Slot'}). Two bookings cannot occupy this room simultaneously.`;
 
   // 3. Accessibility check (H10)
   const isAccessibilityOk = !needsWheelchair || currentRoom.accessible;
@@ -790,12 +875,11 @@ export default function NewBookingPage() {
     for (const r of candidates) {
       let isBusy = false;
       for (const b of existingBookings) {
-        if (b.status !== 'approved') continue;
-        const bRoom = b.assigned_room || b.requested_room;
-        const bDay = b.assigned_day || b.windows?.[0]?.day;
-        const bSp = b.assigned_start_period ?? b.windows?.[0]?.from_period ?? 1;
-        const bEp = b.assigned_end_period ?? (b.windows?.[0]?.to_period ?? bSp + (b.duration_periods || 1) - 1);
-        if (bRoom === r.id && bDay === day && Math.max(startP, bSp) <= Math.min(endP, bEp)) {
+        if (b.status === 'cancelled' || b.status === 'rejected') continue;
+        const bRoom = getBookingRoom(b);
+        const bDay = getBookingDay(b);
+        const range = getBookingPeriodRange(b);
+        if (bRoom === r.id && bDay === day && range && Math.max(startP, range.startP) <= Math.min(endP, range.endP)) {
           isBusy = true;
           break;
         }
@@ -861,6 +945,36 @@ export default function NewBookingPage() {
       }
 
       const reqId = res?.details?.request_id || `BR-NEW-${Date.now().toString(36).slice(-4).toUpperCase()}`;
+      const newBookingRecord = {
+        id: reqId,
+        title,
+        requested_room: venueId,
+        assigned_room: venueId,
+        attendance: attendees,
+        duration_periods: durationPeriods,
+        windows: [{ day, from_period: startP, to_period: endP }],
+        assigned_day: day,
+        assigned_start_period: startP,
+        assigned_end_period: endP,
+        status: isDeanOrAdmin ? 'approved' : 'pending',
+        requester: user?.email || 'user@cit.edu',
+        requester_name: user?.name || user?.email || 'User',
+        requested_category: category,
+        reason: isDeanOrAdmin
+          ? 'Self-managed booking registered by Dean Office and locked in timetable.'
+          : 'Pending Dean Office review.',
+        created_at: new Date().toISOString(),
+      };
+
+      setExistingBookings((prev) => [newBookingRecord, ...prev.filter((b) => b.id !== reqId)]);
+      try {
+        if (typeof window !== 'undefined') {
+          const existingLocal = JSON.parse(localStorage.getItem('cit_local_bookings') || '[]');
+          const updatedLocal = [newBookingRecord, ...existingLocal.filter((b: any) => b.id !== reqId)];
+          localStorage.setItem('cit_local_bookings', JSON.stringify(updatedLocal));
+        }
+      } catch {}
+
       setSubmittedBooking({
         id: reqId,
         title,
@@ -1361,6 +1475,8 @@ export default function NewBookingPage() {
                 }`}
               >
                 {Array.from({ length: 13 }, (_, i) => i + 1).map((p) => {
+                  const isLocked = lockedPeriodsMap.has(p);
+                  const lockInfo = lockedPeriodsMap.get(p);
                   const isSelected = selectedPeriods.includes(p);
                   const isEvening = p >= 10;
                   const isLunch = p === 5;
@@ -1369,9 +1485,14 @@ export default function NewBookingPage() {
                     <button
                       key={p}
                       type="button"
-                      onClick={() => togglePeriod(p)}
-                      className={`h-11 flex flex-col items-center justify-center rounded-cell border text-[11px] font-medium font-ui transition-colors ${
-                        isSelected
+                      disabled={isLocked}
+                      onClick={() => {
+                        if (!isLocked) togglePeriod(p);
+                      }}
+                      className={`h-12 flex flex-col items-center justify-center rounded-cell border text-[11px] font-medium font-ui transition-all relative select-none ${
+                        isLocked
+                          ? 'bg-bad/10 border-bad text-bad cursor-not-allowed shadow-none'
+                          : isSelected
                           ? 'bg-ink text-paper border-ink font-bold shadow-xs'
                           : isEvening
                           ? 'bg-surface border-line-strong text-ink hover:border-ink'
@@ -1379,16 +1500,38 @@ export default function NewBookingPage() {
                           ? 'bg-surface hatch-subtle border-line text-ink-2'
                           : 'bg-surface border-line text-ink-2 hover:border-ink hover:text-ink'
                       }`}
-                      title={`Period P${p} (${p < 10 ? `${7 + p}:00 - ${8 + p}:00` : `${8 + p}:00 - ${9 + p}:00`})`}
+                      title={
+                        isLocked
+                          ? `LOCKED: Already booked by ${lockInfo?.requester} ("${lockInfo?.title}") [${lockInfo?.id}]`
+                          : `Period P${p} (${p < 10 ? `${7 + p}:00 - ${8 + p}:00` : `${8 + p}:00 - ${9 + p}:00`})`
+                      }
                     >
-                      <span className="text-[11px]">P{p}</span>
-                      <span className="text-[9px] font-mono opacity-70">
-                        {p < 10 ? `${7 + p}:00` : `${8 + p}:00`}
+                      <div className="flex items-center gap-1">
+                        {isLocked && <span className="text-[10px]" aria-label="locked">🔒</span>}
+                        <span className={`text-[11px] ${isLocked ? 'font-bold' : ''}`}>P{p}</span>
+                      </div>
+                      <span className={`text-[9px] font-mono leading-tight ${isLocked ? 'font-bold text-bad tracking-tight' : 'opacity-70'}`}>
+                        {isLocked ? 'LOCKED' : p < 10 ? `${7 + p}:00` : `${8 + p}:00`}
                       </span>
                     </button>
                   );
                 })}
               </div>
+
+              {/* Locked slots banner for active room & day */}
+              {lockedPeriodsMap.size > 0 && (
+                <div className="flex items-start gap-2 p-3 bg-bad/10 border border-bad/40 rounded-card text-[12px] text-bad animate-fadeIn">
+                  <span className="text-[16px] leading-none mt-0.5">🔒</span>
+                  <div className="space-y-0.5">
+                    <span className="font-semibold block text-bad">
+                      {venueId} is locked on {day} during: {Array.from(lockedPeriodsMap.entries()).map(([p, info]) => `P${p} (${info.title})`).join(', ')}
+                    </span>
+                    <span className="text-bad/80 block text-[11px]">
+                      Locked periods are disabled to prevent double-booking. Please choose alternate periods or select another free venue.
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {provenanceMap.periods && (
                 <p className="font-serif italic text-[13px] text-ink-2">

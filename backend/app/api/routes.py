@@ -1049,26 +1049,45 @@ def generate_exams(
 # Bookings Endpoints
 # =============================================================================
 
-@router.get(
-    "/api/bookings",
-    response_model=BookingsListResponse,
-    tags=["bookings"],
-)
-def get_bookings(
-    user: dict[str, Any] = Depends(get_current_user),
-) -> BookingsListResponse:
-    """List all booking requests and their current statuses."""
-    items = db_list_bookings()
-    if not items:
-        data = get_active_dataset() or {}
-        sched = get_active_schedule() or {}
-        decisions = {
-            b["request_id"]: b
-            for b in sched.get("fest_week", {}).get("bookings", [])
-        }
-        for req in data.get("booking_requests", []):
+def _get_all_merged_bookings() -> list[dict[str, Any]]:
+    """Retrieve all bookings merged from SQLite and dataset seed records."""
+    db_items = db_list_bookings()
+    db_by_id = {b["id"]: b for b in db_items}
+
+    data = get_active_dataset() or {}
+    if not data:
+        data_path = Path("data/cit_public.json")
+        if not data_path.exists():
+            data_path = Path(__file__).resolve().parents[3] / "data" / "cit_public.json"
+        if data_path.exists():
+            with open(data_path, encoding="utf-8") as f:
+                data = json.load(f)
+
+    sched = get_active_schedule() or {}
+    if not sched:
+        sched_path = Path("exports/schedule.json")
+        if not sched_path.exists():
+            sched_path = Path(__file__).resolve().parents[3] / "exports" / "schedule.json"
+        if sched_path.exists():
+            with open(sched_path, encoding="utf-8") as f:
+                sched = json.load(f)
+
+    decisions = {
+        b["request_id"]: b
+        for b in sched.get("fest_week", {}).get("bookings", [])
+    }
+
+    all_bookings: list[dict[str, Any]] = []
+    seed_ids = set()
+
+    for req in data.get("booking_requests", []):
+        rid = req["id"]
+        seed_ids.add(rid)
+        if rid in db_by_id:
+            all_bookings.append(db_by_id[rid])
+        else:
             merged = dict(req)
-            dec = decisions.get(req["id"])
+            dec = decisions.get(rid)
             if dec:
                 merged["status"] = dec.get("status", "pending")
                 merged["assigned_room"] = dec.get("room_id")
@@ -1082,7 +1101,22 @@ def get_bookings(
                 merged["alternative_offered"] = dec.get("alternative_offered")
             else:
                 merged["status"] = "pending"
-            items.append(merged)
+            all_bookings.append(merged)
+
+    new_db_bookings = [b for b in db_items if b["id"] not in seed_ids]
+    return new_db_bookings + all_bookings
+
+
+@router.get(
+    "/api/bookings",
+    response_model=BookingsListResponse,
+    tags=["bookings"],
+)
+def get_bookings(
+    user: dict[str, Any] = Depends(get_current_user),
+) -> BookingsListResponse:
+    """List all booking requests and their current statuses."""
+    items = _get_all_merged_bookings()
     return BookingsListResponse(count=len(items), bookings=items)
 
 
@@ -1146,7 +1180,10 @@ def create_booking(
     """Submit structured booking request and run kernel pre-check."""
     data = get_active_dataset()
     if not data:
-        with open("data/cit_public.json", encoding="utf-8") as f:
+        data_path = Path("data/cit_public.json")
+        if not data_path.exists():
+            data_path = Path(__file__).resolve().parents[3] / "data" / "cit_public.json"
+        with open(data_path, encoding="utf-8") as f:
             data = json.load(f)
 
     room_obj = next((r for r in data.get("rooms", []) if r["id"] == req.requested_room), None)
@@ -1158,12 +1195,6 @@ def create_booking(
     if room_obj and req.room_types and room_obj.get("type") not in req.room_types:
         reasons.append("H6")
 
-    req_id = f"BR-NEW-{uuid.uuid4().hex[:6]}"
-    req_dict = req.model_dump()
-    req_dict["id"] = req_id
-    req_dict["requester"] = user.get("email", "unknown")
-    req_dict["role"] = user.get("role", "club")
-
     if reasons:
         return BookingPrecheckResult(
             legal=False,
@@ -1172,7 +1203,78 @@ def create_booking(
             details={"rules_violated": reasons},
         )
 
-    db_save_booking(request_id=req_id, request_data=req_dict, status="pending")
+    # H4 Occupancy clash checks
+    for w in req.windows:
+        if req.requested_room == "AUD" and w.day == "MON":
+            if max(w.from_period, 4) <= min(w.to_period, 5):
+                return BookingPrecheckResult(
+                    legal=False,
+                    reason_codes=["H4"],
+                    reason="H4 Violation: Auditorium on MON P4-P5 is reserved for Spectra '27 Inauguration.",
+                    details={"rules_violated": ["H4"], "conflict_id": "INST-INAUGURATION", "conflict_title": "Spectra '27 Inauguration Ceremony"},
+                )
+
+    all_bookings = _get_all_merged_bookings()
+    for b in all_bookings:
+        if b.get("status") in ("cancelled", "rejected"):
+            continue
+        b_room = b.get("assigned_room") or b.get("requested_room")
+        if not b_room or b_room != req.requested_room:
+            continue
+
+        b_windows = b.get("windows", [])
+        b_day = b.get("assigned_day") or (b_windows[0].get("day") if b_windows else None)
+        b_sp = b.get("assigned_start_period") or (b_windows[0].get("from_period") if b_windows else None)
+        b_ep = b.get("assigned_end_period") or (b_windows[0].get("to_period") if b_windows else (b_sp + b.get("duration_periods", 1) - 1 if b_sp else None))
+
+        if b_day is None or b_sp is None or b_ep is None:
+            continue
+
+        for w in req.windows:
+            if w.day == b_day and max(w.from_period, b_sp) <= min(w.to_period, b_ep):
+                conflict_title = b.get("title") or b.get("event_name") or b.get("id") or "Existing Booking"
+                conflict_id = b.get("id") or b.get("request_id") or "BOOKING"
+                conflict_req = b.get("requester_name") or b.get("requester") or "Another User"
+                return BookingPrecheckResult(
+                    legal=False,
+                    reason_codes=["H4"],
+                    reason=f'H4 Violation: {req.requested_room} is already booked on {w.day} during periods P{b_sp}-P{b_ep} by {conflict_req} ("{conflict_title}", {conflict_id}). Two bookings cannot occupy this room simultaneously.',
+                    details={
+                        "rules_violated": ["H4"],
+                        "conflict_id": conflict_id,
+                        "conflict_title": conflict_title,
+                        "conflict_requester": conflict_req,
+                        "conflicting_periods": list(range(max(w.from_period, b_sp), min(w.to_period, b_ep) + 1)),
+                    },
+                )
+
+    req_id = f"BR-NEW-{uuid.uuid4().hex[:6].upper()}"
+    req_dict = req.model_dump()
+    req_dict["id"] = req_id
+    req_dict["requester"] = user.get("email", "unknown")
+    req_dict["requester_name"] = req.requester_name or user.get("name") or user.get("email", "unknown")
+    req_dict["role"] = user.get("role", "club")
+    if req.title:
+        req_dict["title"] = req.title
+
+    is_dean_or_admin = user.get("role") == "admin" or "dean" in user.get("email", "").lower()
+    status = "approved" if is_dean_or_admin else "pending"
+
+    decision_data = None
+    if is_dean_or_admin and req.windows:
+        first_w = req.windows[0]
+        decision_data = {
+            "request_id": req_id,
+            "room_id": req.requested_room,
+            "day": first_w.day,
+            "start_period": first_w.from_period,
+            "end_period": first_w.to_period,
+            "status": "approved",
+            "reason": "Direct administrative approval",
+            "reason_codes": ["VALID"],
+        }
+
+    db_save_booking(request_id=req_id, request_data=req_dict, status=status, decision_data=decision_data)
     log_audit(
         action="create_booking",
         proposal_id=None,
@@ -1183,7 +1285,7 @@ def create_booking(
     return BookingPrecheckResult(
         legal=True,
         reason_codes=["VALID"],
-        reason="Booking request passed kernel precheck and was queued for decision.",
+        reason="Booking request passed kernel precheck and was queued for decision." if status == "pending" else "Booking confirmed and approved.",
         details={"request_id": req_id},
     )
 
