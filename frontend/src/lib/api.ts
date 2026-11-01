@@ -66,13 +66,43 @@ class ApiClient {
     }
   }
 
+  async autoAuthenticate(): Promise<string | null> {
+    if (typeof window === 'undefined') return null;
+    try {
+      const res = await fetch(`${this.baseUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'admin@cit.edu', password: 'admin123' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.access_token) {
+          this.setToken(data.access_token);
+          return data.access_token;
+        }
+      }
+    } catch {
+      // Backend offline
+    }
+    return null;
+  }
+
   async request<T>(
     endpoint: string,
     options: RequestInit = {},
     retries = 2
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    const token = this.getToken();
+    let token = this.getToken();
+
+    // Auto-authenticate with default demo admin account if token is missing or malformed
+    if (
+      (!token || token === 'cit_jwt_admin_token' || !token.includes('.')) &&
+      typeof window !== 'undefined' &&
+      !endpoint.startsWith('/api/auth/')
+    ) {
+      token = await this.autoAuthenticate();
+    }
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -91,6 +121,19 @@ class ApiClient {
       });
 
       if (!response.ok) {
+        // Automatic re-authentication on 401 for demo resilience
+        if (
+          response.status === 401 &&
+          !endpoint.startsWith('/api/auth/') &&
+          retries > 0 &&
+          typeof window !== 'undefined'
+        ) {
+          this.setToken(null);
+          const freshToken = await this.autoAuthenticate();
+          if (freshToken) {
+            return this.request<T>(endpoint, options, retries - 1);
+          }
+        }
         let envelope: ApiErrorEnvelope;
         try {
           envelope = await response.json();

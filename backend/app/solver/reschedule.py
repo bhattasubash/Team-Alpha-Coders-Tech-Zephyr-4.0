@@ -547,9 +547,12 @@ class RescheduleSolver:
         fac_dict = self.ctx.fac
 
         for (sid, d, t, r), var in x.items():
-            dur = sess_by_id[sid]["duration"]
-            fid = sess_by_id[sid]["faculty_id"]
-            size = sess_by_id[sid]["size"]
+            dur = sess_by_id[sid].get("duration", 1)
+            fid = sess_by_id[sid].get("faculty_id", "")
+            size = sess_by_id[sid].get("size")
+            if size is None:
+                groups = sess_by_id[sid].get("groups", [])
+                size = sum(self.ctx.groups.get(g, {}).get("size", 60) for g in groups) or 60
             old = self.baseline.get(sid)
 
             if old is None or (d, t) != (old[0], old[1]):

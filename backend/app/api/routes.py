@@ -988,11 +988,15 @@ def get_exams(
         with open("data/cit_public.json", encoding="utf-8") as f:
             data = json.load(f)
     sched = get_active_schedule()
-    if not sched:
-        with open("exports/schedule.json", encoding="utf-8") as f:
-            sched = json.load(f)
-
-    exams_list = sched.get("exams", [])
+    exams_list = sched.get("exams", []) if sched else []
+    if not exams_list:
+        sched_path = Path("exports/schedule.json")
+        if not sched_path.exists():
+            sched_path = Path(__file__).resolve().parents[3] / "exports" / "schedule.json"
+        if sched_path.exists():
+            with open(sched_path, encoding="utf-8") as f:
+                sched_fallback = json.load(f)
+                exams_list = sched_fallback.get("exams", [])
     ctx = KernelContext(data)
     penalty = check_exam_soft(ctx, exams_list) if exams_list else 0
     assignments = hydrate_exams(exams_list, data)
