@@ -463,6 +463,8 @@ def list_bookings(
             merged["assigned_end_period"] = dec_obj.get("end_period")
             merged["reason"] = dec_obj.get("reason", "")
             merged["reason_codes"] = dec_obj.get("reason_codes", [])
+            merged["conflicting_bookings"] = dec_obj.get("conflicting_bookings", [])
+            merged["conflicting_sessions"] = dec_obj.get("conflicting_sessions", [])
             merged["alternative_offered"] = dec_obj.get("alternative_offered")
             merged["decision"] = dec_obj
         results.append(merged)
@@ -491,6 +493,8 @@ def get_booking(
         merged["assigned_end_period"] = dec_obj.get("end_period")
         merged["reason"] = dec_obj.get("reason", "")
         merged["reason_codes"] = dec_obj.get("reason_codes", [])
+        merged["conflicting_bookings"] = dec_obj.get("conflicting_bookings", [])
+        merged["conflicting_sessions"] = dec_obj.get("conflicting_sessions", [])
         merged["alternative_offered"] = dec_obj.get("alternative_offered")
         merged["decision"] = dec_obj
     return merged

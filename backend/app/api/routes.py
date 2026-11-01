@@ -1077,6 +1077,9 @@ def get_bookings(
                 merged["assigned_end_period"] = dec.get("end_period")
                 merged["reason"] = dec.get("reason", "")
                 merged["reason_codes"] = dec.get("reason_codes", [])
+                merged["conflicting_bookings"] = dec.get("conflicting_bookings", [])
+                merged["conflicting_sessions"] = dec.get("conflicting_sessions", [])
+                merged["alternative_offered"] = dec.get("alternative_offered")
             else:
                 merged["status"] = "pending"
             items.append(merged)
@@ -1236,6 +1239,58 @@ def review_booking(
             },
         )
 
+    # Check clash before approving
+    if req.status == "approved":
+        target_room = b.get("assigned_room") or b.get("requested_room")
+        first_win = b.get("windows", [{}])[0] if b.get("windows") else {}
+        target_day = b.get("assigned_day") or first_win.get("day", "MON")
+        target_sp = b.get("assigned_start_period") or first_win.get("from_period", 1)
+        target_ep = b.get("assigned_end_period") or first_win.get("to_period", target_sp + b.get("duration_periods", 1) - 1)
+
+        # Check existing approved bookings
+        existing_bookings = db_list_bookings()
+        conflicting_booking_ids: list[str] = []
+        conflicting_titles: list[str] = []
+        for other in existing_bookings:
+            if other.get("id") == id or other.get("status") != "approved":
+                continue
+            o_room = other.get("assigned_room") or other.get("requested_room")
+            o_day = other.get("assigned_day") or (other.get("windows", [{}])[0].get("day") if other.get("windows") else None)
+            o_sp = other.get("assigned_start_period") or (other.get("windows", [{}])[0].get("from_period") if other.get("windows") else None)
+            o_ep = other.get("assigned_end_period") or (other.get("windows", [{}])[0].get("to_period") if other.get("windows") else None)
+            if o_room == target_room and o_day == target_day and o_sp and o_ep and target_sp and target_ep:
+                if max(target_sp, o_sp) <= min(target_ep, o_ep):
+                    conflicting_booking_ids.append(other.get("id"))
+                    conflicting_titles.append(f"{other.get('id')} ({other.get('title')})")
+
+        if conflicting_booking_ids:
+            data = get_active_dataset() or {}
+            sched = get_active_schedule() or {}
+            engine = BookingEngine(data, sched)
+            alt_room = engine.find_alternative(b, approved_bookings=existing_bookings)
+
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "VENUE_CLASH",
+                    "message": (
+                        f"Cannot approve {id}: venue {target_room} is already booked on {target_day} "
+                        f"P{target_sp}-P{target_ep} by {', '.join(conflicting_titles)}. "
+                        + (f"Free alternative room: {alt_room['room_id']}." if alt_room else "No free alternative room found.")
+                    ),
+                    "details": [
+                        {
+                            "conflicting_bookings": conflicting_booking_ids,
+                            "room_id": target_room,
+                            "day": target_day,
+                            "start_period": target_sp,
+                            "end_period": target_ep,
+                            "alternative_offered": alt_room,
+                        }
+                    ],
+                },
+            )
+
     db_update_booking_status(id, req.status)
     log_audit(
         action=f"{req.status}_booking",
@@ -1254,6 +1309,8 @@ def review_booking(
         "end_period": b.get("windows", [{}])[0].get("to_period") if b.get("windows") else b.get("assigned_end_period"),
         "reason": reason,
         "reason_codes": ["APPROVED" if req.status == "approved" else "REJECTED"],
+        "conflicting_bookings": b.get("conflicting_bookings", []),
+        "conflicting_sessions": b.get("conflicting_sessions", []),
     }
     db_save_booking(request_id=id, request_data=b, status=req.status, decision_data=decision_dict)
 
@@ -1266,6 +1323,8 @@ def review_booking(
         end_period=decision_dict["end_period"],
         reason_codes=decision_dict["reason_codes"],
         reason=reason,
+        conflicting_bookings=decision_dict.get("conflicting_bookings", []),
+        conflicting_sessions=decision_dict.get("conflicting_sessions", []),
     )
 
 

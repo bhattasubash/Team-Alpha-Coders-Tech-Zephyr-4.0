@@ -144,6 +144,7 @@ export interface ScheduledSession {
   isDiffMoved?: boolean;
   oldSlot?: { day: Day; period: number; roomId: string };
   reason?: string;
+  conflicting_bookings?: string[];
 }
 
 export interface BookingRequest {
@@ -168,6 +169,7 @@ export interface BookingRequest {
   assigned_start_period?: number;
   assigned_end_period?: number;
   reason?: string;
+  conflicting_bookings?: string[];
   priority_rank?: number;
   alternatives?: Array<{
     day: Day;

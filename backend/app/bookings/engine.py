@@ -224,6 +224,9 @@ class BookingEngine:
                     "booking_id": rid_,
                     "status": "rejected",
                     "reason": "Booking request was cancelled",
+                    "reason_codes": ["CANCELLED"],
+                    "conflicting_bookings": [],
+                    "conflicting_sessions": [],
                 }
                 continue
 
@@ -235,6 +238,10 @@ class BookingEngine:
 
             # Try approved placement in requested windows
             approved_placement: tuple[str, str, int, int] | None = None
+            pref_room = req.get("requested_room")
+            encountered_conflicts: set[str] = set()
+            encountered_sessions: set[str] = set()
+
             for w in req.get("windows", []):
                 d = w["day"]
                 if d not in self.days:
@@ -249,6 +256,13 @@ class BookingEngine:
                         if self._is_slot_free(r_id, d, s0, e0, room_busy, wgrp, mand_groups):
                             approved_placement = (r_id, d, s0, e0)
                             break
+                        else:
+                            for p in range(s0, e0 + 1):
+                                for occ in room_busy.get((r_id, d, p), []):
+                                    if occ in placed:
+                                        encountered_conflicts.add(occ)
+                                    elif occ in self.ctx.sessions:
+                                        encountered_sessions.add(occ)
                     if approved_placement:
                         break
                 if approved_placement:
@@ -261,6 +275,18 @@ class BookingEngine:
                 placed[rid_] = (r_id, d, s0, e0)
                 if series_id:
                     series_allocated_room[series_id] = r_id
+
+                reallocated_from_pref = bool(pref_room and r_id != pref_room)
+                if reallocated_from_pref and encountered_conflicts:
+                    reason = (
+                        f"Requested room {pref_room} was occupied by {', '.join(sorted(encountered_conflicts))}; "
+                        f"allocated alternative room {r_id} within requested window"
+                    )
+                elif reallocated_from_pref:
+                    reason = f"Requested room {pref_room} unavailable; allocated alternative room {r_id} within requested window"
+                else:
+                    reason = "Approved within requested window"
+
                 decisions_by_id[rid_] = {
                     "request_id": rid_,
                     "booking_id": rid_,
@@ -272,9 +298,14 @@ class BookingEngine:
                     "start_period": s0,
                     "allocated_period": s0,
                     "end_period": e0,
-                    "reason": "Approved within requested window",
+                    "reason": reason,
+                    "reason_codes": ["ALTERNATIVE_ROOM", "APPROVED"] if reallocated_from_pref else ["APPROVED"],
+                    "conflicting_bookings": sorted(encountered_conflicts) if reallocated_from_pref else [],
+                    "conflicting_sessions": sorted(encountered_sessions) if reallocated_from_pref else [],
                 }
             else:
+                req["_encountered_conflicts"] = sorted(encountered_conflicts)
+                req["_encountered_sessions"] = sorted(encountered_sessions)
                 unplaced.append(req)
 
         # =========================================================================
@@ -458,6 +489,9 @@ class BookingEngine:
             series_pref = series_allocated_room.get(series_id) if series_id else None
             cand_rooms = self._get_candidate_rooms(req, series_room_pref=series_pref)
 
+            encountered_conflicts = req.get("_encountered_conflicts", [])
+            encountered_sessions = req.get("_encountered_sessions", [])
+
             alt_placement: tuple[str, str, int, int] | None = None
             for d in self.days:
                 for s0 in range(1, MAX_PERIOD - dur + 2):
@@ -478,6 +512,7 @@ class BookingEngine:
                 placed[rid_] = (r_id, d, s0, e0)
                 if series_id:
                     series_allocated_room[series_id] = r_id
+                conflict_part = f" occupied by {', '.join(encountered_conflicts)}" if encountered_conflicts else ""
                 decisions_by_id[rid_] = {
                     "request_id": rid_,
                     "booking_id": rid_,
@@ -489,15 +524,30 @@ class BookingEngine:
                     "start_period": s0,
                     "allocated_period": s0,
                     "end_period": e0,
-                    "reason": f"Requested window occupied; alternative offered at {d} P{s0}-P{e0} in {r_id}",
+                    "conflicting_bookings": encountered_conflicts,
+                    "conflicting_sessions": encountered_sessions,
+                    "reason_codes": ["ALTERNATIVE_OFFERED", "VENUE_CLASH" if encountered_conflicts else "WINDOW_OCCUPIED"],
+                    "reason": f"Requested window{conflict_part}; alternative offered at {d} P{s0}-P{e0} in {r_id}",
+                    "alternative_offered": {
+                        "room_id": r_id,
+                        "day": d,
+                        "start_period": s0,
+                        "end_period": e0,
+                    },
                 }
             else:
                 att = req.get("attendance", 0)
+                conflict_detail = f" (conflicted with bookings: {', '.join(encountered_conflicts)})" if encountered_conflicts else ""
+                alt_slot = self.find_alternative(req)
                 decisions_by_id[rid_] = {
                     "request_id": rid_,
                     "booking_id": rid_,
                     "status": "rejected",
-                    "reason": f"No legal room of required type or capacity available without conflict (attendance {att})",
+                    "conflicting_bookings": encountered_conflicts,
+                    "conflicting_sessions": encountered_sessions,
+                    "reason_codes": ["REJECTED", "VENUE_CLASH" if encountered_conflicts else "CAPACITY_CONSTRAINT"],
+                    "reason": f"No legal room of required type or capacity available without conflict (attendance {att}){conflict_detail}",
+                    "alternative_offered": alt_slot,
                 }
 
         # Format output in original dataset order
@@ -511,7 +561,11 @@ class BookingEngine:
             "decisions": decisions,
         }
 
-    def find_alternative(self, request: dict[str, Any]) -> dict[str, Any] | None:
+    def find_alternative(
+        self,
+        request: dict[str, Any],
+        approved_bookings: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any] | None:
         """Find the nearest legal alternative slot for a request."""
         dur = request.get("duration_periods", 1)
         mand_groups = request.get("mandatory_for_groups", [])
@@ -525,15 +579,53 @@ class BookingEngine:
                 for p in block(start, s["duration"]):
                     room_busy[(rid, day, p)].append(sid)
 
+        # Include approved bookings if provided
+        if approved_bookings:
+            for b in approved_bookings:
+                if b.get("status") == "approved":
+                    b_rid = b.get("room_id") or b.get("allocated_room") or b.get("assigned_room")
+                    b_day = b.get("day") or b.get("allocated_day") or b.get("assigned_day")
+                    b_sp = b.get("start_period") or b.get("allocated_period") or b.get("assigned_start_period")
+                    b_ep = b.get("end_period") or b.get("assigned_end_period")
+                    if b_rid and b_day and b_sp and b_ep:
+                        for p in range(b_sp, b_ep + 1):
+                            room_busy[(b_rid, b_day, p)].append(b.get("request_id") or b.get("booking_id") or b.get("id"))
+
         _, wgrp = check_timetable(self.ctx, self.base_assign, "fest_week")
 
+        # 1. Search candidate rooms in requested windows
+        for w in request.get("windows", []):
+            d = w.get("day")
+            if d not in self.days:
+                continue
+            f_p = max(1, w.get("from_period", 1))
+            t_p = min(w.get("to_period", MAX_PERIOD), MAX_PERIOD)
+            for s0 in range(f_p, t_p - dur + 2):
+                e0 = s0 + dur - 1
+                for r_id in cand_rooms:
+                    if self._is_slot_free(r_id, d, s0, e0, room_busy, wgrp, mand_groups):
+                        r_info = self.ctx.rooms.get(r_id, {})
+                        return {
+                            "room_id": r_id,
+                            "room_name": r_info.get("name", r_id),
+                            "capacity": r_info.get("capacity", 0),
+                            "day": d,
+                            "start_period": s0,
+                            "end_period": e0,
+                            "reason": f"Available alternative venue {r_id} ({r_info.get('capacity', 0)} seats) at {d} P{s0}-P{e0}",
+                        }
+
+        # 2. Search whole week
         for d in self.days:
             for s0 in range(1, MAX_PERIOD - dur + 2):
                 e0 = s0 + dur - 1
                 for r_id in cand_rooms:
                     if self._is_slot_free(r_id, d, s0, e0, room_busy, wgrp, mand_groups):
+                        r_info = self.ctx.rooms.get(r_id, {})
                         return {
                             "room_id": r_id,
+                            "room_name": r_info.get("name", r_id),
+                            "capacity": r_info.get("capacity", 0),
                             "day": d,
                             "start_period": s0,
                             "end_period": e0,

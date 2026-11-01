@@ -12,13 +12,279 @@ import { Day, Room } from '@/data/types';
 import { CheckIcon, AlertIcon, WheelchairGlyph } from '@/components/ui/Icons';
 
 const CAMPUS_ROOMS: Room[] = [
-  { id: 'AUD', name: 'Main Auditorium', building: 'AUD', type: 'auditorium', capacity: 400, features: ['stage', 'pa_system'], accessible: true, allowed_uses: ['event', 'club'] },
-  { id: 'SH-1', name: 'Seminar Hall 1', building: 'SH', type: 'seminar_hall', capacity: 150, features: ['projector'], accessible: true, allowed_uses: ['lecture', 'event'] },
-  { id: 'SH-2', name: 'Seminar Hall 2', building: 'SH', type: 'seminar_hall', capacity: 150, features: ['projector'], accessible: false, allowed_uses: ['lecture', 'event'] },
-  { id: 'CR-101', name: 'Classroom 101', building: 'Block A', type: 'classroom', capacity: 90, features: ['projector'], accessible: true, allowed_uses: ['lecture'] },
-  { id: 'CR-102', name: 'Classroom 102', building: 'Block A', type: 'classroom', capacity: 90, features: ['projector'], accessible: true, allowed_uses: ['lecture'] },
-  { id: 'OAT', name: 'Open Air Theatre', building: 'OAT', type: 'open_air_theatre', capacity: 800, features: ['stage'], accessible: true, allowed_uses: ['event', 'club'] },
+  { id: 'AUD', name: 'Main Auditorium', building: 'Admin Block', type: 'auditorium', capacity: 500, features: ['projector', 'pa_system', 'stage', 'ac'], accessible: true, allowed_uses: ['lecture', 'tutorial', 'exam', 'event', 'club'] },
+  { id: 'LH-1', name: 'Lecture Hall 1', building: 'Lecture Hall Complex', type: 'lecture_hall', capacity: 200, features: ['projector', 'pa_system', 'ac'], accessible: true, allowed_uses: ['lecture', 'tutorial', 'exam', 'event'] },
+  { id: 'LH-2', name: 'Lecture Hall 2', building: 'Lecture Hall Complex', type: 'lecture_hall', capacity: 200, features: ['projector', 'pa_system', 'ac'], accessible: true, allowed_uses: ['lecture', 'tutorial', 'exam', 'event'] },
+  { id: 'LH-3', name: 'Lecture Hall 3', building: 'Lecture Hall Complex', type: 'lecture_hall', capacity: 120, features: ['projector', 'ac'], accessible: true, allowed_uses: ['lecture', 'tutorial', 'exam', 'event'] },
+  { id: 'LH-4', name: 'Lecture Hall 4', building: 'Lecture Hall Complex', type: 'lecture_hall', capacity: 120, features: ['projector', 'ac'], accessible: true, allowed_uses: ['lecture', 'tutorial', 'exam', 'event'] },
+  { id: 'LH-5', name: 'Lecture Hall 5', building: 'Lecture Hall Complex', type: 'lecture_hall', capacity: 120, features: ['projector', 'ac'], accessible: true, allowed_uses: ['lecture', 'tutorial', 'exam', 'event'] },
+  { id: 'LH-6', name: 'Lecture Hall 6', building: 'Lecture Hall Complex', type: 'lecture_hall', capacity: 120, features: ['projector', 'ac'], accessible: true, allowed_uses: ['lecture', 'tutorial', 'exam', 'event'] },
+  { id: 'CR-101', name: 'Classroom A-101', building: 'Block A', type: 'classroom', capacity: 90, features: ['projector'], accessible: true, allowed_uses: ['lecture', 'tutorial'] },
+  { id: 'CR-102', name: 'Classroom A-102', building: 'Block A', type: 'classroom', capacity: 90, features: ['projector'], accessible: true, allowed_uses: ['lecture', 'tutorial'] },
+  { id: 'CR-103', name: 'Classroom A-103', building: 'Block A', type: 'classroom', capacity: 80, features: ['projector'], accessible: true, allowed_uses: ['lecture', 'tutorial'] },
+  { id: 'CR-104', name: 'Classroom A-104', building: 'Block A', type: 'classroom', capacity: 80, features: ['projector'], accessible: true, allowed_uses: ['lecture', 'tutorial'] },
+  { id: 'CR-105', name: 'Classroom A-105', building: 'Block A', type: 'classroom', capacity: 70, features: ['projector'], accessible: true, allowed_uses: ['lecture', 'tutorial'] },
+  { id: 'CR-201', name: 'Classroom B-201', building: 'Block B', type: 'classroom', capacity: 90, features: ['projector'], accessible: false, allowed_uses: ['lecture', 'tutorial'] },
+  { id: 'CR-202', name: 'Classroom B-202', building: 'Block B', type: 'classroom', capacity: 80, features: ['projector'], accessible: false, allowed_uses: ['lecture', 'tutorial'] },
+  { id: 'CR-203', name: 'Classroom B-203', building: 'Block B', type: 'classroom', capacity: 80, features: ['projector'], accessible: false, allowed_uses: ['lecture', 'tutorial'] },
+  { id: 'CR-204', name: 'Classroom B-204', building: 'Block B', type: 'classroom', capacity: 70, features: ['projector'], accessible: false, allowed_uses: ['lecture', 'tutorial'] },
+  { id: 'CR-205', name: 'Classroom B-205', building: 'Block B', type: 'classroom', capacity: 60, features: ['projector'], accessible: false, allowed_uses: ['lecture', 'tutorial'] },
+  { id: 'SH-1', name: 'Seminar Hall 1', building: 'SH', type: 'seminar_hall', capacity: 150, features: ['projector', 'ac'], accessible: true, allowed_uses: ['lecture', 'event'] },
+  { id: 'SH-2', name: 'Seminar Hall 2', building: 'SH', type: 'seminar_hall', capacity: 100, features: ['projector', 'ac'], accessible: false, allowed_uses: ['lecture', 'event'] },
+  { id: 'OAT', name: 'Open Air Theatre', building: 'OAT', type: 'open_air_theatre', capacity: 800, features: ['stage', 'pa_system'], accessible: true, allowed_uses: ['event', 'club'] },
+  { id: 'CS-LAB-1', name: 'Computing Lab 1', building: 'CS Block', type: 'lab', capacity: 90, features: ['computers', 'projector'], accessible: true, allowed_uses: ['lab'] },
+  { id: 'CS-LAB-2', name: 'Computing Lab 2', building: 'CS Block', type: 'lab', capacity: 90, features: ['computers', 'projector'], accessible: true, allowed_uses: ['lab'] },
+  { id: 'ELEC-LAB-1', name: 'Electronics Lab 1', building: 'EE Block', type: 'lab', capacity: 80, features: ['equipment'], accessible: true, allowed_uses: ['lab'] },
+  { id: 'ELEC-LAB-2', name: 'Electronics Lab 2', building: 'EE Block', type: 'lab', capacity: 80, features: ['equipment'], accessible: true, allowed_uses: ['lab'] },
+  { id: 'PHY-LAB', name: 'Physics Lab', building: 'Science Block', type: 'lab', capacity: 90, features: ['equipment'], accessible: true, allowed_uses: ['lab'] },
+  { id: 'MECH-WS', name: 'Central Workshop', building: 'Mech Block', type: 'lab', capacity: 90, features: ['heavy_machinery'], accessible: true, allowed_uses: ['workshop'] },
+  { id: 'CIVIL-LAB', name: 'Civil Engineering Lab', building: 'Civil Block', type: 'lab', capacity: 60, features: ['equipment'], accessible: true, allowed_uses: ['lab'] },
 ];
+
+function parsePromptClient(text: string, availableRooms: Room[]) {
+  const lower = (text || '').toLowerCase().trim();
+
+  // 1. Detect Venue
+  let vId: string | undefined;
+  let vProv: string | undefined;
+
+  const crMatch = lower.match(/\b(?:cr[\s-]*|class\s*room\s*|classroom\s*|room\s*|kamra\s*(?:no\.?|number)?\s*)([12]0[1-5])\b/);
+  if (crMatch) {
+    vId = `CR-${crMatch[1]}`;
+    vProv = `Inferred from "${crMatch[0].trim()}" (${vId}).`;
+  } else {
+    const lhMatch = lower.match(/\b(?:lh[\s-]*|lecture\s*hall\s*)([1-6])\b/);
+    if (lhMatch) {
+      vId = `LH-${lhMatch[1]}`;
+      vProv = `Inferred from "${lhMatch[0].trim()}" (${vId}).`;
+    } else if (lower.includes('auditorium') || lower.includes('aud')) {
+      vId = 'AUD';
+      vProv = 'Inferred from "Auditorium".';
+    } else if (lower.includes('open air') || lower.includes('oat')) {
+      vId = 'OAT';
+      vProv = 'Inferred from "Open Air Theatre".';
+    } else if (lower.includes('seminar hall 1') || lower.match(/\bsh[\s-]*1\b/)) {
+      vId = 'SH-1';
+      vProv = 'Inferred from "Seminar Hall 1".';
+    } else if (lower.includes('seminar hall 2') || lower.match(/\bsh[\s-]*2\b/)) {
+      vId = 'SH-2';
+      vProv = 'Inferred from "Seminar Hall 2".';
+    } else if (lower.includes('physics lab') || lower.match(/\bphy[\s-]*lab\b/)) {
+      vId = 'PHY-LAB';
+      vProv = 'Inferred from "Physics Lab".';
+    } else if (lower.includes('computer lab 2') || lower.match(/\bcs[\s-]*lab[\s-]*2\b/)) {
+      vId = 'CS-LAB-2';
+      vProv = 'Inferred from "Computing Lab 2".';
+    } else if (lower.includes('computer lab') || lower.includes('computing lab') || lower.match(/\bcs[\s-]*lab\b/)) {
+      vId = 'CS-LAB-1';
+      vProv = 'Inferred from "Computing Lab 1".';
+    } else if (lower.includes('electronics lab 2') || lower.match(/\belec[\s-]*lab[\s-]*2\b/)) {
+      vId = 'ELEC-LAB-2';
+      vProv = 'Inferred from "Electronics Lab 2".';
+    } else if (lower.includes('electronics lab') || lower.match(/\belec[\s-]*lab\b/)) {
+      vId = 'ELEC-LAB-1';
+      vProv = 'Inferred from "Electronics Lab 1".';
+    } else if (lower.includes('workshop') || lower.match(/\bmech[\s-]*ws\b/)) {
+      vId = 'MECH-WS';
+      vProv = 'Inferred from "Central Workshop".';
+    } else if (lower.includes('civil lab')) {
+      vId = 'CIVIL-LAB';
+      vProv = 'Inferred from "Civil Lab".';
+    } else if (lower.match(/\b(?:bade\s+room|any\s+large\s+room|big\s+hall)\b/)) {
+      vId = 'LH-1';
+      vProv = 'Inferred from "bade room" (LH-1).';
+    } else if (lower.match(/\b(?:classroom|class\s*room|kamra)\b/)) {
+      vId = 'CR-101';
+      vProv = 'Defaulted to Classroom CR-101.';
+    }
+  }
+
+  // 2. Detect Day
+  let d: Day | undefined;
+  let dProv: string | undefined;
+  if (lower.includes('शुक्रवार') || lower.match(/\b(?:friday|shukrawar|shukravaar|jumma|fri)\b/) || lower.includes('nov 6') || lower.includes('6 nov')) {
+    d = 'FRI';
+    dProv = 'Inferred from "Friday / शुक्रवार"';
+  } else if (lower.includes('सोमवार') || lower.match(/\b(?:monday|somwar|somvaar|sombar|mon)\b/) || lower.includes('nov 2') || lower.includes('2 nov')) {
+    d = 'MON';
+    dProv = 'Inferred from "Monday / सोमवार"';
+  } else if (lower.includes('मंगलवार') || lower.match(/\b(?:tuesday|mangalwar|mangalvaar|mangal|tue)\b/) || lower.includes('nov 3') || lower.includes('3 nov')) {
+    d = 'TUE';
+    dProv = 'Inferred from "Tuesday / मंगलवार"';
+  } else if (lower.includes('बुधवार') || lower.match(/\b(?:wednesday|budhwar|budhvaar|budh|wed)\b/) || lower.includes('nov 4') || lower.includes('4 nov')) {
+    d = 'WED';
+    dProv = 'Inferred from "Wednesday / बुधवार"';
+  } else if (lower.includes('गुरुवार') || lower.includes('बृहस्पतिवार') || lower.match(/\b(?:thursday|guruwar|guruvaar|brihaspativar|veervar|thu)\b/) || lower.includes('nov 5') || lower.includes('5 nov')) {
+    d = 'THU';
+    dProv = 'Inferred from "Thursday / गुरुवार"';
+  } else if (lower.match(/\b(?:kal|tomorrow)\b/)) {
+    d = 'TUE';
+    dProv = 'Inferred from "kal" (Tuesday)';
+  } else if (lower.match(/\b(?:parso|day after tomorrow)\b/)) {
+    d = 'WED';
+    dProv = 'Inferred from "parso" (Wednesday)';
+  } else if (lower.match(/\b(?:narso)\b/)) {
+    d = 'THU';
+    dProv = 'Inferred from "narso" (Thursday)';
+  } else if (lower.match(/\b(?:aaj|today)\b/)) {
+    d = 'MON';
+    dProv = 'Inferred from "aaj" (Monday)';
+  }
+
+  // 3. Detect Periods / Time
+  let pers: number[] | undefined;
+  let pProv: string | undefined;
+
+  const pRange = lower.match(/(?:periods?|p)\s*(\d{1,2})\s*(?:to|-)\s*(?:periods?|p)?\s*(\d{1,2})/);
+  if (pRange) {
+    const fp = parseInt(pRange[1], 10);
+    const tp = parseInt(pRange[2], 10);
+    if (fp >= 1 && tp <= 13 && tp >= fp) {
+      pers = Array.from({ length: tp - fp + 1 }, (_, i) => fp + i);
+      pProv = `Periods P${fp} to P${tp} inferred from "${pRange[0]}".`;
+    }
+  }
+
+  if (!pers) {
+    if (lower.match(/\b(?:10\s*(?:am)?\s*(?:se|to|-)\s*12\s*(?:pm|baje)?|10\s*baje\s*se\s*12\s*baje)\b/)) {
+      pers = [3, 4];
+      pProv = 'Periods P3-P4 inferred from "10:00 - 12:00".';
+    } else if (lower.match(/\b(?:9\s*(?:am)?\s*(?:se|to|-)\s*12\s*(?:pm|baje)?|9\s*baje\s*se\s*12\s*baje)\b/)) {
+      pers = [2, 3, 4];
+      pProv = 'Periods P2-P4 inferred from "09:00 - 12:00".';
+    } else if (lower.match(/\b(?:9\s*(?:am)?\s*(?:se|to|-)\s*11\s*(?:am|baje)?|9\s*baje\s*se\s*11\s*baje)\b/)) {
+      pers = [2, 3];
+      pProv = 'Periods P2-P3 inferred from "09:00 - 11:00".';
+    } else if (lower.match(/\b(?:8\s*(?:am)?\s*(?:se|to|-)\s*10\s*(?:am|baje)?|8\s*baje\s*se\s*10\s*baje)\b/)) {
+      pers = [1, 2];
+      pProv = 'Periods P1-P2 inferred from "08:00 - 10:00".';
+    } else if (lower.match(/\b(?:11\s*(?:am)?\s*(?:se|to|-)\s*1\s*(?:pm|baje)?|11\s*baje\s*se\s*1\s*baje)\b/)) {
+      pers = [4, 5];
+      pProv = 'Periods P4-P5 inferred from "11:00 - 13:00".';
+    } else if (lower.match(/\b(?:2\s*(?:pm)?\s*(?:se|to|-)\s*4\s*(?:pm|baje)?|2\s*baje\s*se\s*4\s*baje|14:00\s*(?:to|-)\s*16:00)\b/)) {
+      pers = [6, 7];
+      pProv = 'Periods P6-P7 inferred from "14:00 - 16:00 (2 PM - 4 PM)".';
+    } else if (lower.match(/\b(?:2\s*(?:pm)?\s*(?:se|to|-)\s*5\s*(?:pm|baje)?|2\s*baje\s*se\s*5\s*baje|14:00\s*(?:to|-)\s*17:00)\b/)) {
+      pers = [6, 7, 8];
+      pProv = 'Periods P6-P8 inferred from "14:00 - 17:00 (2 PM - 5 PM)".';
+    } else if (lower.match(/\b(?:2\s*(?:pm)?\s*(?:se|to|-)\s*6\s*(?:pm|baje)?|2\s*baje\s*se\s*6\s*baje|14:00\s*(?:to|-)\s*18:00)\b/)) {
+      pers = [6, 7, 8, 9];
+      pProv = 'Periods P6-P9 inferred from "14:00 - 18:00 (2 PM - 6 PM)".';
+    } else if (lower.match(/\b(?:3\s*(?:pm)?\s*(?:se|to|-)\s*5\s*(?:pm|baje)?|3\s*baje\s*se\s*5\s*baje|15:00\s*(?:to|-)\s*17:00)\b/)) {
+      pers = [7, 8];
+      pProv = 'Periods P7-P8 inferred from "15:00 - 17:00 (3 PM - 5 PM)".';
+    } else if (lower.match(/\b(?:4\s*(?:pm)?\s*(?:se|to|-)\s*6\s*(?:pm|baje)?|4\s*baje\s*se\s*6\s*baje|16:00\s*(?:to|-)\s*18:00)\b/)) {
+      pers = [8, 9];
+      pProv = 'Periods P8-P9 inferred from "16:00 - 18:00 (4 PM - 6 PM)".';
+    } else if (lower.match(/\b(?:6\s*(?:pm)?\s*(?:se|to|-)\s*8\s*(?:pm|baje)?|6\s*baje\s*se\s*8\s*baje|18:00\s*(?:to|-)\s*20:00)\b/)) {
+      pers = [10, 11];
+      pProv = 'Periods P10-P11 inferred from "18:00 - 20:00 (6 PM - 8 PM)".';
+    } else if (lower.match(/\b(?:6\s*(?:pm)?\s*(?:se|to|-)\s*9\s*(?:pm|baje)?|6\s*baje\s*se\s*9\s*baje|18:00\s*(?:to|-)\s*21:00)\b/)) {
+      pers = [10, 11, 12];
+      pProv = 'Periods P10-P12 inferred from "18:00 - 21:00 (6 PM - 9 PM)".';
+    } else if (lower.match(/\b(?:7\s*(?:pm)?\s*(?:se|to|-)\s*9\s*(?:pm|baje)?|7\s*baje\s*se\s*9\s*baje|19:00\s*(?:to|-)\s*21:00)\b/)) {
+      pers = [11, 12];
+      pProv = 'Periods P11-P12 inferred from "19:00 - 21:00 (7 PM - 9 PM)".';
+    } else if (lower.match(/\b(?:8\s*(?:pm)?\s*(?:se|to|-)\s*10\s*pm|20:00\s*(?:to|-)\s*22:00)\b/)) {
+      pers = [12, 13];
+      pProv = 'Periods P12-P13 inferred from "20:00 - 22:00 (8 PM - 10 PM)".';
+    } else if (lower.match(/\b(?:after\s*lunch|post\s*lunch|lunch\s*ke\s*baad)\b/)) {
+      pers = [6];
+      pProv = 'Period P6 inferred from "after lunch".';
+    } else {
+      const singleP = lower.match(/\b(?:period|p)\s*(\d{1,2})\b/);
+      if (singleP) {
+        const pNum = parseInt(singleP[1], 10);
+        if (pNum >= 1 && pNum <= 13) {
+          pers = [pNum];
+          pProv = `Period P${pNum} inferred from "${singleP[0]}".`;
+        }
+      }
+    }
+  }
+
+  // 4. Detect Attendees
+  let att: number | undefined;
+  let aProv: string | undefined;
+  const attExplicit = lower.match(/(\d{1,4})\s*(?:people|pepole|students|participants|attendees|persons|folks|members|log|लोग|bacche|bache|seats)/);
+  if (attExplicit) {
+    att = parseInt(attExplicit[1], 10);
+    aProv = `Inferred from "${attExplicit[0].trim()}".`;
+  } else {
+    const ctxMatch = lower.match(/(?:attendance|capacity|strength|expecting|around|about|for)\s*(\d{2,4})\b/);
+    if (ctxMatch) {
+      att = parseInt(ctxMatch[1], 10);
+      aProv = `Inferred from "${ctxMatch[0].trim()}".`;
+    } else {
+      const roomDigits = new Set((vId || '').match(/\d+/g) || []);
+      const allNumbers = lower.match(/\b(\d{2,4})\b/g) || [];
+      for (const nStr of allNumbers) {
+        if (roomDigits.has(nStr)) continue;
+        const n = parseInt(nStr, 10);
+        if (n >= 20 && n <= 1000 && ![10, 11, 12, 13].includes(n)) {
+          att = n;
+          aProv = `Inferred from number "${n}".`;
+          break;
+        }
+      }
+    }
+  }
+
+  // 5. Detect Title / Purpose
+  let t = 'Campus Activity Booking';
+  let tProv = 'Inferred from activity description.';
+  if (lower.includes('dance rehearsal')) {
+    t = "Spectra '27 Dance Society Rehearsal";
+    tProv = 'Inferred from "dance rehearsal".';
+  } else if (lower.includes('battle of the bands')) {
+    t = "Spectra '27 Battle of the Bands";
+    tProv = 'Inferred from "Battle of the Bands".';
+  } else if (lower.includes('guest lecture')) {
+    t = 'Guest Lecture';
+    tProv = 'Inferred from "guest lecture".';
+  } else if (lower.includes('olympiad') || lower.includes('science demo')) {
+    t = 'Science Olympiad Laboratory Demonstration';
+    tProv = 'Inferred from "science olympiad demo".';
+  } else if (lower.includes('coding') || lower.includes('hackathon')) {
+    t = 'Coding Club Workshop Session';
+    tProv = 'Inferred from coding session.';
+  } else if (vId) {
+    t = `${vId} Reserved Activity`;
+    tProv = `Inferred from reservation for ${vId}.`;
+  }
+
+  // 6. Category
+  let cat: string | undefined;
+  if (lower.match(/\b(?:inauguration|opening|valedictory|institute)\b/)) {
+    cat = 'institute_event';
+  } else if (lower.match(/\b(?:guest\s*lecture|talk|seminar|keynote)\b/)) {
+    cat = 'guest_lecture';
+  } else if (lower.match(/\b(?:department|faculty\s*meeting|dept)\b/)) {
+    cat = 'department_event';
+  } else {
+    cat = 'club_event';
+  }
+
+  // 7. Wheelchair
+  const wheelchair = lower.includes('wheelchair') || lower.includes('accessible') || lower.includes('ramp') || lower.includes('divyang');
+
+  return {
+    venueId: vId,
+    day: d,
+    periods: pers,
+    attendees: att,
+    title: t,
+    category: cat,
+    needsWheelchair: wheelchair,
+    provenance: {
+      ...(tProv ? { title: tProv } : {}),
+      ...(vProv ? { venue: vProv } : {}),
+      ...(dProv ? { day: dProv } : {}),
+      ...(pProv ? { periods: pProv } : {}),
+      ...(aProv ? { attendees: aProv } : {}),
+    },
+  };
+}
 
 export default function NewBookingPage() {
   const { role, user } = useApp();
@@ -43,9 +309,15 @@ export default function NewBookingPage() {
   } | null>(null);
   const [apiError, setApiError] = useState<{ code: string; message: string } | null>(null);
 
+  const [existingBookings, setExistingBookings] = useState<any[]>([]);
+
   useEffect(() => {
     api.getMeta().then((meta) => {
       if (Array.isArray(meta?.rooms)) setRooms(meta.rooms);
+    }).catch(() => {});
+
+    api.getBookings().then((res) => {
+      if (Array.isArray(res?.bookings)) setExistingBookings(res.bookings);
     }).catch(() => {});
   }, []);
   const [activeTab, setActiveTab] = useState<'describe' | 'manual'>('describe');
@@ -53,6 +325,7 @@ export default function NewBookingPage() {
   // AI error simulation state
   const [isAiServiceFailing, setIsAiServiceFailing] = useState(false);
   const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
+  const [isParsing, setIsParsing] = useState<boolean>(false);
 
   // Raw Prompt State
   const [promptText, setPromptText] = useState(
@@ -89,6 +362,18 @@ export default function NewBookingPage() {
       category: 'Fest Rehearsal',
     },
     {
+      text: 'CR-101 chahiye kal subah 10 se 12 baje tak 50 students ke liye',
+      category: 'Classroom Booking',
+    },
+    {
+      text: 'Classroom 102 chahiye Monday 2 baje se 4 baje tak coding session ke liye',
+      category: 'Coding Workshop',
+    },
+    {
+      text: 'LH-2 chahiye kal 11 se 1 for technical seminar',
+      category: 'Lecture Hall Block',
+    },
+    {
       text: 'Open Air Theatre on Friday night P10-P12 for Battle of the Bands, 600 students',
       category: 'Mega Event',
     },
@@ -96,123 +381,118 @@ export default function NewBookingPage() {
       text: 'Seminar Hall 1 on Thursday P7 for guest lecture by Prof. Mohapatra on quantum optics',
       category: 'Academic Lecture',
     },
-    {
-      text: 'Physics Lab on Wednesday morning 9 to 12 for high school science olympiad demo',
-      category: 'Lab Block',
-    },
   ];
 
-  // Parse natural language prompt into structured draft
-  const handleParsePrompt = (textToParse: string) => {
+  const applyParsed = (parsed: {
+    venueId?: string;
+    day?: Day;
+    periods?: number[];
+    attendees?: number;
+    title?: string;
+    category?: string;
+    needsWheelchair?: boolean;
+    provenance: Record<string, string>;
+  }) => {
+    if (parsed.venueId && rooms.some((r) => r.id === parsed.venueId)) {
+      setVenueId(parsed.venueId);
+    }
+    if (parsed.day) {
+      setDay(parsed.day);
+    }
+    if (parsed.periods && parsed.periods.length > 0) {
+      setSelectedPeriods(parsed.periods);
+    }
+    if (typeof parsed.attendees === 'number' && parsed.attendees > 0) {
+      setAttendees(parsed.attendees);
+    }
+    if (parsed.title) {
+      setTitle(parsed.title);
+    }
+    if (parsed.category) {
+      setCategory(parsed.category);
+    }
+    if (parsed.needsWheelchair !== undefined) {
+      setNeedsWheelchair(parsed.needsWheelchair);
+    }
+    setProvenanceMap((prev) => ({
+      ...prev,
+      ...parsed.provenance,
+    }));
+    setGuessedFields(new Set(['title', 'venue', 'day', 'periods', 'attendees']));
+  };
+
+  // Parse natural language prompt into structured draft using AI service with deterministic fallback
+  const handleParsePrompt = async (textToParse: string) => {
+    setIsParsing(true);
+    setAiErrorMessage(null);
+
+    const clientDraft = parsePromptClient(textToParse, rooms);
+
     if (isAiServiceFailing) {
       setAiErrorMessage(
         'The AI natural language parsing service did not respond. The manual form below is active and fully functional.'
       );
-      setActiveTab('manual');
+      applyParsed(clientDraft);
+      setIsParsing(false);
       return;
     }
 
-    setAiErrorMessage(null);
-    const lower = textToParse.toLowerCase();
+    try {
+      const res = await api.parseBooking(textToParse);
+      if (res && res.draft) {
+        const draft = res.draft;
+        const targetVenue = draft.requested_room || clientDraft.venueId;
+        const targetDay = (draft.windows?.[0]?.day as Day) || clientDraft.day;
+        let targetPeriods = clientDraft.periods;
+        if (
+          draft.windows &&
+          draft.windows.length > 0 &&
+          typeof draft.windows[0].from_period === 'number' &&
+          typeof draft.windows[0].to_period === 'number'
+        ) {
+          const fp = draft.windows[0].from_period;
+          const tp = draft.windows[0].to_period;
+          targetPeriods = Array.from({ length: tp - fp + 1 }, (_, i) => fp + i);
+        }
+        const targetAtt =
+          typeof draft.attendance === 'number' && draft.attendance > 0
+            ? draft.attendance
+            : clientDraft.attendees;
+        const targetCat = draft.effective_category || draft.event_type || clientDraft.category;
+        const targetWheelchair =
+          Array.isArray(draft.needs) && (draft.needs.includes('accessible') || draft.needs.includes('wheelchair'))
+            ? true
+            : clientDraft.needsWheelchair;
 
-    // 1. Detect Venue
-    let vId = 'AUD';
-    let vProv = 'Inferred from "Auditorium"';
-    if (lower.includes('open air') || lower.includes('oat')) {
-      vId = 'OAT';
-      vProv = 'Inferred from "Open Air Theatre"';
-    } else if (lower.includes('seminar hall 1') || lower.includes('sh-1')) {
-      vId = 'SH-1';
-      vProv = 'Inferred from "Seminar Hall 1"';
-    } else if (lower.includes('seminar hall 2') || lower.includes('sh-2')) {
-      vId = 'SH-2';
-      vProv = 'Inferred from "Seminar Hall 2"';
-    } else if (lower.includes('physics lab') || lower.includes('phy-lab')) {
-      vId = 'PHY-LAB';
-      vProv = 'Inferred from "Physics Lab"';
-    } else if (lower.includes('cs-lab') || lower.includes('cs lab')) {
-      vId = 'CS-LAB-1';
-      vProv = 'Inferred from "CS Lab"';
+        const prov: Record<string, string> = { ...clientDraft.provenance };
+        if (res.provenance) {
+          for (const [k, v] of Object.entries(res.provenance)) {
+            if (v && typeof v === 'object' && (v as any).source_snippet) {
+              prov[k] = (v as any).source_snippet;
+            } else if (typeof v === 'string') {
+              prov[k] = v;
+            }
+          }
+        }
+
+        applyParsed({
+          venueId: targetVenue,
+          day: targetDay,
+          periods: targetPeriods,
+          attendees: targetAtt,
+          title: clientDraft.title,
+          category: targetCat,
+          needsWheelchair: targetWheelchair,
+          provenance: prov,
+        });
+      } else {
+        applyParsed(clientDraft);
+      }
+    } catch {
+      applyParsed(clientDraft);
+    } finally {
+      setIsParsing(false);
     }
-
-    // 2. Detect Day
-    let d: Day = 'THU';
-    let dProv = 'Defaulted to fest Thursday';
-    if (lower.includes('kal') || lower.includes('tomorrow') || lower.includes('tuesday')) {
-      d = 'TUE';
-      dProv = 'Inferred from "kal" / Tuesday';
-    } else if (lower.includes('monday') || lower.includes('somwar')) {
-      d = 'MON';
-      dProv = 'Inferred from "Monday"';
-    } else if (lower.includes('wednesday') || lower.includes('budhwar')) {
-      d = 'WED';
-      dProv = 'Inferred from "Wednesday"';
-    } else if (lower.includes('friday') || lower.includes('shukrawar')) {
-      d = 'FRI';
-      dProv = 'Inferred from "Friday"';
-    } else if (lower.includes('thursday') || lower.includes('guruwar')) {
-      d = 'THU';
-      dProv = 'Inferred from "Thursday"';
-    }
-
-    // 3. Detect Periods / Time
-    let pers = [10, 11, 12];
-    let pProv = 'Periods P10 to P12 inferred from evening keywords';
-    if (lower.includes('6 baje se 9 baje') || (lower.includes('6') && lower.includes('9'))) {
-      pers = [10, 11, 12];
-      pProv = 'Periods P10 to P12 inferred from "shaam 6 baje se 9 baje tak" (18:00 - 21:00).';
-    } else if (lower.includes('p10-p12') || lower.includes('night')) {
-      pers = [10, 11, 12];
-      pProv = 'Evening block P10 to P12 inferred from "night / P10-P12".';
-    } else if (lower.includes('p7') || lower.includes('3 pm') || lower.includes('15:00')) {
-      pers = [7];
-      pProv = 'Period P7 (15:00 - 16:00) inferred from "P7".';
-    } else if (lower.includes('9 to 12') || lower.includes('9 se 12')) {
-      pers = [2, 3, 4];
-      pProv = 'Morning block P2 to P4 (09:00 - 12:00) inferred from "9 to 12".';
-    }
-
-    // 4. Detect Attendees
-    let att = 200;
-    let aProv = 'Defaulted to 200';
-    const matchNumbers = lower.match(/\b(\d{2,4})\b/);
-    if (matchNumbers) {
-      att = parseInt(matchNumbers[1], 10);
-      aProv = `Inferred from "${matchNumbers[1]}".`;
-    }
-
-    // 5. Detect Title / Purpose
-    let t = 'Campus Activity Booking';
-    let tProv = 'Inferred from general activity';
-    if (lower.includes('dance rehearsal')) {
-      t = "Spectra '27 Dance Society Rehearsal";
-      tProv = 'Inferred from "dance rehearsal".';
-    } else if (lower.includes('battle of the bands')) {
-      t = "Spectra '27 Battle of the Bands";
-      tProv = 'Inferred from "Battle of the Bands".';
-    } else if (lower.includes('guest lecture')) {
-      t = 'Guest Lecture: Quantum Optics';
-      tProv = 'Inferred from "guest lecture".';
-    } else if (lower.includes('olympiad') || lower.includes('science demo')) {
-      t = 'Science Olympiad Laboratory Demonstration';
-      tProv = 'Inferred from "science olympiad demo".';
-    }
-
-    setVenueId(vId);
-    setDay(d);
-    setSelectedPeriods(pers);
-    setAttendees(att);
-    setTitle(t);
-    setGuessedFields(new Set(['title', 'venue', 'day', 'periods', 'attendees']));
-
-    setProvenanceMap({
-      title: tProv,
-      venue: vProv,
-      day: dProv,
-      periods: pProv,
-      attendees: aProv,
-      wheelchair: 'Defaulted to verified campus step-free venue.',
-    });
   };
 
   const removeGuessed = (fieldName: string) => {
@@ -243,15 +523,29 @@ export default function NewBookingPage() {
     ? `H5 Valid: Requested attendees (${attendees}) fits within ${currentRoom.id} capacity (${currentRoom.capacity}).`
     : `H5 Violation: Requested attendees (${attendees}) exceeds ${currentRoom.id} maximum safe capacity (${currentRoom.capacity}).`;
 
-  // 2. Room occupancy check (H4)
-  // Check against Monday spectra inauguration if AUD Monday P4-P5
+  // 2. Room occupancy check (H4) against all approved bookings & inauguration
   const isAUDMondayClash =
     venueId === 'AUD' && day === 'MON' && selectedPeriods.some((p) => p === 4 || p === 5);
-  // Check against scheduled classes
-  const isOccupancyOk = !isAUDMondayClash;
+
+  const conflictingBooking = existingBookings.find((b) => {
+    if (b.status !== 'approved') return false;
+    const bRoom = b.assigned_room || b.requested_room;
+    const bDay = b.assigned_day || b.windows?.[0]?.day;
+    const bSp = b.assigned_start_period ?? b.windows?.[0]?.from_period;
+    const bEp = b.assigned_end_period ?? (b.windows?.[0]?.to_period ?? (bSp ? bSp + (b.duration_periods || 1) - 1 : null));
+    if (bRoom === venueId && bDay === day && bSp && bEp) {
+      return selectedPeriods.some((p) => p >= bSp && p <= bEp);
+    }
+    return false;
+  });
+
+  const isOccupancyOk = !conflictingBooking && !isAUDMondayClash;
   const occupancyReason = isOccupancyOk
     ? `H4 Valid: ${currentRoom.id} is free on ${day} during periods ${selectedPeriods.map((p) => `P${p}`).join(", ")}.`
+    : conflictingBooking
+    ? `H4 Violation: ${venueId} is already booked on ${day} by "${conflictingBooking.title}" (${conflictingBooking.id}). Two bookings cannot occupy this room simultaneously.`
     : `H4 Violation: Clashes with Spectra '27 Inauguration (AUD, Mon P4-P5).`;
+
   // 3. Accessibility check (H10)
   const isAccessibilityOk = !needsWheelchair || currentRoom.accessible;
   const accessibilityReason = isAccessibilityOk
@@ -271,7 +565,7 @@ export default function NewBookingPage() {
   if (!isCapacityOk) {
     disabledReason = `Disabled: Attendees (${attendees}) exceeds ${currentRoom.id} capacity (${currentRoom.capacity}). Choose Open-Air Theatre (800) instead.`;
   } else if (!isOccupancyOk) {
-    disabledReason = `Disabled: ${venueId} is occupied on ${day} during requested periods. Select an alternative slot or venue below.`;
+    disabledReason = `Disabled: ${occupancyReason} Select a free alternate venue below.`;
   } else if (!isAccessibilityOk) {
     disabledReason = `Disabled: ${venueId} is not wheelchair accessible. Choose an accessible venue like AUD or SH-1.`;
   } else if (hasLunchClash) {
@@ -280,7 +574,7 @@ export default function NewBookingPage() {
     disabledReason = 'Disabled: Select at least one period (P1 to P13).';
   }
 
-  // Nearest Valid Alternatives when venue is busy or capacity fails
+  // Nearest Valid Alternatives dynamically computed
   const alternatives: Array<{
     venue: string;
     venueName: string;
@@ -288,32 +582,66 @@ export default function NewBookingPage() {
     periods: number[];
     capacity: number;
     reason: string;
-  }> = [
-    {
-      venue: 'OAT',
-      venueName: 'Open Air Theatre',
-      day: day,
-      periods: selectedPeriods,
-      capacity: 800,
-      reason: 'Free outdoor venue with stage & PA system, seats up to 800.',
-    },
-    {
-      venue: currentRoom.id,
-      venueName: currentRoom.name,
-      day: (day === 'MON' ? 'THU' : 'WED') as Day,
-      periods: [10, 11, 12],
-      capacity: currentRoom.capacity,
-      reason: `Alternative free evening slot in ${currentRoom.id} (P10-P12).`,
-    },
-    {
-      venue: 'SH-1',
-      venueName: 'Seminar Hall 1',
-      day: day,
-      periods: selectedPeriods,
-      capacity: 150,
-      reason: 'Equipped with presentation projector, AC, and stage.',
-    },
-  ];
+  }> = React.useMemo(() => {
+    const startP = selectedPeriods.length > 0 ? Math.min(...selectedPeriods) : 10;
+    const endP = selectedPeriods.length > 0 ? Math.max(...selectedPeriods) : 12;
+
+    const alts: Array<{
+      venue: string;
+      venueName: string;
+      day: Day;
+      periods: number[];
+      capacity: number;
+      reason: string;
+    }> = [];
+
+    const candidates = rooms.filter((r) => {
+      if (r.id === venueId) return false;
+      if (r.allowed_uses && !r.allowed_uses.includes('event') && !r.allowed_uses.includes('club')) return false;
+      if (r.capacity < attendees) return false;
+      if (needsWheelchair && !r.accessible) return false;
+      return true;
+    });
+
+    for (const r of candidates) {
+      let isBusy = false;
+      for (const b of existingBookings) {
+        if (b.status !== 'approved') continue;
+        const bRoom = b.assigned_room || b.requested_room;
+        const bDay = b.assigned_day || b.windows?.[0]?.day;
+        const bSp = b.assigned_start_period ?? b.windows?.[0]?.from_period ?? 1;
+        const bEp = b.assigned_end_period ?? (b.windows?.[0]?.to_period ?? bSp + (b.duration_periods || 1) - 1);
+        if (bRoom === r.id && bDay === day && Math.max(startP, bSp) <= Math.min(endP, bEp)) {
+          isBusy = true;
+          break;
+        }
+      }
+      if (!isBusy) {
+        alts.push({
+          venue: r.id,
+          venueName: r.name || r.id,
+          day: day,
+          periods: selectedPeriods,
+          capacity: r.capacity,
+          reason: `Free event venue (${r.capacity} seats) on ${day} during requested periods with zero clashes.`,
+        });
+      }
+      if (alts.length >= 3) break;
+    }
+
+    if (alts.length === 0) {
+      alts.push({
+        venue: 'OAT',
+        venueName: 'Open Air Theatre',
+        day: day,
+        periods: selectedPeriods,
+        capacity: 800,
+        reason: 'Free outdoor amphitheater with stage & PA system, seats up to 800.',
+      });
+    }
+
+    return alts;
+  }, [rooms, existingBookings, venueId, day, selectedPeriods, attendees, needsWheelchair]);
 
 
   const handleSubmit = async () => {
@@ -598,6 +926,12 @@ export default function NewBookingPage() {
                   rows={4}
                   value={promptText}
                   onChange={(e) => setPromptText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleParsePrompt(promptText);
+                    }
+                  }}
                   placeholder="Auditorium chahiye kal shaam 6 baje se 9 baje tak, 200 logon ke liye"
                   className="w-full p-3.5 bg-raised border border-line-strong rounded-[6px] font-serif italic text-[16px] leading-relaxed text-ink placeholder:text-ink-2/60 focus:outline-none focus:border-ink transition-colors"
                 />
@@ -608,8 +942,9 @@ export default function NewBookingPage() {
                     variant="primary"
                     className="h-8 text-[12px]"
                     onClick={() => handleParsePrompt(promptText)}
+                    disabled={isParsing}
                   >
-                    Parse and check
+                    {isParsing ? 'Parsing with AI...' : 'Parse and check'}
                   </Button>
                 </div>
               </div>

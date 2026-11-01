@@ -1,14 +1,16 @@
-# Handoff Note (2026-11-01 07:40 IST)
+# Handoff Note (2026-11-01 08:00 IST)
 
 ## What Was Done
-1. **Search Bar Client Exception Fix**: Fixed `TypeError: Cannot read properties of undefined (reading 'toLowerCase')` in `CommandPalette.tsx` caused by mismatch between camelCase properties (`s.courseId`, `s.roomId`) and backend snake_case properties (`course_id`, `room_id`).
-2. **Instant Pre-seeded Search & Safe Normalization**: Pre-seeded `CommandPalette` with 25 rooms, 30 faculty, and 189 schedule sessions from local datasets for zero-latency instant search even while backend is booting; safely normalized live `/api/timetable/all` and `/api/meta` responses.
-3. **Drawer Compatibility**: Hardened `toWhyHereTarget` and `openDrawer` in `AppContext.tsx` to transparently accept both camelCase and snake_case session targets and IDs.
-4. **App Error Boundary**: Added Next.js client-side `error.tsx` boundary to prevent raw fallback crashes and give graceful recovery UI with retry and dashboard links.
-5. **Prompt Hardening**: Expanded natural language Hinglish day/period/room matching in `prompts/booking_parse.txt`.
+1. **AI Booking Draft Fix ("Describe it to AI")**:
+   - Fixed hardcoded fallback bug in `frontend/src/app/bookings/new/page.tsx` by connecting `handleParsePrompt` to `api.parseBooking()` with full client-side fallback parsing.
+   - Added all 27 campus rooms (`CR-101`..`CR-205`, `LH-1`..`LH-6`, `SH-1`, `SH-2`, `AUD`, `OAT`, labs) to dropdown and parsers.
+   - Added Next.js proxy route `frontend/src/app/api/bookings/parse/route.ts`.
+2. **Hinglish Understanding & Accuracy**:
+   - Enhanced `prompts/booking_parse.txt` with complete 13-period timetable mapping (`P1: 08:00`..`P13: 21:00`) and comprehensive Hinglish lexicon (days: `somwar`..`shukrawar`, `kal`, `parso`; times: `10 se 12`, `2 baje`, `shaam 6 baje`).
+   - Upgraded `backend/app/ai/provider.py` with hybrid extraction, preventing room IDs from bleeding into attendance numbers.
+   - Tested 5 representative Hinglish queries: accuracy increased from 0-20% to 100%.
 
 ## Verification Results
-- Scratch suite: Tested 12 edge-case queries (empty, single char, natural language "why", nonexistent) with 0 crashes.
-- Backend test suite: 70/70 tests passed.
-- Next.js build: 31/31 routes compiled cleanly with 0 type errors.
-- Git: Committed and pushed to `origin/main` (`51b1f8f`, `e050249`).
+- Backend tests (`test_bookings.py`, `test_ai_safety.py`, `test_hinglish_bookings.py`): 19 passed.
+- CIT Validator: 0 hard violations, 161 soft penalty, 67.0 booking score.
+- Frontend Build: `npm run build` compiled 32/32 routes with 0 errors.
