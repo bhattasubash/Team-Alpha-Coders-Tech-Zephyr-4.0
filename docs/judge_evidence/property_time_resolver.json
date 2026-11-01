@@ -30,7 +30,7 @@
       "from": 6,
       "to": 6,
       "day": "FRI",
-      "room": null,
+      "room": "SH-1",
       "att": 50
     },
     "passed": true
@@ -48,7 +48,7 @@
       "from": 10,
       "to": 12,
       "day": "TUE",
-      "room": null,
+      "room": "SH-1",
       "att": 80
     },
     "passed": true
@@ -84,7 +84,7 @@
       "from": 10,
       "to": 11,
       "day": "TUE",
-      "room": null,
+      "room": "SH-1",
       "att": 100
     },
     "passed": true
@@ -135,13 +135,13 @@
       "day": null
     },
     "actual": {
-      "from": null,
-      "to": null,
-      "day": null,
+      "from": 10,
+      "to": 12,
+      "day": "THU",
       "room": null,
       "att": null
     },
-    "passed": true
+    "passed": false
   },
   {
     "mode": "fallback_parser",
@@ -172,11 +172,11 @@
     },
     "actual": {
       "from": 10,
-      "to": 12,
+      "to": 11,
       "day": "THU",
       "source": "fallback"
     },
-    "passed": false
+    "passed": true
   },
   {
     "mode": "deployed_api_fallback",
@@ -188,12 +188,12 @@
       "day": "FRI"
     },
     "actual": {
-      "from": 10,
-      "to": 12,
+      "from": 6,
+      "to": 6,
       "day": "FRI",
       "source": "fallback"
     },
-    "passed": false
+    "passed": true
   },
   {
     "mode": "deployed_api_fallback",
@@ -222,12 +222,12 @@
       "day": "WED"
     },
     "actual": {
-      "from": null,
-      "to": null,
-      "day": null,
+      "from": 3,
+      "to": 4,
+      "day": "WED",
       "source": "fallback"
     },
-    "passed": false
+    "passed": true
   },
   {
     "mode": "deployed_api_fallback",
@@ -240,11 +240,11 @@
     },
     "actual": {
       "from": 10,
-      "to": 12,
+      "to": 11,
       "day": "TUE",
       "source": "fallback"
     },
-    "passed": false
+    "passed": true
   },
   {
     "mode": "deployed_api_fallback",
@@ -290,12 +290,12 @@
       "day": null
     },
     "actual": {
-      "from": null,
-      "to": null,
-      "day": null,
+      "from": 10,
+      "to": 12,
+      "day": "THU",
       "source": "fallback"
     },
-    "passed": true
+    "passed": false
   },
   {
     "mode": "deployed_api_fallback",

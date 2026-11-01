@@ -672,7 +672,7 @@ class LLMProvider:
             r_id = f"LH-{lh_match.group(1)}"
             return r_id, ["lecture_hall"], f"Inferred from '{lh_match.group(0).strip()}' ({r_id})"
 
-        if re.search(r"\b(?:auditorium|main\s+auditorium|aud)\b", lower):
+        if re.search(r"\b(?:auditorium|main\s+auditorium|audi|aud)\b", lower):
             return "AUD", ["auditorium"], "Inferred from 'Auditorium'"
         if re.search(r"\b(?:open\s*air\s*theatre|open\s*air\s*theater|oat)\b", lower):
             return "OAT", ["outdoor"], "Inferred from 'Open Air Theatre'"
@@ -680,6 +680,8 @@ class LLMProvider:
             return "SH-1", ["seminar_hall"], "Inferred from 'Seminar Hall 1'"
         if re.search(r"\b(?:seminar\s*hall\s*2|sh[\s-]*2)\b", lower):
             return "SH-2", ["seminar_hall"], "Inferred from 'Seminar Hall 2'"
+        if re.search(r"\b(?:seminar\s*hall|seminar\s*room|sh)\b", lower):
+            return "SH-1", ["seminar_hall"], "Inferred from 'Seminar Hall' (defaulted to SH-1)"
         if re.search(r"\b(?:physics\s*lab|phy[\s-]*lab)\b", lower):
             return "PHY-LAB", ["lab_phy"], "Inferred from 'Physics Lab'"
         if re.search(r"\b(?:computing\s*lab\s*2|computer\s*lab\s*2|cs[\s-]*lab[\s-]*2)\b", lower):
@@ -723,84 +725,173 @@ class LLMProvider:
             return "MON", "Inferred from 'aaj' (Monday)"
         return "THU", "Defaulted to Spectra fest Thursday"
 
+    @staticmethod
+    def _hour_to_period_start(h: int) -> int | None:
+        """Map 24-hr clock start hour (8-21) to CIT period (P1-P13)."""
+        mapping = {
+            8: 1, 9: 2, 10: 3, 11: 4, 12: 5, 13: 5,
+            14: 6, 15: 7, 16: 8, 17: 9, 18: 10, 19: 11, 20: 12, 21: 13
+        }
+        return mapping.get(h)
+
+    @staticmethod
+    def _hour_to_period_end(h: int) -> int | None:
+        """Map 24-hr clock end hour (9-22) to CIT period (P1-P13)."""
+        mapping = {
+            9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 5,
+            15: 6, 16: 7, 17: 8, 18: 9, 19: 10, 20: 11, 21: 12, 22: 13
+        }
+        return mapping.get(h)
+
+    @classmethod
+    def _normalize_hour(
+        cls, h: int, is_end: bool, context_is_pm: bool, context_is_am: bool, partner_h_24: int | None = None
+    ) -> int | None:
+        if h >= 24:
+            return None
+        if h >= 13:
+            return h
+        if h == 12:
+            return 12
+        if context_is_am:
+            if is_end and 1 <= h <= 7 and partner_h_24 and partner_h_24 >= 8:
+                return h + 12
+            return h
+        if context_is_pm:
+            return h + 12 if h < 12 else h
+        if 1 <= h <= 7:
+            return h + 12
+        if partner_h_24 is not None:
+            if partner_h_24 in (12, 13, 14, 15):
+                return h
+            if partner_h_24 >= 18 and h in (8, 9, 10):
+                return h + 12
+        return h
+
     def _extract_periods(self, lower: str) -> tuple[int | None, int | None, str | None]:
-        """Extract from_period and to_period from explicit periods or clock hours."""
-        p_range = re.search(r"(?:periods?|p)\s*(\d{1,2})\s*(?:to|-)\s*(?:periods?|p)?\s*(\d{1,2})", lower)
+        """Extract from_period and to_period dynamically from explicit periods, ranges, durations, or clock hours."""
+        # 1. Explicit periods like 'periods 10 to 12', 'P3 to P4', 'Period 6'
+        p_range = re.search(r"(?:periods?|p)\s*(\d{1,2})\s*(?:to|-|se)\s*(?:periods?|p)?\s*(\d{1,2})", lower)
         if p_range:
             fp, tp = int(p_range.group(1)), int(p_range.group(2))
-            return fp, tp, f"Inferred from 'periods P{fp} to P{tp}'"
-
-        # 10 to 12 / 10 se 12 (P3 to P4)
-        if re.search(r"\b(?:10\s*(?:am)?\s*(?:se|to|-)\s*12\s*(?:pm|baje)?|10\s*baje\s*se\s*12\s*baje)\b", lower):
-            return 3, 4, "Inferred from 10:00 - 12:00 (P3 to P4)"
-        # 9 to 12 / 9 se 12 (P2 to P4)
-        if re.search(r"\b(?:9\s*(?:am)?\s*(?:se|to|-)\s*12\s*(?:pm|baje)?|9\s*baje\s*se\s*12\s*baje)\b", lower):
-            return 2, 4, "Inferred from 09:00 - 12:00 (P2 to P4)"
-        # 9 to 11 / 9 se 11 (P2 to P3)
-        if re.search(r"\b(?:9\s*(?:am)?\s*(?:se|to|-)\s*11\s*(?:am|baje)?|9\s*baje\s*se\s*11\s*baje)\b", lower):
-            return 2, 3, "Inferred from 09:00 - 11:00 (P2 to P3)"
-        # 8 to 10 / 8 se 10 (P1 to P2)
-        if re.search(r"\b(?:8\s*(?:am)?\s*(?:se|to|-)\s*10\s*(?:am|baje)?|8\s*baje\s*se\s*10\s*baje)\b", lower):
-            return 1, 2, "Inferred from 08:00 - 10:00 (P1 to P2)"
-        # 11 to 1 / 11 se 1 (P4 to P5)
-        if re.search(r"\b(?:11\s*(?:am)?\s*(?:se|to|-)\s*1\s*(?:pm|baje)?|11\s*baje\s*se\s*1\s*baje)\b", lower):
-            return 4, 5, "Inferred from 11:00 - 13:00 (P4 to P5)"
-        # 2 to 4 / 2 se 4 (P6 to P7)
-        if re.search(r"\b(?:2\s*(?:pm)?\s*(?:se|to|-)\s*4\s*(?:pm|baje)?|2\s*baje\s*se\s*4\s*baje|14:00\s*(?:to|-)\s*16:00)\b", lower):
-            return 6, 7, "Inferred from 14:00 - 16:00 (P6 to P7)"
-        # 2 to 5 / 2 se 5 (P6 to P8)
-        if re.search(r"\b(?:2\s*(?:pm)?\s*(?:se|to|-)\s*5\s*(?:pm|baje)?|2\s*baje\s*se\s*5\s*baje|14:00\s*(?:to|-)\s*17:00)\b", lower):
-            return 6, 8, "Inferred from 14:00 - 17:00 (P6 to P8)"
-        # 2 to 6 / 2 se 6 (P6 to P9)
-        if re.search(r"\b(?:2\s*(?:pm)?\s*(?:se|to|-)\s*6\s*(?:pm|baje)?|2\s*baje\s*se\s*6\s*baje|14:00\s*(?:to|-)\s*18:00)\b", lower):
-            return 6, 9, "Inferred from 14:00 - 18:00 (P6 to P9)"
-        # 3 to 5 / 3 se 5 (P7 to P8)
-        if re.search(r"\b(?:3\s*(?:pm)?\s*(?:se|to|-)\s*5\s*(?:pm|baje)?|3\s*baje\s*se\s*5\s*baje|15:00\s*(?:to|-)\s*17:00)\b", lower):
-            return 7, 8, "Inferred from 15:00 - 17:00 (P7 to P8)"
-        # 4 to 6 / 4 se 6 (P8 to P9)
-        if re.search(r"\b(?:4\s*(?:pm)?\s*(?:se|to|-)\s*6\s*(?:pm|baje)?|4\s*baje\s*se\s*6\s*baje|16:00\s*(?:to|-)\s*18:00)\b", lower):
-            return 8, 9, "Inferred from 16:00 - 18:00 (P8 to P9)"
-        # 6 to 8 / 6 se 8 (P10 to P11)
-        if re.search(r"\b(?:6\s*(?:pm)?\s*(?:se|to|-)\s*8\s*(?:pm|baje)?|6\s*baje\s*se\s*8\s*baje|18:00\s*(?:to|-)\s*20:00)\b", lower):
-            return 10, 11, "Inferred from evening 18:00 - 20:00 (P10 to P11)"
-        # 6 to 9 / 6 se 9 (P10 to P12)
-        if re.search(r"\b(?:6\s*(?:pm)?\s*(?:se|to|-)\s*9\s*(?:pm|baje)?|6\s*baje\s*se\s*9\s*baje|18:00\s*(?:to|-)\s*21:00)\b", lower):
-            return 10, 12, "Inferred from evening 18:00 - 21:00 (P10 to P12)"
-        # 7 to 9 / 7 se 9 (P11 to P12)
-        if re.search(r"\b(?:7\s*(?:pm)?\s*(?:se|to|-)\s*9\s*(?:pm|baje)?|7\s*baje\s*se\s*9\s*baje|19:00\s*(?:to|-)\s*21:00)\b", lower):
-            return 11, 12, "Inferred from evening 19:00 - 21:00 (P11 to P12)"
-        # 8 to 10 pm (P12 to P13)
-        if re.search(r"\b(?:8\s*(?:pm)?\s*(?:se|to|-)\s*10\s*pm|20:00\s*(?:to|-)\s*22:00)\b", lower):
-            return 12, 13, "Inferred from late evening 20:00 - 22:00 (P12 to P13)"
-
-        # Durations like "10 baje 2 ghante ke liye" or "6 pm for 2 hours"
-        dur_match = re.search(r"(\d{1,2})\s*(?:pm|am|baje)?\s*(?:se\s*)?(?:for\s*)?(\d)\s*(?:hours|ghante)", lower)
-        if dur_match:
-            st, dur = int(dur_match.group(1)), int(dur_match.group(2))
-            if st == 6 and ("shaam" in lower or "pm" in lower or st >= 6):
-                return 10, 10 + dur - 1, f"Inferred from 6 PM for {dur} hrs (P10 to P{10 + dur - 1})"
-            elif st == 10:
-                return 3, 3 + dur - 1, f"Inferred from 10 AM for {dur} hrs (P3 to P{3 + dur - 1})"
-            elif st == 2:
-                return 6, 6 + dur - 1, f"Inferred from 2 PM for {dur} hrs (P6 to P{6 + dur - 1})"
-            elif st == 9:
-                return 2, 2 + dur - 1, f"Inferred from 9 AM for {dur} hrs (P2 to P{2 + dur - 1})"
-
-        # Contextual keywords
-        if re.search(r"\b(?:after\s*lunch|post\s*lunch|lunch\s*ke\s*baad)\b", lower):
-            return 6, 6, "Inferred from 'after lunch' (Period P6, 14:00 - 15:00)"
+            if 1 <= fp <= 13 and 1 <= tp <= 13 and tp >= fp:
+                return fp, tp, f"Inferred from 'periods P{fp} to P{tp}'"
 
         single_p = re.search(r"\b(?:period|p)\s*(\d{1,2})\b", lower)
         if single_p:
             p = int(single_p.group(1))
-            return p, p, f"Inferred from 'Period P{p}'"
+            if 1 <= p <= 13:
+                return p, p, f"Inferred from 'Period P{p}'"
+
+        # 2. Context markers
+        is_am = bool(re.search(r"\b(?:subah|morning)\b", lower))
+        is_pm = bool(re.search(r"\b(?:shaam|sham|saanjh|dopahar|raat|evening|afternoon|night)\b", lower))
+
+        # 3. Contextual keywords: 'after lunch', 'lunch ke baad', 'post lunch'
+        if re.search(r"\b(?:after\s*lunch|post\s*lunch|lunch\s*ke\s*baad)\b", lower):
+            return 6, 6, "Inferred from 'after lunch' (Period P6, 14:00 - 15:00)"
+
+        # 4. Dynamic time range format: '6 se 8 baje tak', '10 am to 12 pm', '2 to 6', '10 se 1'
+        range_match = re.search(
+            r"\b(\d{1,2})(?::00)?\s*(am|pm|baje)?\s*(?:se|to|-)\s*(\d{1,2})(?::00)?\s*(am|pm|baje)?(?:\s*tak)?\b",
+            lower
+        )
+        if range_match:
+            h1 = int(range_match.group(1))
+            tag1 = range_match.group(2) or ""
+            h2 = int(range_match.group(3))
+            tag2 = range_match.group(4) or ""
+
+            h1_has_am = "am" in tag1
+            h1_has_pm = "pm" in tag1
+            h2_has_am = "am" in tag2
+            h2_has_pm = "pm" in tag2
+
+            h1_am = h1_has_am or (is_am and not h1_has_pm)
+            h1_pm = h1_has_pm or (is_pm and not h1_has_am)
+            h2_am = h2_has_am or (is_am and not h2_has_pm)
+            h2_pm = h2_has_pm or (is_pm and not h2_has_am)
+
+            # Determine h1_24
+            if 1 <= h1 <= 7 and not h1_has_am:
+                h1_24 = h1 + 12
+            elif 8 <= h1 <= 11 and h1_pm:
+                h1_24 = h1 + 12
+            else:
+                h1_24 = h1
+
+            # Determine h2_24
+            if h1_24 >= 13:
+                if 1 <= h2 <= 11 and not h2_has_am:
+                    h2_24 = h2 + 12
+                elif h2 == 12:
+                    h2_24 = 24
+                else:
+                    h2_24 = h2
+            else:
+                if 1 <= h2 <= 7 and not h2_has_am:
+                    h2_24 = h2 + 12
+                elif 8 <= h2 <= 11 and h2_pm:
+                    h2_24 = h2 + 12
+                elif h2 == 12:
+                    h2_24 = 12
+                else:
+                    h2_24 = h2
+
+            if h1_24 is not None and h2_24 is not None:
+                fp = self._hour_to_period_start(h1_24)
+                tp = self._hour_to_period_end(h2_24)
+                if fp is not None and tp is not None and tp >= fp:
+                    return fp, tp, f"Inferred from {h1_24:02d}:00 - {h2_24:02d}:00 (P{fp} to P{tp})"
+
+        # 5. Duration format (adjacent or separated by words)
+        dur_num = None
+        dur_match = re.search(r"(\d+)\s*(?:hours|hour|ghante|ghanta)", lower)
+        if dur_match:
+            dur_num = int(dur_match.group(1))
+
+        time_match = re.search(r"\b(\d{1,2})(?::00)?\s*(am|pm|baje)\b", lower)
+        if time_match and dur_num:
+            raw_start = int(time_match.group(1))
+            tag = time_match.group(2)
+            h_am = "am" in tag or is_am
+            h_pm = "pm" in tag or is_pm
+            if 1 <= raw_start <= 7 and not h_am:
+                st_24 = raw_start + 12
+            elif 8 <= raw_start <= 11 and h_pm:
+                st_24 = raw_start + 12
+            else:
+                st_24 = raw_start
+            
+            end_24 = st_24 + dur_num
+            fp = self._hour_to_period_start(st_24)
+            tp = self._hour_to_period_end(end_24)
+            if fp is not None and tp is not None and tp >= fp:
+                return fp, tp, f"Inferred from {raw_start}:00 for {dur_num} hrs (P{fp} to P{tp})"
+
+        # 6. Single time mention: default 1 period
+        if time_match and not dur_num:
+            raw_h = int(time_match.group(1))
+            tag = time_match.group(2)
+            h_am = "am" in tag or is_am
+            h_pm = "pm" in tag or is_pm
+            if 1 <= raw_h <= 7 and not h_am:
+                h_24 = raw_h + 12
+            elif 8 <= raw_h <= 11 and h_pm:
+                h_24 = raw_h + 12
+            else:
+                h_24 = raw_h
+
+            fp = self._hour_to_period_start(h_24)
+            if fp is not None:
+                return fp, fp, f"Inferred from {raw_h} {tag} (Period P{fp})"
 
         return None, None, None
 
     def _extract_attendance(self, lower: str, matched_room: str | None) -> tuple[int | None, str | None]:
         """Extract attendee count without mistaking room numbers (like 101, 102) for attendees."""
         att_match = re.search(
-            r"(\d{1,4})\s*(?:people|pepole|students|participants|attendees|persons|folks|members|log|लोग|bacche|bache|seats)",
+            r"(\d{1,4})\s*(?:people|pepole|students|participants|attendees|persons|folks|members|log(?:on)?|लोग|bacche|bache|baccho|bacho|seats)",
             lower,
         )
         if att_match:
@@ -868,8 +959,18 @@ class LLMProvider:
             provenance["windows"] = f"{day_prov or f'Day {day}'}, periods {from_period} to {to_period}"
         elif day_prov:
             duration_periods = 3
-            windows = [{"day": day, "from_period": 10, "to_period": 12}]
-            provenance["windows"] = f"{day_prov}, default fest evening block P10-P12"
+            if re.search(r"\b(?:subah|morning|am)\b", lower):
+                windows = [{"day": day, "from_period": 2, "to_period": 4}]
+                provenance["windows"] = f"{day_prov}, morning block P2-P4 (9:00 - 12:00)"
+            elif re.search(r"\b(?:dopahar|afternoon)\b", lower):
+                windows = [{"day": day, "from_period": 6, "to_period": 8}]
+                provenance["windows"] = f"{day_prov}, afternoon block P6-P8 (14:00 - 17:00)"
+            elif re.search(r"\b(?:shaam|sham|saanjh|raat|evening|night|fest|rehearsal|battle)\b", lower):
+                windows = [{"day": day, "from_period": 10, "to_period": 12}]
+                provenance["windows"] = f"{day_prov}, evening fest block P10-P12 (18:00 - 21:00)"
+            else:
+                windows = [{"day": day, "from_period": 10, "to_period": 12}]
+                provenance["windows"] = f"{day_prov}, default fest block P10-P12"
 
         # 4. Attendance extraction
         attendance, att_prov = self._extract_attendance(lower, requested_room)
