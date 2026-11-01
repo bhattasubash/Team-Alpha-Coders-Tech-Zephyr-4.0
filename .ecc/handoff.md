@@ -1,18 +1,14 @@
-# Handoff Note (2026-11-01 07:18 IST)
+# Handoff Note (2026-11-01 07:40 IST)
 
 ## What Was Done
-1. **Docker & Prompts**: Fixed missing `COPY prompts ./prompts` in `backend/Dockerfile` and upgraded default model to `qwen/qwen3.8-27b` in `render.yaml`.
-2. **Solver Robustness**: Added warm-start hint propagation from stored feasible baseline in `runner.py` and fallback in `model.py` and `exams.py`; live generation never returns `UNKNOWN` or `FAILED`.
-3. **Route Hardening**: Added `ge=1, le=13` on `period` query parameter, 404 on unknown session IDs, and normalized `AssistantRequest` to accept `query` or `message`.
-4. **AI & Prompt Defense**: Expanded injection filters for role spoofing, SQL injection, and added Hinglish token matching and grounded self-approval rejection in `provider.py`.
-5. **UI & Keep-Warm**: Added "Re-generate schedule" with live progress modal on Timetable page, replaced `alert()` in `proof/page.tsx`, and added 4-minute keep-warm ping in `AppContext.tsx`.
-6. **Documentation**: Updated `README.md` with live demo links, video section, reset instructions, correct clone path, and official validator benchmark table (0 hard violations, 161 soft penalty). Updated `AI_USAGE.md` with authentic model provenance.
+1. **Search Bar Client Exception Fix**: Fixed `TypeError: Cannot read properties of undefined (reading 'toLowerCase')` in `CommandPalette.tsx` caused by mismatch between camelCase properties (`s.courseId`, `s.roomId`) and backend snake_case properties (`course_id`, `room_id`).
+2. **Instant Pre-seeded Search & Safe Normalization**: Pre-seeded `CommandPalette` with 25 rooms, 30 faculty, and 189 schedule sessions from local datasets for zero-latency instant search even while backend is booting; safely normalized live `/api/timetable/all` and `/api/meta` responses.
+3. **Drawer Compatibility**: Hardened `toWhyHereTarget` and `openDrawer` in `AppContext.tsx` to transparently accept both camelCase and snake_case session targets and IDs.
+4. **App Error Boundary**: Added Next.js client-side `error.tsx` boundary to prevent raw fallback crashes and give graceful recovery UI with retry and dashboard links.
+5. **Prompt Hardening**: Expanded natural language Hinglish day/period/room matching in `prompts/booking_parse.txt`.
 
 ## Verification Results
-- Official validator: 0 hard violations, 161 soft penalty, 67.0 booking score, 0 exam soft penalty.
-- Official disruption validator: 0 hard violations, 160 soft penalty, 14 moved (0 knock-on).
-- Fast test suite: 62 passed in 15.43s.
-- Next.js build: 30/30 routes compiled with 0 errors.
-
-## Next Steps
-- Commit and push to origin before the deadline.
+- Scratch suite: Tested 12 edge-case queries (empty, single char, natural language "why", nonexistent) with 0 crashes.
+- Backend test suite: 70/70 tests passed.
+- Next.js build: 31/31 routes compiled cleanly with 0 type errors.
+- Git: Committed and pushed to `origin/main` (`51b1f8f`, `e050249`).
