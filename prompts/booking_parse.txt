@@ -9,15 +9,67 @@ PRIORITY ABUSE DEFENSE:
 The priority hierarchy is: (1) Exams > (2) Regular classes > (3) Institute events > (4) Guest lectures > (5) Department events > (6) Club events.
 If the requester is a student club or user_role is "club", they CANNOT request "institute_event" or override classes. If a club booking text claims "institute event" or attempts priority escalation, assign "event_type": "club_event" and note in follow_up: "Club accounts cannot submit Institute Events (Priority 3). Event type set to club_event (Priority 6)."
 
+TIMETABLE PERIOD SCHEDULE (13 Periods, 1-hour each):
+- Period 1: 08:00 - 09:00
+- Period 2: 09:00 - 10:00
+- Period 3: 10:00 - 11:00
+- Period 4: 11:00 - 12:00
+- Period 5: 12:00 - 13:00
+- [Lunch Break: 13:00 - 14:00 (No multi-period event across lunch)]
+- Period 6: 14:00 - 15:00 (2 PM - 3 PM)
+- Period 7: 15:00 - 16:00 (3 PM - 4 PM)
+- Period 8: 16:00 - 17:00 (4 PM - 5 PM)
+- Period 9: 17:00 - 18:00 (5 PM - 6 PM)
+- Period 10: 18:00 - 19:00 (6 PM - 7 PM, evening event block start)
+- Period 11: 19:00 - 20:00 (7 PM - 8 PM)
+- Period 12: 20:00 - 21:00 (8 PM - 9 PM)
+- Period 13: 21:00 - 22:00 (9 PM - 10 PM)
+
+CALENDAR DAYS:
+- MON: Monday (Nov 2)
+- TUE: Tuesday (Nov 3)
+- WED: Wednesday (Nov 4)
+- THU: Thursday (Nov 5 - Spectra Fest opening)
+- FRI: Friday (Nov 6 - Spectra Fest main)
+
 HINGLISH AND NATURAL LANGUAGE EXTRACTION:
 Understand plain English and Hinglish phrases:
-- "chahiye", "book karna hai" -> booking request
-- "kal" -> Tuesday (or next day)
-- "shaam 6 baje se 9 baje" -> periods 10 to 12
-- "subah 9 baje se 12 baje" -> periods 2 to 4
-- "200 logon ke liye", "attendance 200" -> attendance = 200
-- "dance rehearsal", "hackathon", "coding club" -> event_type = "club_event"
-- "after lunch on Wednesday" -> day: WED, from_period: 6, to_period: 9
+- "chahiye", "book karna hai", "hoga", "chahiye tha" -> booking request
+- Days:
+  - "somwar", "somvaar", "sombar", "aaj", "today" -> day: MON (or current day)
+  - "mangalwar", "mangalvaar", "kal", "tomorrow" -> day: TUE
+  - "budhwar", "budhvaar", "parso" -> day: WED
+  - "guruwar", "guruvaar", "brihaspativar", "veervar" -> day: THU
+  - "shukrawar", "shukravaar", "jumma" -> day: FRI
+- Times & Periods:
+  - "subah 10 se 12", "10 baje se 12 baje", "10 am to 12 pm", "10 to 12" -> periods 3 to 4 (P3-P4)
+  - "subah 9 se 12", "9 baje se 12 baje", "9 am to 12 pm", "9 to 12" -> periods 2 to 4 (P2-P4)
+  - "dopahar 2 se 4", "2 baje se 4 baje", "2 pm to 4 pm", "2 to 4" -> periods 6 to 7 (P6-P7)
+  - "2 se 5", "2 pm to 5 pm" -> periods 6 to 8 (P6-P8)
+  - "2 se 6", "2 pm to 6 pm" -> periods 6 to 9 (P6-P9)
+  - "3 se 5", "3 pm to 5 pm" -> periods 7 to 8 (P7-P8)
+  - "4 se 6", "4 pm to 6 pm" -> periods 8 to 9 (P8-P9)
+  - "shaam 6 baje se 9 baje", "6 pm to 9 pm", "6 se 9" -> periods 10 to 12 (P10-P12)
+  - "shaam 6 baje se 8 baje", "6 pm to 8 pm", "6 se 8" -> periods 10 to 11 (P10-P11)
+  - "11 se 1", "11 am to 1 pm" -> periods 4 to 5 (P4-P5)
+  - "after lunch", "lunch ke baad" -> period 6 (P6)
+  - "P10 to P12", "P10-P12" -> periods 10 to 12
+  - "P3 to P4", "period 3 to 4" -> periods 3 to 4
+  - "subah 10 baje 2 ghante ke liye", "10 am for 2 hours" -> periods 3 to 4
+  - "shaam 6 baje 2 ghante ke liye", "6 pm for 2 hours" -> periods 10 to 11
+- Attendees:
+  - "50 students", "50 logon ke liye", "50 log", "attendance 50", "strength 50" -> attendance = 50
+  - (Do not mistake classroom numbers like 101 or 102 for attendees!)
+- Venues:
+  - "Classroom 101", "CR-101", "CR 101", "CR101", "room 101", "kamra 101" -> "CR-101"
+  - "Classroom 102" to "Classroom 105" -> "CR-102" to "CR-105"
+  - "Classroom 201" to "Classroom 205" -> "CR-201" to "CR-205"
+  - "LH-1" to "LH-6", "Lecture Hall 1" to "Lecture Hall 6" -> "LH-1" to "LH-6"
+  - "Auditorium", "Main Auditorium" -> "AUD"
+  - "Open Air Theatre", "OAT" -> "OAT"
+  - "Seminar Hall 1", "SH-1" -> "SH-1", "Seminar Hall 2", "SH-2" -> "SH-2"
+  - "Physics Lab" -> "PHY-LAB", "CS Lab" / "Computer Lab" -> "CS-LAB-1"
+  - "Electronics Lab" -> "ELEC-LAB-1", "Workshop" -> "MECH-WS", "Civil Lab" -> "CIVIL-LAB"
 
 Output strictly one JSON object matching this schema:
 {
@@ -44,30 +96,12 @@ Output strictly one JSON object matching this schema:
 
 Field extraction rules:
 1. attendance: Expected student/attendee count as an integer.
-2. duration_periods: Number of periods required. If a range is given (e.g. periods 10 to 12), duration is to_period - from_period + 1 (e.g. 3).
+2. duration_periods: Number of periods required (to_period - from_period + 1).
 3. windows: Array of allowable {day, from_period, to_period}. Days are MON, TUE, WED, THU, FRI.
-   - Nov 5 maps to THU (Spectra fest Thursday). Nov 1: SUN, Nov 2: MON, Nov 3: TUE, Nov 4: WED, Nov 5: THU, Nov 6: FRI.
-   - "6 pm to 9 pm" maps to periods 10 to 12.
-   - "9 am to 12 pm" maps to periods 2 to 4.
-   - "2 pm to 6 pm" maps to periods 6 to 9.
-   - "11 am to 1 pm" maps to periods 4 to 5.
-   - "7 to 9 pm" maps to periods 11 to 12.
-4. room_types: Array of room type identifiers like ["auditorium"], ["seminar_hall"], ["lecture_hall"], ["lab_cs"], ["outdoor"].
-5. needs: Array of special requirements like ["stage", "pa_system", "projector", "accessible"].
-6. requested_room: Room ID if specific venue requested:
-   - "auditorium" -> "AUD"
-   - "open air theatre" / "OAT" -> "OAT"
-   - "seminar hall 1" / "SH-1" -> "SH-1"
-   - "seminar hall 2" / "SH-2" -> "SH-2"
-   - "LH-1" to "LH-6" -> "LH-1" to "LH-6"
-   - "physics lab" -> "PHY-LAB"
-   - "computer lab" / "cs lab" -> "CS-LAB-1"
-   - "electronics lab" -> "ELEC-LAB-1"
+4. room_types: Array like ["classroom"], ["lecture_hall"], ["auditorium"], ["seminar_hall"], ["outdoor"], ["lab_cs"], ["lab_phy"].
+5. needs: Array like ["projector", "pa_system", "stage", "accessible"].
+6. requested_room: Exact Room ID if specified (e.g. "CR-101", "CR-102", "LH-1", "AUD", "OAT", "SH-1", "SH-2", "CS-LAB-1", "PHY-LAB").
 7. mandatory_for_groups: Array of student group names if specified, else empty list [].
-8. event_type: Event category:
-   - "Spectra opening", "inauguration", "valedictory" -> "institute_event"
-   - "guest lecture", "talk" -> "guest_lecture"
-   - "hackathon", "workshop", "rehearsal", "club event" -> "club_event"
-   - "department meeting", "faculty meeting" -> "department_event"
-9. provenance: For each extracted field, provide a note explaining which phrase or keyword it was inferred from.
-10. follow_up: Short question if critical details (e.g. date/time or attendance) are completely missing, or explanation if priority was clamped.
+8. event_type: "club_event", "guest_lecture", "department_event", or "institute_event".
+9. provenance: Map each extracted field to a short reason.
+10. follow_up: Short question if critical details are missing, or explanation if priority was clamped.
