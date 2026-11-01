@@ -12,7 +12,7 @@ Scheduling, venue management, and constraint validation engine built for **Tech 
 | **Backend REST API** | **[cit-scheduler-backend.onrender.com](https://cit-scheduler-backend.onrender.com)** | FastAPI on Render (Docker / Python 3.13) |
 | **Health & Keep-Warm** | **[cit-scheduler-backend.onrender.com/api/health](https://cit-scheduler-backend.onrender.com/api/health)** | Live health status and solver availability check |
 | **Interactive OpenAPI Docs** | **[cit-scheduler-backend.onrender.com/docs](https://cit-scheduler-backend.onrender.com/docs)** | Swagger UI documentation |
-| **Video Walkthrough** | **[Watch Demo Video](https://team-alpha-coders-tech-zephyr-40.vercel.app)** | Complete feature and evaluation walkthrough |
+| **Video Walkthrough** | **[Watch Demo Video](https://drive.google.com/file/d/1xM0lXjFTZV3uDhDUCvbcrlwQNeUO7fbD/view?usp=sharing)** | Complete feature and evaluation walkthrough |
 
 > [!TIP]
 > **Keep-Warm Note**: Free-tier cloud instances sleep after 15 minutes of inactivity. Visiting the live app or pinging `/api/health` keeps the backend immediately responsive.
