@@ -3,7 +3,7 @@
     "login": "PASS",
     "validation": {
       "status": "PASS",
-      "hard_violations": 41,
+      "hard_violations": 0,
       "soft_penalty": null
     },
     "bookings_decide": {
@@ -13,9 +13,9 @@
     },
     "disruption_preview": {
       "status": "PASS",
-      "proposal_id": "prop-60ea6bb1",
-      "moved_count": 14,
-      "forced_moves": 13
+      "proposal_id": "prop-5f8d4bc8",
+      "moved_count": 15,
+      "forced_moves": 14
     },
     "proposal_approve": {
       "status_code": 200,
@@ -510,7 +510,7 @@
     },
     {
       "method": "POST",
-      "path": "/api/proposals/prop-60ea6bb1/approve",
+      "path": "/api/proposals/prop-5f8d4bc8/approve",
       "role": "admin",
       "expected": 200,
       "actual": 400,
@@ -518,7 +518,7 @@
     },
     {
       "method": "POST",
-      "path": "/api/proposals/prop-60ea6bb1/approve",
+      "path": "/api/proposals/prop-5f8d4bc8/approve",
       "role": "coordinator",
       "expected": 403,
       "actual": 403,
@@ -526,7 +526,7 @@
     },
     {
       "method": "POST",
-      "path": "/api/proposals/prop-60ea6bb1/approve",
+      "path": "/api/proposals/prop-5f8d4bc8/approve",
       "role": "faculty",
       "expected": 403,
       "actual": 403,
@@ -534,7 +534,7 @@
     },
     {
       "method": "POST",
-      "path": "/api/proposals/prop-60ea6bb1/approve",
+      "path": "/api/proposals/prop-5f8d4bc8/approve",
       "role": "club",
       "expected": 403,
       "actual": 403,
@@ -542,7 +542,7 @@
     },
     {
       "method": "POST",
-      "path": "/api/proposals/prop-60ea6bb1/approve",
+      "path": "/api/proposals/prop-5f8d4bc8/approve",
       "role": "no_token",
       "expected": 401,
       "actual": 401,
@@ -550,7 +550,7 @@
     },
     {
       "method": "POST",
-      "path": "/api/proposals/prop-60ea6bb1/approve",
+      "path": "/api/proposals/prop-5f8d4bc8/approve",
       "role": "tampered_token",
       "expected": 401,
       "actual": 401,

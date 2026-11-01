@@ -160,6 +160,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (savedSidebar !== null) {
       setIsSidebarCollapsedState(savedSidebar === 'true');
     }
+
+    // Backend keep-warm ping (prevents free-tier container sleep)
+    const pingBackend = () => {
+      fetch('/api/health').catch(() => {});
+    };
+    pingBackend();
+    const keepWarmTimer = setInterval(pingBackend, 4 * 60 * 1000);
+    return () => clearInterval(keepWarmTimer);
   }, []);
 
   const setTheme = (newTheme: 'light' | 'dark') => {

@@ -1,22 +1,18 @@
-# Handoff Note (2026-11-01 06:22 IST)
+# Handoff Note (2026-11-01 07:18 IST)
 
 ## What Was Done
-1. Fixed `log_audit()` argument mismatch across routes (DEF-01) and added defensive parameter handling in `repository.py`.
-2. Fixed optimizer hint extraction key `s["id"]` -> `(s.get("session_id") or s.get("id"))` in `runner.py:245` (DEF-06) and increased feasibility timeout to 60s.
-3. Corrected placement checker Period 5 lunch boundary bug in `engine.py:51` and added H11, H12, and H13 checks: 1500-case parity test achieves 0 false positives and 0 false negatives (100% parity).
-4. Expanded AI fallback regex parser for "6 to 8 pm", "after lunch", and "parso" (9/9 property tests pass).
-5. Replaced `alert()` popup in `NewBookingPage` with real `api.createBooking()` and 4-state lifecycle (`idle`, `submitting`, `success`, `error`).
-6. Differentiated Dean/Admin ("Approved & Committed") vs Faculty/Club ("Pending Dean Approval") in UI and API.
-7. Added `POST /api/bookings/{id}/review` endpoint with self-approval guards and audit logging.
-8. Added "Submissions Awaiting Dean Approval" ledger with direct "Approve"/"Reject" actions on the Dean Dashboard.
-9. Converted desktop navigation rail in `Rail.tsx` to `fixed left-0 top-0 bottom-0 h-screen z-30` so it stays sticky.
-10. Removed silent auto-admin login bypass from `api.ts`.
-11. Updated `BUGS.md` and `DECISIONS.md`.
+1. **Docker & Prompts**: Fixed missing `COPY prompts ./prompts` in `backend/Dockerfile` and upgraded default model to `qwen/qwen3.8-27b` in `render.yaml`.
+2. **Solver Robustness**: Added warm-start hint propagation from stored feasible baseline in `runner.py` and fallback in `model.py` and `exams.py`; live generation never returns `UNKNOWN` or `FAILED`.
+3. **Route Hardening**: Added `ge=1, le=13` on `period` query parameter, 404 on unknown session IDs, and normalized `AssistantRequest` to accept `query` or `message`.
+4. **AI & Prompt Defense**: Expanded injection filters for role spoofing, SQL injection, and added Hinglish token matching and grounded self-approval rejection in `provider.py`.
+5. **UI & Keep-Warm**: Added "Re-generate schedule" with live progress modal on Timetable page, replaced `alert()` in `proof/page.tsx`, and added 4-minute keep-warm ping in `AppContext.tsx`.
+6. **Documentation**: Updated `README.md` with live demo links, video section, reset instructions, correct clone path, and official validator benchmark table (0 hard violations, 161 soft penalty). Updated `AI_USAGE.md` with authentic model provenance.
 
-## Open Issues / Remaining Tasks
-- Deploy git commit to Vercel/Render before 12:00 IST deadline.
-- Set `NEXT_PUBLIC_API_URL=https://cit-scheduler-backend.onrender.com` on Vercel project environment variables.
-- Optional: Add `favicon.ico` in `frontend/public/` to clear remaining 404.
+## Verification Results
+- Official validator: 0 hard violations, 161 soft penalty, 67.0 booking score, 0 exam soft penalty.
+- Official disruption validator: 0 hard violations, 160 soft penalty, 14 moved (0 knock-on).
+- Fast test suite: 62 passed in 15.43s.
+- Next.js build: 30/30 routes compiled with 0 errors.
 
 ## Next Steps
-- Verify deployed application with newly pushed fixes.
+- Commit and push to origin before the deadline.

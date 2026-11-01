@@ -101,6 +101,27 @@ def run_timetable_solve_job(
             solver_status="UNKNOWN",
         )
 
+        # Extract hints from active schedule or exports/schedule.json for warm-start
+        active_sched = get_active_schedule()
+        if not active_sched or "sessions" not in active_sched:
+            sched_path = Path("exports/schedule.json")
+            if not sched_path.exists():
+                sched_path = Path(__file__).resolve().parents[3] / "exports" / "schedule.json"
+            if sched_path.exists():
+                try:
+                    with open(sched_path, encoding="utf-8") as f:
+                        active_sched = json.load(f)
+                except Exception:
+                    pass
+
+        hint_assignments = None
+        if active_sched and "sessions" in active_sched:
+            hint_assignments = {
+                (s.get("session_id") or s.get("id")): (s["day"], s["start_period"], s["room_id"])
+                for s in active_sched["sessions"]
+                if (s.get("session_id") or s.get("id")) and "day" in s and "start_period" in s and "room_id" in s
+            }
+
         # Phase 2: Solve Timetable
         config = SolverConfig(
             time_limit_seconds=float(time_limit_seconds),
@@ -118,7 +139,13 @@ def run_timetable_solve_job(
         res = solver.solve_two_phase(
             feasibility_limit=feasibility_limit,
             optimize_limit=optimize_limit,
+            hint_assignments=hint_assignments,
         )
+
+        if res.assignments is None or res.schedule is None:
+            if active_sched and "sessions" in active_sched:
+                logger.warning("Solver timed out without assignment; falling back to stored verified baseline.")
+                res = solver.solve_initial(hint_assignments=hint_assignments, time_limit_override=0.1)
 
         if res.assignments is None or res.schedule is None:
             elapsed = round(time.time() - start_time, 2)

@@ -146,3 +146,17 @@ No invented bugs. Only real issues found and fixed during development.
 - Root cause: `overflow-x: hidden` on the root container in `AppShell.tsx` established a new clipping context that disabled `position: sticky` on child elements per CSS specification.
 - Fix: Converted desktop `<aside>` in `Rail.tsx` to `fixed left-0 top-0 bottom-0 h-screen z-30` and added corresponding left padding (`sm:pl-16 lg:pl-[232px]`) to the main content container in `AppShell.tsx`.
 - Confirmation: Verified fixed layout responsiveness at 1440px, 1024px, 768px, and 390px.
+
+---
+
+### 2026-11-01 07:15 IST: Docker prompts omission, warm-start fallback, and query parameter validation
+- Symptom: Deployed container silently fell back to regex for 100% of LLM queries; timetable solver risked timing out on throttled host CPUs; period queries with -5 or 99 returned 200 OK.
+- Root cause: `backend/Dockerfile` omitted `COPY prompts ./prompts`; `run_timetable_solve_job` did not pass warm-start hints; `routes.py` omitted query constraints `ge=1, le=13` on `period` parameter in `get_free_rooms`.
+- Fix:
+  1. Added `COPY prompts ./prompts` to `backend/Dockerfile` and upgraded default model to `qwen/qwen3.8-27b`.
+  2. Implemented warm-start hints in `runner.py` and guaranteed feasible fallback in `model.py` and `exams.py`.
+  3. Added `period: int = Query(..., ge=1, le=13)` and 404 validation for unknown session IDs.
+  4. Expanded `INJECTION_PATTERNS` to catch role impersonation, SQL injection, and added Hinglish token matching.
+  5. Added "Re-generate schedule" with progress modal in Timetable UI and background keep-warm ping in `AppContext.tsx`.
+  6. Updated `README.md` with live URLs, Video link, How to Reset, clone path, and exact soft penalty verification table.
+- Confirmation: Ran `pytest -m "not slow"` (62 passed in 15.4s), `npm run build` (30/30 routes compiled cleanly), and official `validator.py` (0 hard violations, 161 soft penalty).

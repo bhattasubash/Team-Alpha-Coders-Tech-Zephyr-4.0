@@ -41,12 +41,12 @@
       "source": "fallback",
       "draft": {
         "attendance": 300,
-        "duration_periods": 3,
+        "duration_periods": 1,
         "windows": [
           {
             "day": "FRI",
-            "from_period": 10,
-            "to_period": 12
+            "from_period": 6,
+            "to_period": 6
           }
         ],
         "room_types": [
@@ -59,7 +59,8 @@
         "raw_text": "auditorium after lunch friday for 300 people 2 hours",
         "provenance": {
           "requested_room": "Inferred from 'auditorium'",
-          "windows": "Inferred from 'Friday', default fest evening block P10-P12",
+          "duration_periods": "Inferred from 'after lunch' (Period P6, 14:00 - 15:00)",
+          "windows": "Inferred from 'Friday', periods 6 to 6",
           "attendance": "Inferred from '300 people'"
         },
         "follow_up": null,
@@ -113,8 +114,14 @@
       "source": "fallback",
       "draft": {
         "attendance": 50,
-        "duration_periods": null,
-        "windows": null,
+        "duration_periods": 2,
+        "windows": [
+          {
+            "day": "WED",
+            "from_period": 3,
+            "to_period": 4
+          }
+        ],
         "room_types": [
           "lab_cs"
         ],
@@ -124,6 +131,8 @@
         "event_type": null,
         "raw_text": "parso subah 10 baje se 12 baje tak lab 50 students",
         "provenance": {
+          "duration_periods": "Inferred from morning hours (10:00 - 12:00 -> P3 to P4)",
+          "windows": "Inferred from 'parso' (Wednesday), periods 3 to 4",
           "attendance": "Inferred from '50 students'"
         },
         "follow_up": null,
@@ -238,12 +247,12 @@
       "source": "fallback",
       "draft": {
         "attendance": 150,
-        "duration_periods": 3,
+        "duration_periods": 2,
         "windows": [
           {
             "day": "THU",
             "from_period": 10,
-            "to_period": 12
+            "to_period": 11
           }
         ],
         "room_types": [
@@ -256,7 +265,8 @@
         "raw_text": "auditorium else seminar hall Thursday 6 to 8 pm 150 people",
         "provenance": {
           "requested_room": "Inferred from 'auditorium'",
-          "windows": "Inferred from 'Thursday', default fest evening block P10-P12",
+          "duration_periods": "Inferred from evening hours (18:00 - 20:00 -> P10 to P11)",
+          "windows": "Inferred from 'Thursday', periods 10 to 11",
           "attendance": "Inferred from '150 people'",
           "event_type": "Inferred from guest lecture keywords"
         },
@@ -882,12 +892,12 @@
       "source": "fallback",
       "draft": {
         "attendance": 150,
-        "duration_periods": 3,
+        "duration_periods": 1,
         "windows": [
           {
             "day": "THU",
-            "from_period": 10,
-            "to_period": 12
+            "from_period": 6,
+            "to_period": 6
           }
         ],
         "room_types": null,
@@ -897,7 +907,8 @@
         "event_type": null,
         "raw_text": "quiz finals after lunch Thursday maybe 150 people",
         "provenance": {
-          "windows": "Inferred from 'Thursday', default fest evening block P10-P12",
+          "duration_periods": "Inferred from 'after lunch' (Period P6, 14:00 - 15:00)",
+          "windows": "Inferred from 'Thursday', periods 6 to 6",
           "attendance": "Inferred from '150 people'"
         },
         "follow_up": null,
@@ -915,12 +926,12 @@
       "source": "fallback",
       "draft": {
         "attendance": 100,
-        "duration_periods": 3,
+        "duration_periods": 2,
         "windows": [
           {
             "day": "TUE",
             "from_period": 10,
-            "to_period": 12
+            "to_period": 11
           }
         ],
         "room_types": [
@@ -934,7 +945,8 @@
         "event_type": "guest_lecture",
         "raw_text": "seminar hall kal 6 baje 2 ghante 100 log mic chahiye",
         "provenance": {
-          "windows": "Inferred from 'tomorrow', default fest evening block P10-P12",
+          "duration_periods": "Inferred from 6 PM for 2 hours (18:00 - 20:00 -> P10 to P11)",
+          "windows": "Inferred from 'tomorrow', periods 10 to 11",
           "attendance": "Inferred from number '100'",
           "needs": "Inferred from requirements: pa_system",
           "event_type": "Inferred from guest lecture keywords"
@@ -1015,8 +1027,14 @@
       "source": "fallback",
       "draft": {
         "attendance": 45,
-        "duration_periods": null,
-        "windows": null,
+        "duration_periods": 2,
+        "windows": [
+          {
+            "day": "THU",
+            "from_period": 10,
+            "to_period": 11
+          }
+        ],
         "room_types": null,
         "needs": null,
         "requested_room": null,
@@ -1024,6 +1042,8 @@
         "event_type": null,
         "raw_text": "Tusday 6-8 pm, 45 pepole, projecter",
         "provenance": {
+          "duration_periods": "Inferred from evening hours (18:00 - 20:00 -> P10 to P11)",
+          "windows": "Day THU, periods 10 to 11",
           "attendance": "Inferred from number '45'"
         },
         "follow_up": null,

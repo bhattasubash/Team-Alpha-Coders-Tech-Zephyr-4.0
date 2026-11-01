@@ -26,6 +26,7 @@ COPY data ./data
 COPY exports ./exports
 COPY docs ./docs
 COPY validator ./validator
+COPY prompts ./prompts
 
 EXPOSE 8000
 

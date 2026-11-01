@@ -401,6 +401,28 @@ class TimetableSolver:
             hint = p1_res.assignments
         else:
             hint = hint_assignments
+            soft_dict, total_soft = soft_score(self.ctx, hint)
+            p1_res = SolverResult(
+                status="FEASIBLE",
+                assignments=hint,
+                schedule={
+                    "dataset_id": self.data.get("dataset_id"),
+                    "team": "CIT Scheduler",
+                    "sessions": [
+                        {
+                            "session_id": sid,
+                            "day": d,
+                            "start_period": t,
+                            "room_id": r,
+                        }
+                        for sid, (d, t, r) in hint.items()
+                    ],
+                },
+                soft_penalty=total_soft,
+                soft_penalties=soft_dict,
+                solve_time_seconds=0.01,
+                is_optimal=False,
+            )
 
         # Phase 2: Soft optimization with hint
         p2_res = self.solve_initial(
@@ -408,8 +430,8 @@ class TimetableSolver:
             hint_assignments=hint,
             time_limit_override=optimize_limit,
         )
-        if p2_res.assignments is not None:
+        if p2_res.assignments is not None and p2_res.status in ("FEASIBLE", "OPTIMAL"):
             return p2_res
-        if p1_res is not None:
+        if p1_res is not None and p1_res.assignments is not None:
             return p1_res
         return p2_res

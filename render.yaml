@@ -21,6 +21,6 @@ services:
       - key: LLM_PROVIDER
         value: groq
       - key: LLM_MODEL
-        value: llama-3.1-8b-instant
+        value: qwen/qwen3.8-27b
       - key: CORS_ORIGINS
         value: https://team-alpha-coders-tech-zephyr-40.vercel.app,http://localhost:3000,http://127.0.0.1:3000

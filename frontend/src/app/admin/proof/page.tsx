@@ -624,9 +624,9 @@ export default function ProofPage() {
                     setIsResetConfirmOpen(false);
                     try {
                       await api.resetDatabase();
-                      alert('Database reset successful.');
+                      setRunSuccessToast('Demo environment reset successfully to clean hackathon dataset and schedule.');
                     } catch (err: any) {
-                      alert(`Reset status: ${err.message || 'Reset endpoint pending'}`);
+                      setApiError({ code: 'RESET_FAILED', message: err.message || 'Failed to reset database' });
                     }
                   }}
                   className="h-8 text-[12px]"

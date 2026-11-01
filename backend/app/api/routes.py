@@ -725,6 +725,16 @@ def get_legal_slots(
             sched = json.load(f)
 
     ctx = KernelContext(data)
+    session_ids = {s["id"] for s in data["sessions"]}
+    if id not in session_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "SESSION_NOT_FOUND",
+                "message": f"Session {id} does not exist in dataset",
+                "details": [],
+            },
+        )
     domains = prune_session_domains(data, ctx)
     session_slots = domains.get(id, [])
     explainer = ExplainEngine(data, sched)
@@ -867,7 +877,7 @@ def move_session(
 )
 def get_free_rooms(
     day: str = Query(...),
-    period: int = Query(...),
+    period: int = Query(..., ge=1, le=13),
     duration: int = Query(1),
     type: str | None = Query(None),
     min_capacity: int | None = Query(None),
@@ -1109,8 +1119,11 @@ def parse_booking(
                     source_snippet=str(v),
                 )
 
+    draft_dict = dict(result.__dict__)
+    draft_dict["effective_category"] = draft_dict.get("event_type") or "club_event"
+
     return ParseBookingResponse(
-        draft=result.__dict__,
+        draft=draft_dict,
         provenance=prov_dict,
         follow_up_questions=follow_ups,
         source="llm" if not result.used_fallback else "fallback",
@@ -1557,7 +1570,8 @@ def ask_assistant(
     user: dict[str, Any] = Depends(get_optional_user),
 ) -> AssistantResponse:
     """Query scheduling assistant with grounding against current schedule and constraints."""
-    res = llm_provider.ask_assistant(req.message, user.get("role", "guest"))
+    msg = req.get_message()
+    res = llm_provider.ask_assistant(msg, user.get("role", "guest"))
     return AssistantResponse(
         reply=res.get("reply", ""),
         reasoning_steps=res.get("reasoning_steps", []),

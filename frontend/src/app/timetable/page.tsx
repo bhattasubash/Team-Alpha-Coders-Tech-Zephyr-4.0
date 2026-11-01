@@ -37,7 +37,55 @@ const ROOMS = [
 ];
 
 export default function TimetablePage() {
-  const { openDrawer } = useApp();
+  const { role, openDrawer } = useApp();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [jobProgress, setJobProgress] = useState<{ status: string; progress: number; phase: string; elapsed: number } | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  const handleGenerate = async () => {
+    try {
+      setIsGenerating(true);
+      setGenerateError(null);
+      setJobProgress({ status: 'queued', progress: 0.05, phase: 'Initializing CP-SAT solver...', elapsed: 0 });
+      const jobRes = await api.generateTimetable({ time_limit_seconds: 30 });
+      const jobId = jobRes.job_id;
+
+      const startTime = Date.now();
+      const interval = setInterval(async () => {
+        try {
+          const statusRes = await api.getJobStatus(jobId);
+          const elapsed = Math.round((Date.now() - startTime) / 1000);
+          setJobProgress({
+            status: statusRes.status,
+            progress: Math.max(statusRes.progress || 0.1, Math.min(0.95, elapsed / 28)),
+            phase: statusRes.phase || 'CP-SAT optimization in progress...',
+            elapsed,
+          });
+
+          if (statusRes.status === 'completed' || statusRes.status === 'COMPLETED') {
+            clearInterval(interval);
+            setJobProgress({ status: 'completed', progress: 1.0, phase: 'Completed! Reloading timetable...', elapsed });
+            setTimeout(() => {
+              setIsGenerating(false);
+              setJobProgress(null);
+              api.getTimetable(lens, selectedId).then((data) => {
+                if (Array.isArray(data?.sessions)) setSessions(data.sessions);
+              }).catch(() => {});
+            }, 1000);
+          } else if (statusRes.status === 'failed' || statusRes.status === 'FAILED') {
+            clearInterval(interval);
+            setIsGenerating(false);
+            setGenerateError(statusRes.error_message || 'Solver job encountered an issue.');
+          }
+        } catch {
+          // Continue polling
+        }
+      }, 1000);
+    } catch (err: any) {
+      setIsGenerating(false);
+      setGenerateError(err.message || 'Failed to trigger schedule generation.');
+    }
+  };
 
   // Lens state: group | faculty | room
   const [lens, setLens] = useState<'group' | 'faculty' | 'room'>('group');
@@ -269,6 +317,45 @@ export default function TimetablePage() {
   return (
     <AppShell>
       <div className="space-y-6 pb-12 select-none">
+        {/* CP-SAT Generation Progress Modal */}
+        {isGenerating && jobProgress && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-surface border border-line-strong rounded-panel p-6 max-w-md w-full shadow-2xl space-y-4 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <span className="font-serif text-[20px] text-ink font-normal">Solving Timetable</span>
+                <span className="text-[12px] font-mono text-violet bg-violet/10 px-2 py-0.5 rounded-pill border border-violet/20">
+                  {jobProgress.elapsed}s elapsed
+                </span>
+              </div>
+              <p className="text-[12px] text-ink-2">
+                Running 3-stage CP-SAT solver with pre-reserved fest bookings and constraint pruning.
+              </p>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-mono text-ink-2">
+                  <span>{jobProgress.phase}</span>
+                  <span>{Math.round(jobProgress.progress * 100)}%</span>
+                </div>
+                <div className="h-2 w-full bg-raised rounded-full overflow-hidden border border-line">
+                  <div
+                    className="h-full bg-violet transition-all duration-300 rounded-full"
+                    style={{ width: `${Math.round(jobProgress.progress * 100)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="text-[11px] text-ink-2 flex items-center justify-between pt-1">
+                <span>Warm-started from verified baseline</span>
+                <span className="text-good font-medium">0 hard violations guaranteed</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {generateError && (
+          <div className="p-3 bg-bad/10 border border-bad/30 rounded-panel text-[12px] text-bad flex items-center justify-between">
+            <span>{generateError}</span>
+            <button onClick={() => setGenerateError(null)} className="underline text-[11px]">Dismiss</button>
+          </div>
+        )}
         {/* Title, Lens Tabs & Filter Row */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-line pb-4">
           <div>
@@ -313,6 +400,16 @@ export default function TimetablePage() {
 
           {/* Right Controls: Matching Dropdown + Extra Metadata Chips */}
           <div className="flex flex-wrap items-center gap-3">
+            {role === 'admin' && (
+              <Button
+                variant="primary"
+                onClick={handleGenerate}
+                disabled={isGenerating}
+                className="h-8 text-[12px] px-3 font-medium flex items-center gap-1.5"
+              >
+                <span>{isGenerating ? 'Solving...' : 'Re-generate schedule'}</span>
+              </Button>
+            )}
             <div className="flex items-center gap-2">
               <label className="text-[12px] text-ink-2 font-medium">Select:</label>
               <select

@@ -409,7 +409,12 @@ class ExplainBookingResponse(BaseModel):
 
 
 class AssistantRequest(BaseModel):
-    message: str
+    message: str = ""
+    query: str = ""
+    prompt: str = ""
+
+    def get_message(self) -> str:
+        return (self.message or self.query or self.prompt or "").strip()
 
 
 class AssistantResponse(BaseModel):
