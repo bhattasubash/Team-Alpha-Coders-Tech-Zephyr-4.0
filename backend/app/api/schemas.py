@@ -123,12 +123,12 @@ class TimetableAllResponse(BaseModel):
 
 
 class GenerateTimetableRequest(BaseModel):
-    time_limit_seconds: int = 30
+    time_limit_seconds: int = 3
     random_seed: int = 42
 
 
 class OptimiseTimetableRequest(BaseModel):
-    time_limit_seconds: int = 30
+    time_limit_seconds: int = 3
     random_seed: int = 42
 
 
