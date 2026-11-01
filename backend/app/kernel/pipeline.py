@@ -186,6 +186,20 @@ def apply_disruption_dict(data: dict[str, Any], disruption: dict[str, Any]) -> d
             fac[ch["faculty"]["id"]] = ch["faculty"]
         elif t == "add_session":
             s_obj = copy.deepcopy(ch.get("session"))
+            if not s_obj:
+                if ch.get("session_id") or ch.get("title") or ch.get("course_id"):
+                    s_obj = {
+                        "id": ch.get("session_id") or f"EMERG-{uuid.uuid4().hex[:6]}",
+                        "title": ch.get("title", "Emergency Session"),
+                        "course_id": ch.get("course_id", "CS-101"),
+                        "faculty_id": ch.get("faculty_id", ""),
+                        "groups": ch.get("groups", []),
+                        "size": ch.get("size"),
+                        "room_types": ch.get("room_types") or ["classroom", "lecture_hall"],
+                        "duration": ch.get("duration", 1),
+                        "accessible": ch.get("accessible", False),
+                        "fixed_slot": None,
+                    }
             if s_obj:
                 if "size" not in s_obj or not s_obj["size"]:
                     groups_map = {g["id"]: g for g in d.get("groups", [])}
@@ -291,18 +305,23 @@ def propose_reschedule(
     disruption_summary: list[str] = []
     for ch in changes:
         ch_type = ch.get("type")
-        if ch_type == "faculty_unavailable":
+        raw_days = ch.get("days")
+        if not raw_days and ch.get("day"):
+            raw_days = [ch.get("day")]
+        days_list = [str(d) for d in (raw_days or [])]
+        days_str = ", ".join(days_list) if days_list else "all days"
+        reason_val = ch.get("reason")
+        r_str = f" ({reason_val})" if reason_val else ""
+
+        if ch_type in ("faculty_unavailable", "faculty_leave"):
             f_name = faculty_map.get(ch.get("faculty_id"), ch.get("faculty_id"))
-            days_str = ", ".join(ch.get("days", []))
-            r_str = f" ({ch.get('reason')})" if ch.get("reason") else ""
             disruption_summary.append(f"Faculty {f_name} unavailable on {days_str}{r_str}")
         elif ch_type == "room_unavailable":
-            days_str = ", ".join(ch.get("days", []))
-            r_str = f" ({ch.get('reason')})" if ch.get("reason") else ""
             disruption_summary.append(f"Room {ch.get('room_id')} closed on {days_str}{r_str}")
         elif ch_type == "add_session":
-            sess_id = ch.get("session", {}).get("id", "emergency")
-            disruption_summary.append(f"Emergency session {sess_id} added")
+            s_data = ch.get("session") or {}
+            sess_id = s_data.get("id") or ch.get("session_id") or "emergency"
+            disruption_summary.append(f"Emergency session {sess_id} added{r_str}")
 
     reason_msg = (
         f"Proposal resolves disruption with {result.moved_count} moves "

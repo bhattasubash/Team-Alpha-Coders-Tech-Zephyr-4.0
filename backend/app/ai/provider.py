@@ -703,7 +703,7 @@ class LLMProvider:
 
         return None, None, None
 
-    def _extract_day(self, lower: str) -> tuple[str, str]:
+    def _extract_day(self, lower: str) -> tuple[str | None, str | None]:
         """Extract timetable day (MON-FRI) from English, Hindi, or Hinglish text accurately without substring collisions."""
         # 1. First, check explicit dates like '4 nov', '4th november', '4th nov'
         m_day_first = re.search(r"\b([2-6])(?:st|nd|rd|th)?\s*(?:nov|november)\b", lower)
