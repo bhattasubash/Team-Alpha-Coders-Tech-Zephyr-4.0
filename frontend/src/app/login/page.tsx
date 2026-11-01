@@ -3,13 +3,38 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { Role, DEMO_USERS } from '@/data/types';
+import { Role } from '@/data/types';
 import { api } from '@/lib/api';
-import { CITLogo } from '@/components/ui/Icons';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { ChilikaPainting } from '@/components/auth/ChilikaPainting';
-import { AppBackground } from '@/components/layout/AppBackground';
+import { CitCampusIllustration } from '@/components/auth/CitCampusIllustration';
+
+/**
+ * Concentric C Monogram Logo for Chilika Institute
+ */
+function CITMonogram({ size = 20, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <circle cx="12" cy="12" r="10" strokeWidth="1.8" />
+      <path
+        d="M15 8.5C14.2 7.6 13.1 7 12 7C9.24 7 7 9.24 7 12C7 14.76 9.24 17 12 17C13.1 17 14.2 16.4 15 15.5"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M14 10.5C13.5 10 12.8 9.5 12 9.5C10.6 9.5 9.5 10.6 9.5 12C9.5 13.4 10.6 14.5 12 14.5C12.8 14.5 13.5 14 14 13.5"
+        strokeWidth="1.5"
+      />
+    </svg>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,12 +47,7 @@ export default function LoginPage() {
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Health line state: online by default, toggleable to show hingula error variant
-  const [isApiOnline, setIsApiOnline] = useState(true);
-
-  // Modal state for Terms / Privacy
-  const [modalContent, setModalContent] = useState<{ title: string; body: string } | null>(null);
-
+  // Demo accounts exactly matching approved visual reference
   const demoAccounts: {
     roleKey: Role;
     title: string;
@@ -66,26 +86,13 @@ export default function LoginPage() {
     },
   ];
 
-  // Quick Sign in on clicking any role row
-  const handleRoleQuickSignIn = async (roleKey: Role, accEmail: string, accPass: string) => {
-    setEmail(accEmail);
-    setPassword(accPass);
+  // Populates credentials and selects role
+  const handleSelectRole = (acc: typeof demoAccounts[0]) => {
+    setEmail(acc.email);
+    setPassword(acc.pass);
     setEmailError('');
     setPasswordError('');
     setFormError('');
-    setIsSubmitting(true);
-    try {
-      await api.login(accEmail, accPass);
-      const me = await api.getMe().catch(() => null);
-      setRole((me?.role as Role) || roleKey);
-      router.push('/dashboard');
-    } catch {
-      // Fallback for offline demo mode
-      setRole(roleKey);
-      router.push('/dashboard');
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const handleManualSubmit = async (e: React.FormEvent) => {
@@ -94,7 +101,6 @@ export default function LoginPage() {
     setPasswordError('');
     setFormError('');
 
-    // Validation
     let hasError = false;
     const cleanEmail = email.trim();
 
@@ -123,7 +129,7 @@ export default function LoginPage() {
       setRole((me?.role as Role) || (res.role as Role) || 'faculty');
       router.push('/dashboard');
     } catch (err: any) {
-      // Check credentials against demo accounts as fallback
+      // Demo fallback check
       const matched = demoAccounts.find(
         (a) => a.email.toLowerCase() === cleanEmail.toLowerCase() && a.pass === password
       );
@@ -131,7 +137,7 @@ export default function LoginPage() {
         setRole(matched.roleKey);
         router.push('/dashboard');
       } else {
-        setFormError(err.message || 'Invalid credentials. Use a seeded demo account below.');
+        setFormError(err.message || 'Invalid credentials. Select a demo role above.');
       }
     } finally {
       setIsSubmitting(false);
@@ -139,221 +145,195 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-paper flex items-center justify-center p-4 sm:p-6 lg:p-8 select-none relative overflow-hidden">
-      {/* Global Pastel Atmospheric Background Wash */}
-      <AppBackground />
-
-      {/* Centred 1040x600 Glass Card */}
-      <div className="w-full max-w-[1040px] md:h-[600px] glass-panel rounded-panel overflow-hidden grid grid-cols-1 md:grid-cols-2 shadow-2xl relative z-10">
+    <div className="min-h-screen bg-[#EDE9EE] flex items-center justify-center p-4 sm:p-6 lg:p-8 select-none relative overflow-x-hidden font-ui">
+      {/* Centred Card Container (Matching reference rounded proportions) */}
+      <div className="w-full max-w-[1040px] md:h-[580px] bg-white rounded-[20px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.08)] grid grid-cols-1 md:grid-cols-2 relative z-10 border border-black/[0.04]">
         
-        {/* Left Half: Generative Stipple Painting of Chilika Lagoon (160px band below 640px) */}
-        <div className="relative h-[160px] md:h-full bg-[#0E1F21] border-b md:border-b-0 md:border-r border-[#1C3739] overflow-hidden flex flex-col justify-between">
-          <ChilikaPainting className="absolute inset-0" />
+        {/* =========================================================================
+            LEFT PANEL: ILLUSTRATION & PASTEL GRADIENT BACKGROUND
+            ========================================================================= */}
+        <div className="relative h-[320px] md:h-full overflow-hidden flex flex-col justify-between p-6 sm:p-8 lg:p-10 bg-transparent">
+          
+          {/* Background Layer: EXACTLY 80% Opacity */}
+          <div
+            className="absolute inset-0 pointer-events-none z-0"
+            style={{
+              backgroundImage: "url('/images/pastel-gradient-texture.png')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              opacity: 0.80,
+            }}
+          />
 
-          {/* Overlay info badges */}
-          <div className="relative z-10 p-4 sm:p-6 flex items-start justify-between">
-            <div className="flex items-center gap-2 text-[#EDEBE0]">
-              <div className="p-1 rounded bg-[#1C3739]/80 backdrop-blur-sm border border-[#2B4547]">
-                <CITLogo size={18} />
-              </div>
-              <span className="font-serif text-[18px] tracking-tight text-[#EDEBE0]">
-                Chilika Institute
-              </span>
-            </div>
-            <span className="hidden md:inline-block px-2 py-0.5 text-[10px] font-mono text-[#9DB0AE] bg-[#0E1F21]/80 rounded-cell border border-[#2B4547]">
-              Week 7 &middot; Spectra & Midsem
-            </span>
+          {/* Foreground Illustration (100% Opacity) */}
+          <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center p-2 sm:p-4">
+            <CitCampusIllustration className="w-full h-full" />
           </div>
 
-          <div className="relative z-10 p-4 sm:p-6 hidden md:block">
-            <p className="font-serif italic text-[15px] text-[#9DB0AE] leading-snug max-w-xs">
-              Autumn 2026 academic timetable and venue allocation portal.
+          {/* Top spacer to balance layout */}
+          <div className="relative z-20" />
+
+          {/* Foreground Footer Info (100% Opacity) */}
+          <div className="relative z-20 mt-auto pt-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-white">
+                <CITMonogram size={20} className="text-white" />
+                <span className="text-[14px] sm:text-[15px] font-semibold tracking-tight text-white font-ui">
+                  Chilika Institute
+                </span>
+              </div>
+              <span className="px-3 py-1 text-[11px] font-medium text-white bg-white/10 backdrop-blur-xs rounded-full border border-white/60">
+                Week 7 &middot; Spectra & Midsem
+              </span>
+            </div>
+
+            <p className="mt-3 text-[12.5px] sm:text-[13.5px] font-normal italic text-white/95 leading-relaxed max-w-sm">
+              A unified platform to manage timetables, venue bookings and campus events across CIT.
             </p>
           </div>
         </div>
 
-        {/* Right Half: Form & Fast-Track Role Rows */}
-        <div className="p-6 sm:p-8 lg:p-10 flex flex-col justify-between bg-surface overflow-y-auto">
+        {/* =========================================================================
+            RIGHT PANEL: APPROVED SIGN-IN FORM
+            ========================================================================= */}
+        <div className="p-8 sm:p-10 lg:p-11 flex flex-col justify-between bg-white text-[#111827]">
           <div>
-            {/* Header: Logo, "Sign in to", and Headline */}
-            <div className="mb-5">
+            {/* Header: CIT Monogram, "Sign in to", and Main Headline */}
+            <div>
               <div className="flex items-center gap-2 mb-1.5">
-                <CITLogo size={16} className="text-ink" />
-                <span className="font-ui text-[13px] font-medium text-ink-2">
+                <CITMonogram size={17} className="text-[#5B3DF5]" />
+                <span className="text-[13px] font-normal text-[#6B7280]">
                   Sign in to
                 </span>
               </div>
-              <h1 className="font-serif text-[38px] sm:text-[46px] lg:text-[56px] leading-[1] text-ink tracking-tight font-normal">
+
+              <h1 className="font-['Instrument_Serif',Georgia,serif] text-[38px] sm:text-[44px] lg:text-[48px] leading-[1.05] text-[#111827] tracking-tight font-normal">
                 Every session in its place.
               </h1>
             </div>
 
-            {/* Fast-Track Role Rows for Instant Judge Evaluation */}
-            <div className="space-y-1.5 mb-4">
-              <span className="text-[12px] font-medium text-ink-2 block mb-1">
-                Select demo profile:
+            {/* Subtitle to Demo Cards: 8px */}
+            <div className="mt-2 mb-2">
+              <span className="text-[12px] font-normal text-[#6B7280] block">
+                Select demo role for evaluation:
               </span>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {demoAccounts.map((account) => (
+            {/* Demo Role Selection Cards: 8px gap */}
+            <div className="grid grid-cols-2 gap-2 mb-3.5">
+              {demoAccounts.map((account) => {
+                const isSelected = email === account.email;
+                return (
                   <button
-                    key={account.roleKey}
+                    key={account.title}
                     type="button"
-                    onClick={() =>
-                      handleRoleQuickSignIn(account.roleKey, account.email, account.pass)
-                    }
-                    className="w-full px-2.5 py-1.5 bg-raised/80 hover:bg-raised border border-line hover:border-violet/60 hover:shadow-[0_0_12px_rgba(125,93,255,0.2)] rounded-[6px] text-left transition-all duration-150 flex flex-col justify-center group cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet shadow-2xs"
+                    onClick={() => handleSelectRole(account)}
+                    className={`w-full px-3 py-2 border rounded-[8px] text-left transition-all duration-150 flex flex-col justify-center cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#F3F4F6] border-[#6366F1] shadow-xs'
+                        : 'bg-[#F9FAFB] hover:bg-white border-[#E5E7EB] hover:border-[#D1D5DB]'
+                    }`}
                   >
-                    <span className="font-ui text-[12px] font-semibold text-ink group-hover:text-violet truncate">
+                    <span className="text-[12px] font-semibold text-[#111827] truncate leading-tight">
                       {account.title}
                     </span>
-                    <span className="font-ui text-[10px] text-ink-2 truncate">
+                    <span className="text-[11px] text-[#6B7280] truncate leading-tight mt-0.5">
                       {account.email}
                     </span>
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
 
-            {/* Subtle Divider */}
-            <div className="relative my-3">
-              <div className="border-t border-line" />
-              <span className="absolute left-1/2 -top-2.5 -translate-x-1/2 px-2 bg-surface text-[10px] text-ink-2 font-medium">
+            {/* Divider: "or sign in manually" */}
+            <div className="relative my-3.5 flex items-center justify-center">
+              <div className="w-full border-t border-[#E5E7EB]" />
+              <span className="absolute bg-white px-2.5 text-[11px] text-[#9CA3AF] font-normal">
                 or sign in manually
               </span>
             </div>
 
-            {/* Manual Form */}
-            <form onSubmit={handleManualSubmit} className="space-y-3">
-              <Input
-                label="Email"
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setEmailError('');
-                  setFormError('');
-                }}
-                error={emailError}
-                placeholder="admin@cit.edu"
-              />
+            {/* Form */}
+            <form onSubmit={handleManualSubmit}>
+              {/* Email Field Group */}
+              <div>
+                <label className="text-[12.5px] font-medium text-[#111827] block mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailError('');
+                    setFormError('');
+                  }}
+                  placeholder="admin@cit.edu"
+                  className={`w-full h-10 px-3.5 rounded-[8px] border text-[13.5px] text-[#111827] bg-white transition-all outline-none ${
+                    emailError
+                      ? 'border-red-400 focus:ring-1 focus:ring-red-400'
+                      : 'border-[#D1D5DB] focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1]'
+                  }`}
+                />
+                {emailError && (
+                  <p className="text-[11px] text-red-500 mt-1">{emailError}</p>
+                )}
+              </div>
 
-              <Input
-                label="Password"
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setPasswordError('');
-                  setFormError('');
-                }}
-                error={passwordError}
-                placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
-              />
+              {/* Field Group to Next Label: 20px spacing */}
+              <div className="mt-5">
+                <label className="text-[12.5px] font-medium text-[#111827] block mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setPasswordError('');
+                    setFormError('');
+                  }}
+                  placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+                  className={`w-full h-10 px-3.5 rounded-[8px] border text-[13.5px] text-[#111827] bg-white transition-all outline-none ${
+                    passwordError
+                      ? 'border-red-400 focus:ring-1 focus:ring-red-400'
+                      : 'border-[#818CF8] ring-2 ring-[#6366F1]/20 focus:border-[#6366F1]'
+                  }`}
+                />
+                {passwordError && (
+                  <p className="text-[11px] text-red-500 mt-1">{passwordError}</p>
+                )}
+              </div>
 
               {formError && (
-                <div className="p-2.5 bg-t-bad border border-bad/50 rounded-card text-[12px] text-bad font-medium">
+                <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-[6px] text-[12px] text-red-600 font-medium">
                   {formError}
                 </div>
               )}
 
-              <div className="pt-1">
-                <Button
+              {/* Last Input to Primary Button: 24px spacing */}
+              <div className="mt-6">
+                <button
                   type="submit"
-                  variant="primary"
                   disabled={isSubmitting}
-                  className="w-full h-10 text-[14px]"
+                  className="w-full h-[42px] bg-[#5338ED] hover:bg-[#472FD6] active:bg-[#3D25BE] text-white font-medium text-[14px] rounded-[8px] shadow-xs transition-colors flex items-center justify-center cursor-pointer disabled:opacity-70"
                 >
                   {isSubmitting ? 'Signing in...' : 'Sign in'}
-                </Button>
+                </button>
               </div>
             </form>
           </div>
 
-          {/* Health Status Line & Footer */}
-          <div className="pt-5 border-t border-line mt-5 space-y-2">
-            {/* Health Line with Leaf status dot and Hingula error variant */}
-            <div className="flex items-center justify-between text-[12px]">
-              <div
-                onClick={() => setIsApiOnline(!isApiOnline)}
-                title="Click to toggle API status simulation"
-                className="inline-flex items-center gap-2 cursor-pointer transition-opacity hover:opacity-80"
-              >
-                {isApiOnline ? (
-                  <>
-                    <span className="w-2 h-2 rounded-full bg-good flex-shrink-0" />
-                    <span className="text-ink-2">API online. Database connected.</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="w-2 h-2 rounded-full bg-bad flex-shrink-0" />
-                    <span className="text-bad font-medium">
-                      API unreachable. Manual forms still work after sign-in.
-                    </span>
-                  </>
-                )}
-              </div>
-              <span className="text-[10px] text-ink-2 font-mono hidden sm:inline">
-                Kernel v1.0
-              </span>
-            </div>
-
-            {/* Footer Links: Terms & Privacy */}
-            <div className="flex items-center justify-between text-[11px] text-ink-2 pt-1">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setModalContent({
-                      title: 'Terms of Institute Scheduling',
-                      body: 'The Chilika Institute of Technology timetable solver is a governed instrument. Regular academic sessions take precedence over club activities (Rank 2 vs Rank 6). Any automated proposal must be approved by the Dean’s Office before committing to the canonical timetable.',
-                    })
-                  }
-                  className="hover:text-ink underline decoration-line hover:decoration-ink"
-                >
-                  Terms
-                </button>
-                <span>&middot;</span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setModalContent({
-                      title: 'Data & Privacy Policy',
-                      body: 'Faculty leaves, room maintenance records, and student group sizes are stored locally in the verified kernel database. No student personally identifiable information (PII) is transmitted to third-party LLM providers. Prompts are sanitized on entry.',
-                    })
-                  }
-                  className="hover:text-ink underline decoration-line hover:decoration-ink"
-                >
-                  Privacy
-                </button>
-              </div>
-
-              <span className="text-[11px] text-ink-2">Chilika Institute of Technology</span>
-            </div>
+          {/* Footer: Kernel v1.0 (Right aligned, strictly NO status dot or extra links) */}
+          <div className="mt-6 text-right">
+            <span className="text-[11px] text-[#9CA3AF] font-sans font-normal">
+              Kernel v1.0
+            </span>
           </div>
         </div>
+
       </div>
-
-      {/* Modal Dialog for Terms / Privacy */}
-      {modalContent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-[#12292B]/40"
-            onClick={() => setModalContent(null)}
-          />
-          <div className="relative w-full max-w-md bg-raised border border-line-strong rounded-panel p-6 shadow-palette z-10 space-y-4">
-            <h3 className="font-serif text-[24px] text-ink">{modalContent.title}</h3>
-            <p className="font-ui text-[13px] text-ink-2 leading-relaxed">
-              {modalContent.body}
-            </p>
-            <div className="pt-2 flex justify-end">
-              <Button variant="secondary" onClick={() => setModalContent(null)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
