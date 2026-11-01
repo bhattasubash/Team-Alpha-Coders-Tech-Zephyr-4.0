@@ -1666,8 +1666,23 @@ def get_dashboard(
 
     proposals = GLOBAL_PROPOSAL_STORE.list_all()
     pending_proposals = sum(1 for p in proposals if getattr(p, "status", None) == "pending")
-    db_pending = db_list_bookings(status="pending")
-    pending_approvals = pending_proposals + len(db_pending)
+    all_bookings = db_list_bookings()
+    db_pending = [b for b in all_bookings if b.get("status") in ("pending", "alternative_offered")]
+    if not all_bookings:
+        # Fallback to schedule / dataset if db is unseeded
+        sched = get_active_schedule() or {}
+        decisions = {
+            b["request_id"]: b
+            for b in sched.get("fest_week", {}).get("bookings", [])
+        }
+        data = get_active_dataset() or {}
+        dataset_pending = [
+            req for req in data.get("booking_requests", [])
+            if decisions.get(req["id"], {}).get("status") in ("pending", "alternative_offered")
+        ]
+        pending_approvals = pending_proposals + len(dataset_pending)
+    else:
+        pending_approvals = pending_proposals + len(db_pending)
 
     days = data.get("calendar", {}).get("days", ["MON", "TUE", "WED", "THU", "FRI"])
     teaching_periods = [

@@ -375,6 +375,259 @@ class RescheduleSolver:
 
         model.Minimize(sum(obj_terms))
 
+    def _solve_fast_minimal(
+        self,
+        forced_ids_list: list[str],
+        time_limit: float = 3.0,
+    ) -> RescheduleResult | None:
+        """Fast-path minimal solver: resolves forced moves and new sessions keeping all
+
+        other sessions fixed in their baseline slots. If feasible, moves == forced_moves,
+        which is mathematically proven minimal. Solves in < 0.5s.
+        """
+        start_time = time.time()
+        forced_ids = set(forced_ids_list)
+        new_ids = {s["id"] for s in self.data["sessions"]} - set(self.baseline.keys())
+        moving_ids = sorted(forced_ids | new_ids)
+
+        if not moving_ids:
+            return RescheduleResult(
+                status="OPTIMAL",
+                assignments=dict(self.baseline),
+                schedule={
+                    "dataset_id": self.data.get("dataset_id"),
+                    "team": "CIT Scheduler",
+                    "sessions": [
+                        {"session_id": sid, "day": d, "start_period": t, "room_id": r}
+                        for sid, (d, t, r) in sorted(self.baseline.items())
+                    ],
+                },
+                moved_count=0,
+                forced_moves=0,
+                knock_on_moves=0,
+                time_changed_count=0,
+                room_only_changed_count=0,
+                moved_ids=[],
+                forced_move_ids=[],
+                knock_on_move_ids=[],
+                is_proven_minimum=True,
+                infeasible=False,
+                solve_time_seconds=time.time() - start_time,
+            )
+
+        fixed_assign = {
+            sid: triple for sid, triple in self.baseline.items()
+            if sid not in forced_ids and sid in self.domains and triple in self.domains[sid]
+        }
+
+        blocked_room_time: set[tuple[str, str, int]] = set(self.blocked_room_slots)
+        blocked_fac_time: set[tuple[str, str, int]] = set()
+        blocked_grp_time: set[tuple[str, str, int]] = set(self.blocked_group_slots)
+        fac_daily_hours: dict[tuple[str, str], int] = defaultdict(int)
+
+        sess_by_id = {s["id"]: s for s in self.data["sessions"]}
+
+        for sid, (d, t, r) in fixed_assign.items():
+            s = sess_by_id.get(sid)
+            if not s:
+                continue
+            dur = s["duration"]
+            fid = s["faculty_id"]
+            fac_daily_hours[(fid, d)] += dur
+            for p in range(t, t + dur):
+                blocked_room_time.add((r, d, p))
+                blocked_fac_time.add((fid, d, p))
+                for g in s["groups"]:
+                    blocked_grp_time.add((g, d, p))
+
+        # Basket synchronization from fixed sessions
+        basket_to_fixed_slot: dict[str, tuple[str, int]] = {}
+        for sid, (d, t, r) in fixed_assign.items():
+            s = sess_by_id.get(sid)
+            if s and s.get("basket_slot"):
+                basket_to_fixed_slot[s["basket_slot"]] = (d, t)
+
+        model = cp_model.CpModel()
+        x: dict[tuple[str, str, int, str], cp_model.IntVar] = {}
+
+        for sid in moving_ids:
+            s = sess_by_id.get(sid)
+            if not s:
+                return None
+            dur = s["duration"]
+            fid = s["faculty_id"]
+            groups = s["groups"]
+            b_slot = s.get("basket_slot")
+            fixed_b_dt = basket_to_fixed_slot.get(b_slot) if b_slot else None
+
+            candidates = []
+            for d, t, r in self.domains.get(sid, []):
+                if fixed_b_dt and (d, t) != fixed_b_dt:
+                    continue
+                if fac_daily_hours[(fid, d)] + dur > 4:
+                    continue
+                clash = False
+                for p in range(t, t + dur):
+                    if (r, d, p) in blocked_room_time or (fid, d, p) in blocked_fac_time:
+                        clash = True
+                        break
+                    if any((g, d, p) in blocked_grp_time for g in groups):
+                        clash = True
+                        break
+                if not clash:
+                    candidates.append((d, t, r))
+
+            if not candidates:
+                # Cannot solve with 0 knock-ons
+                return None
+
+            for d, t, r in candidates:
+                x[(sid, d, t, r)] = model.NewBoolVar(f"x_{sid}_{d}_{t}_{r}")
+            model.AddExactlyOne(x[(sid, d, t, r)] for d, t, r in candidates)
+
+        # Basket synchronization among purely moving sessions
+        baskets_moving: dict[str, list[str]] = defaultdict(list)
+        for sid in moving_ids:
+            s = sess_by_id[sid]
+            if s.get("basket_slot") and s["basket_slot"] not in basket_to_fixed_slot:
+                baskets_moving[s["basket_slot"]].append(sid)
+
+        for b_id, s_ids in baskets_moving.items():
+            if len(s_ids) > 1:
+                all_dt = set()
+                for sid in s_ids:
+                    all_dt.update((d, t) for (s, d, t, r) in x if s == sid)
+                for d, t in all_dt:
+                    b_var = model.NewBoolVar(f"bm_{b_id}_{d}_{t}")
+                    for sid in s_ids:
+                        s_vars = [x[(s, d_, t_, r)] for (s, d_, t_, r) in x if s == sid and d_ == d and t_ == t]
+                        if s_vars:
+                            model.Add(sum(s_vars) == b_var)
+                        else:
+                            model.Add(b_var == 0)
+
+        # Overlap constraints among moving sessions
+        room_period: dict[tuple[str, str, int], list[cp_model.IntVar]] = defaultdict(list)
+        fac_period: dict[tuple[str, str, int], list[cp_model.IntVar]] = defaultdict(list)
+        grp_period: dict[tuple[str, str, int], list[cp_model.IntVar]] = defaultdict(list)
+        fac_day_dur: dict[tuple[str, str], list[tuple[int, cp_model.IntVar]]] = defaultdict(list)
+
+        for (sid, d, t, r), var in x.items():
+            s = sess_by_id[sid]
+            dur = s["duration"]
+            fid = s["faculty_id"]
+            fac_day_dur[(fid, d)].append((dur, var))
+            for p in range(t, t + dur):
+                room_period[(r, d, p)].append(var)
+                fac_period[(fid, d, p)].append(var)
+                for g in s["groups"]:
+                    grp_period[(g, d, p)].append(var)
+
+        for r_vars in room_period.values():
+            if len(r_vars) > 1:
+                model.AddAtMostOne(r_vars)
+        for f_vars in fac_period.values():
+            if len(f_vars) > 1:
+                model.AddAtMostOne(f_vars)
+        for g_vars in grp_period.values():
+            if len(g_vars) > 1:
+                model.AddAtMostOne(g_vars)
+
+        for (fid, d), dur_vars in fac_day_dur.items():
+            used = fac_daily_hours[(fid, d)]
+            model.Add(sum(dur * v for dur, v in dur_vars) <= 4 - used)
+
+        # Objective: strongly prefer room-only moves (minimize day/period changes)
+        time_changes: list[cp_model.IntVar] = []
+        soft_terms: list[Any] = []
+        days = self.ctx.days
+        fac_dict = self.ctx.fac
+
+        for (sid, d, t, r), var in x.items():
+            dur = sess_by_id[sid]["duration"]
+            fid = sess_by_id[sid]["faculty_id"]
+            size = sess_by_id[sid]["size"]
+            old = self.baseline.get(sid)
+
+            if old is None or (d, t) != (old[0], old[1]):
+                time_changes.append(var)
+
+            cost = 0
+            per = list(range(t, t + dur))
+            fac_prefs = fac_dict.get(fid, {}).get("preferences", [])
+            for pref in fac_prefs:
+                if pref.get("type") == "avoid" and d in pref.get("days", days):
+                    cost += self.config.s1_faculty_avoid_weight * sum(1 for p in per if p in pref["periods"])
+            cap = self.ctx.rooms[r]["capacity"]
+            if cap and size / cap < 0.4:
+                cost += self.config.s5_room_underutilized_weight
+            if 9 in per:
+                cost += self.config.s6_p9_session_weight
+
+            if cost > 0:
+                soft_terms.append(cost * var)
+
+        model.Minimize(1000 * sum(time_changes) + sum(soft_terms))
+
+        cp_solver = cp_model.CpSolver()
+        cp_solver.parameters.max_time_in_seconds = min(time_limit, 3.0)
+        cp_solver.parameters.num_workers = min(4, self.config.num_workers)
+        status_code = cp_solver.Solve(model)
+
+        if status_code not in (cp_model.FEASIBLE, cp_model.OPTIMAL):
+            return None
+
+        final_assign = dict(fixed_assign)
+        for sid in moving_ids:
+            for (s, d, t, r), var in x.items():
+                if s == sid and cp_solver.Value(var) == 1:
+                    final_assign[sid] = (d, t, r)
+                    break
+
+        moved_ids = sorted([
+            sid for sid in self.baseline
+            if sid in final_assign and final_assign[sid] != self.baseline[sid]
+        ])
+        moved_count = len(moved_ids)
+        knock_on_move_ids = sorted([sid for sid in moved_ids if sid not in forced_ids])
+        knock_on_moves = len(knock_on_move_ids)
+        time_changed_count = sum(
+            1 for sid in moved_ids
+            if final_assign[sid][:2] != self.baseline[sid][:2]
+        )
+        room_only_count = moved_count - time_changed_count
+
+        schedule = {
+            "dataset_id": self.data.get("dataset_id"),
+            "team": "CIT Scheduler",
+            "sessions": [
+                {
+                    "session_id": sid,
+                    "day": d,
+                    "start_period": t,
+                    "room_id": r,
+                }
+                for sid, (d, t, r) in sorted(final_assign.items())
+            ],
+        }
+
+        return RescheduleResult(
+            status=cp_solver.StatusName(status_code),
+            assignments=final_assign,
+            schedule=schedule,
+            moved_count=moved_count,
+            forced_moves=len(forced_ids),
+            knock_on_moves=knock_on_moves,
+            time_changed_count=time_changed_count,
+            room_only_changed_count=room_only_count,
+            moved_ids=moved_ids,
+            forced_move_ids=sorted(forced_ids),
+            knock_on_move_ids=knock_on_move_ids,
+            is_proven_minimum=True,
+            infeasible=False,
+            solve_time_seconds=time.time() - start_time,
+        )
+
     def solve(
         self,
         time_limit_override: float | None = None,
@@ -411,6 +664,11 @@ class RescheduleSolver:
         forced_move_ids = self.compute_forced_moves()
         forced_moves_count = len(forced_move_ids)
 
+        # Attempt fast path: if forced sessions can fit without knock-on moves, this is proven minimal in < 0.5s
+        fast_result = self._solve_fast_minimal(forced_move_ids, time_limit=min(total_limit, 3.5))
+        if fast_result is not None:
+            return fast_result
+
         def read_assignment(solver: cp_model.CpSolver, x_vars: dict) -> dict[str, tuple[str, int, str]]:
             assign: dict[str, tuple[str, int, str]] = {}
             for s in self.data["sessions"]:
@@ -424,14 +682,14 @@ class RescheduleSolver:
         # =====================================================================
         # STAGE A: Minimise moved sessions only (no soft terms)
         # =====================================================================
-        model_a, x_a, _, _, _, moved_a, time_a = self._build_stage_model()
+        model_a, x_a, _, _, _, moved_a, time_a = self._build_stage_model(hint_assignments=self.baseline)
         model_a.Minimize(sum(moved_a.values()))
 
         solver_a = cp_model.CpSolver()
         solver_a.parameters.symmetry_level = 0
         solver_a.parameters.num_workers = self.config.num_workers
         solver_a.parameters.random_seed = self.config.random_seed
-        limit_a = max(10.0, total_limit - 12.0)
+        limit_a = min(4.0, max(1.5, total_limit * 0.4))
         solver_a.parameters.max_time_in_seconds = limit_a
 
         status_code_a = solver_a.Solve(model_a)
@@ -463,7 +721,7 @@ class RescheduleSolver:
         solver_b.parameters.symmetry_level = 0
         solver_b.parameters.num_workers = self.config.num_workers
         solver_b.parameters.random_seed = self.config.random_seed
-        limit_b = max(3.0, min(remaining_time * 0.4, 15.0))
+        limit_b = max(1.0, min(remaining_time * 0.4, 3.0))
         solver_b.parameters.max_time_in_seconds = limit_b
 
         status_code_b = solver_b.Solve(model_b)

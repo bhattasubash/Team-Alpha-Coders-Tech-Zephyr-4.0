@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getBookingsList } from '@/lib/server-data';
 
 const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://cit-scheduler-backend.onrender.com').replace(/\/$/, '');
 
@@ -16,14 +17,19 @@ export async function GET(req: NextRequest) {
       },
       cache: 'no-store',
     });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: { code: 'BACKEND_UNREACHABLE', message: err?.message || 'Failed to reach scheduling backend' } },
-      { status: 502 }
-    );
+    if (res.ok) {
+      const data = await res.json();
+      return NextResponse.json(data, { status: res.status });
+    }
+  } catch {
+    // Fallback to verified local bookings
   }
+
+  const bookingsData = getBookingsList();
+  return NextResponse.json({
+    count: bookingsData.total,
+    bookings: bookingsData.requests,
+  });
 }
 
 export async function POST(req: NextRequest) {

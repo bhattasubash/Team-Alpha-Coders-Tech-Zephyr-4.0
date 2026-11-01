@@ -2,6 +2,7 @@ import React from 'react';
 
 type ChipVariant =
   | 'approved'
+  | 'published'
   | 'valid'
   | 'rejected'
   | 'failed'
@@ -52,6 +53,7 @@ export function Chip({
 
   switch (variant) {
     case 'approved':
+    case 'published':
     case 'valid':
       styleClasses = 'bg-t-good text-ink border-good/60 font-medium';
       break;

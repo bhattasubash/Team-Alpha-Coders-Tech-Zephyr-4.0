@@ -242,6 +242,10 @@ def propose_reschedule(
     }
     new_assign = result.assignments
 
+    courses_map = {c["id"]: c.get("name") or c.get("title") or c["id"] for c in disrupted_data.get("courses", [])}
+    faculty_map = {f["id"]: f.get("name") or f["id"] for f in disrupted_data.get("faculty", [])}
+    session_map = {s["id"]: s for s in disrupted_data.get("sessions", [])}
+
     moves: list[SlotMove] = []
     for sid in sorted(set(base_assign) | set(new_assign)):
         old = base_assign.get(sid)
@@ -250,12 +254,48 @@ def propose_reschedule(
             kind = "room_only" if (old and new and old[:2] == new[:2]) else "time"
             from_slot = {"day": old[0], "start_period": old[1], "room_id": old[2]} if old else None
             to_slot = {"day": new[0], "start_period": new[1], "room_id": new[2]} if new else None
+            
+            s_info = session_map.get(sid, {})
+            cid = s_info.get("course_id")
+            ctitle = courses_map.get(cid, cid) if cid else None
+            fid = s_info.get("faculty_id")
+            fname = faculty_map.get(fid, fid) if fid else None
+
+            if old is None:
+                move_reason = f"Emergency session scheduled into open slot {new[0]} P{new[1]} in {new[2]}."
+            elif kind == "room_only":
+                move_reason = f"Room {old[2]} closed; relocated to {new[2]} preserving original {new[0]} P{new[1]} time."
+            else:
+                move_reason = f"Disrupted at {old[0]} P{old[1]}; rescheduled to {new[0]} P{new[1]} in {new[2]}."
+
             moves.append(SlotMove(
                 session_id=sid,
                 from_slot=from_slot,
                 to_slot=to_slot,
                 kind=kind,
+                course_id=cid,
+                course_title=ctitle,
+                faculty_id=fid,
+                faculty_name=fname,
+                reason=move_reason,
             ))
+
+    # Build human readable disruption summary
+    disruption_summary: list[str] = []
+    for ch in changes:
+        ch_type = ch.get("type")
+        if ch_type == "faculty_unavailable":
+            f_name = faculty_map.get(ch.get("faculty_id"), ch.get("faculty_id"))
+            days_str = ", ".join(ch.get("days", []))
+            r_str = f" ({ch.get('reason')})" if ch.get("reason") else ""
+            disruption_summary.append(f"Faculty {f_name} unavailable on {days_str}{r_str}")
+        elif ch_type == "room_unavailable":
+            days_str = ", ".join(ch.get("days", []))
+            r_str = f" ({ch.get('reason')})" if ch.get("reason") else ""
+            disruption_summary.append(f"Room {ch.get('room_id')} closed on {days_str}{r_str}")
+        elif ch_type == "add_session":
+            sess_id = ch.get("session", {}).get("id", "emergency")
+            disruption_summary.append(f"Emergency session {sess_id} added")
 
     reason_msg = (
         f"Proposal resolves disruption with {result.moved_count} moves "
@@ -277,6 +317,7 @@ def propose_reschedule(
         conflicts=[],
         reason_codes=["SUCCESS"],
         reason=reason_msg,
+        disruption_summary=disruption_summary,
     )
 
     p_store.save(prop, schedule_data=result.schedule, proposer_id=proposer_id)

@@ -203,6 +203,11 @@ class SlotMove(BaseModel):
     from_slot: dict[str, Any] | None = None
     to_slot: dict[str, Any] | None = None
     kind: Literal["time", "room_only"]
+    course_id: str | None = None
+    course_title: str | None = None
+    faculty_id: str | None = None
+    faculty_name: str | None = None
+    reason: str | None = None
 
 
 class Proposal(BaseModel):
@@ -217,6 +222,7 @@ class Proposal(BaseModel):
     conflicts: list[str] = Field(default_factory=list)
     reason_codes: list[str] = Field(default_factory=list)
     reason: str
+    disruption_summary: list[str] = Field(default_factory=list)
 
 
 class ProposalListResponse(BaseModel):

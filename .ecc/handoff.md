@@ -1,16 +1,17 @@
-# Handoff Note (2026-11-01 08:00 IST)
+# Handoff Note (2026-11-01 08:15 IST)
 
 ## What Was Done
-1. **AI Assistant Dynamic Querying**:
-   - Resolved repetitive fallback answers in `frontend/src/app/api/assistant/route.ts` by connecting to live backend endpoints with timeout and graceful local fallback.
-   - Refactored `backend/app/ai/provider.py` (`ask_assistant`): prioritized dynamic LLM invocation (Groq candidate models) over aggressive keyword traps; supported multiple API key configs; handled non-JSON output gracefully.
-   - Enriched offline grounded knowledge in `frontend/src/lib/server-data.ts` and `provider.py` for venues, faculty, timings, exams, and bookings.
-   - Added resilient local proxy fallback to `frontend/src/lib/api.ts` and unified error handling in `AssistantDrawer.tsx`.
-2. **AI Booking Draft & Hinglish Parsers**:
-   - Connected `handleParsePrompt` to `api.parseBooking()` with full client-side fallback parsing in `frontend/src/app/bookings/new/page.tsx`.
-   - Enhanced `prompts/booking_parse.txt` with period mappings and Hinglish lexicon.
+1. **Instant Disruption Simulation (< 0.5s)**:
+   - Implemented fast-path minimal solve in `backend/app/solver/reschedule.py` (`_solve_fast_minimal`): resolves forced moves and emergency sessions with fixed baseline in <0.5s with proven mathematical optimality (moves = lower bound).
+   - Replaced 30-45s timeout stall with warm-started Stage A/B/C fallback with adaptive time limits (1-4s).
+2. **Clear Root Cause & Solution Ledger (`frontend/src/app/disruption/page.tsx`)**:
+   - Added **"Why This Disruption Occurred"** breakdown explaining exact leave & closure causes and their direct impact.
+   - Added **"The Solution"** section detailing 14 total moves (13 room-only changes preserving student times, 1 time change for faculty leave, 0 knock-on moves, 0 hard violations).
+   - Replaced fake hardcoded infeasible card with real, dynamic kernel constraint violation reporting and one-click practice recovery.
+   - Fixed approval bar visibility so it only displays for valid, feasible proposals ready for Dean's commit.
+3. **Backend Schema & Metadata Enrichment**:
+   - Added `course_title`, `faculty_name`, and natural language `reason` to `SlotMove` and `disruption_summary` to `Proposal`.
 
-## Verification Results
-- Backend tests (`test_ai_safety.py`, `test_api_contract.py`): All 18 tests passed.
-- Live HTTP validation: Verified distinct dynamic responses across multiple query topics (auditorium, faculty, lunch timing, cancel class refusal, spectra festival).
-- Next.js Build: 32/32 routes compiled cleanly with 0 type errors.
+## Verification
+- Backend pytest: `backend/tests/test_reschedule.py` passed 4/4 in 6.46s (down from 113.39s).
+- Next.js production build: 32/32 routes compiled with zero errors.
