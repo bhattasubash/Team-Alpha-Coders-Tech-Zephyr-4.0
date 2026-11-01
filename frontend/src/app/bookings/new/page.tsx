@@ -893,6 +893,7 @@ export default function NewBookingPage() {
       periods: number[];
       timeClock: string;
       reason: string;
+      capacity?: number;
     }> = [];
 
     const DAYS: Day[] = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
@@ -984,6 +985,7 @@ export default function NewBookingPage() {
           periods: selectedPeriods,
           timeClock: getPeriodRangeClock(selectedPeriods),
           reason: `${altRoom.name} (${altRoom.capacity} seats) is free on ${day} at ${getPeriodRangeClock(selectedPeriods)}.`,
+          capacity: altRoom.capacity,
         });
         if (results.filter((r) => r.type === 'alternate_venue').length >= 2) break;
       }
@@ -1072,6 +1074,7 @@ export default function NewBookingPage() {
           periods: selectedPeriods,
           timeClock: getPeriodRangeClock(selectedPeriods),
           reason: `${rm.name} (${rm.capacity} seats) is available on ${day} at ${getPeriodRangeClock(selectedPeriods)}.`,
+          capacity: rm.capacity,
         });
         if (results.length >= 3) break;
       }
@@ -1089,6 +1092,7 @@ export default function NewBookingPage() {
           periods: selectedPeriods,
           timeClock: getPeriodRangeClock(selectedPeriods),
           reason: `${rm.name} (${rm.capacity} seats) capacity available.`,
+          capacity: rm.capacity,
         });
         if (results.length >= 2) break;
       }
@@ -1862,7 +1866,7 @@ export default function NewBookingPage() {
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <span className="text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-200">
-                                  {rec.capacity} seats
+                                  {rec.capacity ? `${rec.capacity} seats` : (rec.tag || "Available")}
                                 </span>
                                 <span className="text-[12px] font-bold text-ink truncate">
                                   {rec.venue} ({rec.venueName})
@@ -2061,7 +2065,7 @@ export default function NewBookingPage() {
                             <div>
                               <div className="flex items-center gap-1.5">
                                 <span className="text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-200">
-                                  {alt.capacity} seats
+                                  {alt.capacity ? `${alt.capacity} seats` : (alt.tag || "Available")}
                                 </span>
                                 <span className="font-bold text-ink">
                                   {alt.venue} ({alt.venueName})
@@ -2206,7 +2210,7 @@ export default function NewBookingPage() {
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-200">
-                                    {alt.capacity} seats
+                                    {alt.capacity ? `${alt.capacity} seats` : (alt.tag || "Available")}
                                   </span>
                                   <span className="text-[12px] font-bold text-ink truncate">
                                     {alt.venue} ({alt.venueName})
