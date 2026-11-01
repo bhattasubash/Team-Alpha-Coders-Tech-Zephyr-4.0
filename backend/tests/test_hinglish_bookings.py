@@ -74,6 +74,11 @@ def test_hinglish_days_mapping(provider: LLMProvider):
         ("shukravaar ko", "FRI"),
         ("शुक्रवार ko", "FRI"),
         ("सोमवार ko", "MON"),
+        ("Auditorium chahiye 4 nov 6 baje tak 200 logon ke liye reharsal ke liye", "WED"),
+        ("CR-101 chahiye 6 nov 4 baje tak 50 students", "FRI"),
+        ("seminar hall 2 nov 6 baje", "MON"),
+        ("LH-1 chahiye 3 nov 6 baje", "TUE"),
+        ("OAT chahiye 5 nov 6 baje", "THU"),
     ]
 
     for text, expected_day in days:
