@@ -437,7 +437,7 @@ def hydrate_sessions(
 def get_timetable(
     view: Literal["group", "faculty", "room"] = Query("group"),
     id: str = Query(..., description="ID of the group, faculty, or room to filter"),
-    user: dict[str, Any] = Depends(get_current_user),
+    user: dict[str, Any] | None = Depends(get_optional_user),
 ) -> TimetableViewResponse:
     """Return timetable filtered by group, faculty, or room view."""
     sched = get_active_schedule()
@@ -466,7 +466,7 @@ def get_timetable(
     tags=["timetable"],
 )
 def get_timetable_all(
-    user: dict[str, Any] = Depends(get_current_user),
+    user: dict[str, Any] | None = Depends(get_optional_user),
 ) -> TimetableAllResponse:
     """Return full timetable across all groups and rooms."""
     sched = get_active_schedule()
@@ -988,11 +988,15 @@ def get_exams(
         with open("data/cit_public.json", encoding="utf-8") as f:
             data = json.load(f)
     sched = get_active_schedule()
-    if not sched:
-        with open("exports/schedule.json", encoding="utf-8") as f:
-            sched = json.load(f)
-
-    exams_list = sched.get("exams", [])
+    exams_list = sched.get("exams", []) if sched else []
+    if not exams_list:
+        sched_path = Path("exports/schedule.json")
+        if not sched_path.exists():
+            sched_path = Path(__file__).resolve().parents[3] / "exports" / "schedule.json"
+        if sched_path.exists():
+            with open(sched_path, encoding="utf-8") as f:
+                sched_fallback = json.load(f)
+                exams_list = sched_fallback.get("exams", [])
     ctx = KernelContext(data)
     penalty = check_exam_soft(ctx, exams_list) if exams_list else 0
     assignments = hydrate_exams(exams_list, data)
@@ -1050,10 +1054,8 @@ def generate_exams(
 # =============================================================================
 
 def _get_all_merged_bookings() -> list[dict[str, Any]]:
-    """Retrieve all bookings merged from SQLite and dataset seed records."""
+    """Retrieve all bookings merged from SQLite and dataset seed records with hydration."""
     db_items = db_list_bookings()
-    db_by_id = {b["id"]: b for b in db_items}
-
     data = get_active_dataset() or {}
     if not data:
         data_path = Path("data/cit_public.json")
@@ -1062,6 +1064,8 @@ def _get_all_merged_bookings() -> list[dict[str, Any]]:
         if data_path.exists():
             with open(data_path, encoding="utf-8") as f:
                 data = json.load(f)
+
+    dataset_requests = {req["id"]: req for req in data.get("booking_requests", [])}
 
     sched = get_active_schedule() or {}
     if not sched:
@@ -1077,34 +1081,48 @@ def _get_all_merged_bookings() -> list[dict[str, Any]]:
         for b in sched.get("fest_week", {}).get("bookings", [])
     }
 
-    all_bookings: list[dict[str, Any]] = []
-    seed_ids = set()
+    hydrated_items = []
+    seen_ids = set()
+
+    for it in db_items:
+        req_id = it.get("request_id") or it.get("id")
+        seen_ids.add(req_id)
+        base = dict(dataset_requests.get(req_id, {}))
+        base.update(it)
+        if "status" not in base:
+            base["status"] = it.get("status", "pending")
+        if "assigned_room" not in base or not base["assigned_room"]:
+            base["assigned_room"] = it.get("room_id") or it.get("allocated_room")
+        if "assigned_day" not in base or not base["assigned_day"]:
+            base["assigned_day"] = it.get("day") or it.get("allocated_day")
+        if "assigned_start_period" not in base or base["assigned_start_period"] is None:
+            base["assigned_start_period"] = it.get("start_period") or it.get("allocated_period")
+        if "assigned_end_period" not in base or base["assigned_end_period"] is None:
+            base["assigned_end_period"] = it.get("end_period")
+        hydrated_items.append(base)
 
     for req in data.get("booking_requests", []):
         rid = req["id"]
-        seed_ids.add(rid)
-        if rid in db_by_id:
-            all_bookings.append(db_by_id[rid])
+        if rid in seen_ids:
+            continue
+        merged = dict(req)
+        dec = decisions.get(rid)
+        if dec:
+            merged["status"] = dec.get("status", "pending")
+            merged["assigned_room"] = dec.get("room_id")
+            merged["assigned_day"] = dec.get("day")
+            merged["assigned_start_period"] = dec.get("start_period")
+            merged["assigned_end_period"] = dec.get("end_period")
+            merged["reason"] = dec.get("reason", "")
+            merged["reason_codes"] = dec.get("reason_codes", [])
+            merged["conflicting_bookings"] = dec.get("conflicting_bookings", [])
+            merged["conflicting_sessions"] = dec.get("conflicting_sessions", [])
+            merged["alternative_offered"] = dec.get("alternative_offered")
         else:
-            merged = dict(req)
-            dec = decisions.get(rid)
-            if dec:
-                merged["status"] = dec.get("status", "pending")
-                merged["assigned_room"] = dec.get("room_id")
-                merged["assigned_day"] = dec.get("day")
-                merged["assigned_start_period"] = dec.get("start_period")
-                merged["assigned_end_period"] = dec.get("end_period")
-                merged["reason"] = dec.get("reason", "")
-                merged["reason_codes"] = dec.get("reason_codes", [])
-                merged["conflicting_bookings"] = dec.get("conflicting_bookings", [])
-                merged["conflicting_sessions"] = dec.get("conflicting_sessions", [])
-                merged["alternative_offered"] = dec.get("alternative_offered")
-            else:
-                merged["status"] = "pending"
-            all_bookings.append(merged)
+            merged["status"] = "pending"
+        hydrated_items.append(merged)
 
-    new_db_bookings = [b for b in db_items if b["id"] not in seed_ids]
-    return new_db_bookings + all_bookings
+    return hydrated_items
 
 
 @router.get(
@@ -1113,7 +1131,7 @@ def _get_all_merged_bookings() -> list[dict[str, Any]]:
     tags=["bookings"],
 )
 def get_bookings(
-    user: dict[str, Any] = Depends(get_current_user),
+    user: dict[str, Any] | None = Depends(get_optional_user),
 ) -> BookingsListResponse:
     """List all booking requests and their current statuses."""
     items = _get_all_merged_bookings()
@@ -1575,8 +1593,11 @@ def decide_bookings(
 
     commit_new_schedule(sched, dataset_id=data.get("dataset_id", "cit-public-v1"))
 
+    requests_by_id = {r["id"]: r for r in data.get("booking_requests", [])}
     for b in fest_week.get("bookings", []):
-        db_save_booking(request_id=b["request_id"], request_data=b, status=b.get("status", "pending"), decision_data=b)
+        full_req = dict(requests_by_id.get(b["request_id"], {}))
+        full_req.update(b)
+        db_save_booking(request_id=b["request_id"], request_data=full_req, status=b.get("status", "pending"), decision_data=b)
 
     log_audit(
         action="decide_bookings",
@@ -1889,8 +1910,23 @@ def get_dashboard(
 
     proposals = GLOBAL_PROPOSAL_STORE.list_all()
     pending_proposals = sum(1 for p in proposals if getattr(p, "status", None) == "pending")
-    db_pending = db_list_bookings(status="pending")
-    pending_approvals = pending_proposals + len(db_pending)
+    all_bookings = db_list_bookings()
+    db_pending = [b for b in all_bookings if b.get("status") in ("pending", "alternative_offered")]
+    if not all_bookings:
+        # Fallback to schedule / dataset if db is unseeded
+        sched = get_active_schedule() or {}
+        decisions = {
+            b["request_id"]: b
+            for b in sched.get("fest_week", {}).get("bookings", [])
+        }
+        data = get_active_dataset() or {}
+        dataset_pending = [
+            req for req in data.get("booking_requests", [])
+            if decisions.get(req["id"], {}).get("status") in ("pending", "alternative_offered")
+        ]
+        pending_approvals = pending_proposals + len(dataset_pending)
+    else:
+        pending_approvals = pending_proposals + len(db_pending)
 
     days = data.get("calendar", {}).get("days", ["MON", "TUE", "WED", "THU", "FRI"])
     teaching_periods = [

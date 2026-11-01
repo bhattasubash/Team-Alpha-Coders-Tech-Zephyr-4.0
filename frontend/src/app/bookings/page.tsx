@@ -342,7 +342,7 @@ export default function BookingsPage() {
   // Self-approval guard: Nobody can approve their own request
   const isSelfRequest = (booking: BookingRequest): boolean => {
     // If user role is admin and booking requester is admin or Dean Office
-    if (role === 'admin' && (booking.role === 'admin' || booking.requester.toLowerCase().includes('dean') || booking.id === 'BR-01')) {
+    if (role === 'admin' && (booking.role === 'admin' || Boolean(booking.requester && booking.requester.toLowerCase().includes('dean')) || booking.id === 'BR-01')) {
       return true;
     }
     // If user role is department_coordinator and booking is coordinator

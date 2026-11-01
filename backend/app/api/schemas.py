@@ -203,6 +203,24 @@ class SlotMove(BaseModel):
     from_slot: dict[str, Any] | None = None
     to_slot: dict[str, Any] | None = None
     kind: Literal["time", "room_only"]
+    course_id: str | None = None
+    course_title: str | None = None
+    faculty_id: str | None = None
+    faculty_name: str | None = None
+    reason: str | None = None
+
+
+class PostChangeValidation(BaseModel):
+    hard_valid: bool = True
+    hard_violation_count: int = 0
+    hard_violations: list[dict[str, Any]] = Field(default_factory=list)
+    hard_by_rule: dict[str, int] = Field(default_factory=dict)
+    soft_total: int | None = None
+    soft_penalties: dict[str, int] = Field(default_factory=dict)
+    baseline_soft_total: int | None = None
+    soft_delta: int | None = None
+    rules_checked: int = 14
+    validator_engine: str = "Official Kernel CP-SAT Validator"
 
 
 class Proposal(BaseModel):
@@ -217,6 +235,8 @@ class Proposal(BaseModel):
     conflicts: list[str] = Field(default_factory=list)
     reason_codes: list[str] = Field(default_factory=list)
     reason: str
+    disruption_summary: list[str] = Field(default_factory=list)
+    validation: PostChangeValidation | None = None
 
 
 class ProposalListResponse(BaseModel):

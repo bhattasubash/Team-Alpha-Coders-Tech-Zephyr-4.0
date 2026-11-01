@@ -365,7 +365,7 @@ All screens inherit the shell. Each lists the memorable move, the structure and 
 ### 5. New booking (`/bookings/new`)
 
 - Two tabs: **Describe it** and **Fill the form**. Fill the form is always reachable and never disabled.
-- Describe it: large textarea (serif italic placeholder: *Auditorium chahiye kal shaam 6 baje se 9 baje tak, 200 logon ke liye*). Under it, sample prompts as plain text links in two columns, not pills.
+- Describe it: large textarea (serif italic placeholder: *Auditorium chahiye 4 Nov, 6 baje se 9 baje tak, 200 logon ke liye dance rehearsal ke liye*). Under it, sample prompts as plain text links in two columns, not pills.
 - On submit, the draft appears beside the textarea: structured fields (venue, date, periods P1 to P13 as a segmented selector, title, category, attendees, wheelchair access), each editable, each with its italic provenance line.
 - Kernel stamp above the draft: "Checked by kernel. This check does not use an AI model."
 - Validation results list under the form: each rule, result, reason. If the venue is busy, an "Alternatives" list shows nearest valid options with a "Use this" button.
