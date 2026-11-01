@@ -88,7 +88,7 @@ export function AssistantOrb() {
     const fallbackMesh = new THREE.Mesh(fallbackGeo, fallbackMat);
     scene.add(fallbackMesh);
 
-    // Load kuttta textured.glb
+    // Load assistant model
     const loader = new GLTFLoader();
     let loadedCharacter: THREE.Object3D | null = null;
 
@@ -136,7 +136,7 @@ export function AssistantOrb() {
       },
       undefined,
       (err) => {
-        console.warn('Could not load kuttta.glb, using fallback:', err);
+        console.warn('Could not load assistant.glb, using fallback:', err);
         fallbackMesh.visible = true;
       }
     );

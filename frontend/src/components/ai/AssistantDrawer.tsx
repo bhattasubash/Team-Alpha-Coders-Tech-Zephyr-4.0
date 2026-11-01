@@ -114,7 +114,7 @@ export function AssistantDrawer() {
     <Drawer
       isOpen={isAssistantOpen}
       onClose={() => setIsAssistantOpen(false)}
-      title="CIT AI Guide & Assistant 🐕"
+      title="CIT AI Guide & Assistant"
       subtitle="Interactive 3D guide & CP-SAT solver constraint explainer"
     >
       <div className="flex flex-col h-[calc(100vh-170px)] font-ui">
@@ -135,7 +135,7 @@ export function AssistantDrawer() {
                 {msg.sender === 'assistant' && (
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold text-violet mb-1.5">
                     <SparklesIcon size={13} />
-                    <span>CIT AI Guide (Kutta)</span>
+                    <span>CIT AI Guide</span>
                   </div>
                 )}
                 <p className="whitespace-pre-wrap">{msg.text}</p>
