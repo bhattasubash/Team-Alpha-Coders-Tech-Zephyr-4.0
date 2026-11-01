@@ -161,12 +161,101 @@ h1, h2, h3, .font-serif, .display-serif {
 
 /* Gradient Mesh Background */
 .bg-mesh {
-  background-color: var(--paper);
-  background-image: 
-    radial-gradient(at 15% 85%, rgba(125, 93, 255, 0.08) 0%, transparent 50%),
-    radial-gradient(at 85% 15%, rgba(234, 109, 248, 0.06) 0%, transparent 50%),
-    radial-gradient(at 50% 50%, rgba(99, 204, 121, 0.04) 0%, transparent 50%),
-    radial-gradient(at 90% 90%, rgba(251, 230, 77, 0.03) 0%, transparent 45%);
+  background-color: transparent;
+}
+
+/* Global Pastel Watercolor Gradient Atmospheric Layer */
+.app-pastel-bg {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(72vw, 1100px);
+  height: 680px;
+  background-image: url('/images/pastel-gradient-texture.png');
+  background-repeat: no-repeat;
+  background-position: top right;
+  background-size: cover;
+  opacity: 0.40;
+  pointer-events: none;
+  z-index: 0;
+  transform: translateZ(0);
+  will-change: opacity;
+  -webkit-mask-image: radial-gradient(
+    ellipse 85% 80% at 85% 15%,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.85) 28%,
+    rgba(0, 0, 0, 0.45) 55%,
+    rgba(0, 0, 0, 0.10) 75%,
+    transparent 88%
+  );
+  mask-image: radial-gradient(
+    ellipse 85% 80% at 85% 15%,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.85) 28%,
+    rgba(0, 0, 0, 0.45) 55%,
+    rgba(0, 0, 0, 0.10) 75%,
+    transparent 88%
+  );
+}
+
+/* Tablet adjustments: scale down & soften opacity */
+@media (max-width: 1024px) {
+  .app-pastel-bg {
+    width: min(85vw, 800px);
+    height: 520px;
+    opacity: 0.35;
+    -webkit-mask-image: radial-gradient(
+      ellipse 85% 80% at 85% 15%,
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 0.75) 30%,
+      rgba(0, 0, 0, 0.35) 55%,
+      rgba(0, 0, 0, 0.08) 75%,
+      transparent 88%
+    );
+    mask-image: radial-gradient(
+      ellipse 85% 80% at 85% 15%,
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 0.75) 30%,
+      rgba(0, 0, 0, 0.35) 55%,
+      rgba(0, 0, 0, 0.08) 75%,
+      transparent 88%
+    );
+  }
+}
+
+/* Mobile adjustments: reduce intensity and size */
+@media (max-width: 640px) {
+  .app-pastel-bg {
+    width: 100vw;
+    height: 380px;
+    opacity: 0.28;
+    -webkit-mask-image: radial-gradient(
+      ellipse 90% 75% at 85% 15%,
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 0.70) 25%,
+      rgba(0, 0, 0, 0.25) 50%,
+      transparent 78%
+    );
+    mask-image: radial-gradient(
+      ellipse 90% 75% at 85% 15%,
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 0.70) 25%,
+      rgba(0, 0, 0, 0.25) 50%,
+      transparent 78%
+    );
+  }
+}
+
+/* Dark theme tuning: softer atmospheric luminance against dark lagoon background */
+[data-theme="dark"] .app-pastel-bg,
+.dark .app-pastel-bg {
+  opacity: 0.26;
+}
+@media (max-width: 640px) {
+  [data-theme="dark"] .app-pastel-bg,
+  .dark .app-pastel-bg {
+    opacity: 0.18;
+  }
 }
 
 /* Glow Effects */

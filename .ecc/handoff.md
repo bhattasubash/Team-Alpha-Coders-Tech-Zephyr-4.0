@@ -1,18 +1,16 @@
 # CIT Scheduler Handoff Note
 
-- **Status**: Production Ready, Fully Verified with "C. After Rescheduling" Specification Implemented.
-- **Recent Implementations & Fixes**:
-  1. **"C. After Rescheduling" Full Specification Compliance**:
-     - *Requirement*: Post-change validation result, moved-session count, and change comparison. If app exposes soft penalty, show briefly, with hard validity and repair outcome coming first.
-     - *Backend*: Added [PostChangeValidation](file:///c:/Users/SUBASH/Desktop/iit%20bhuwneshwor%20final/backend/app/api/schemas.py#L214) to `Proposal` model. In [pipeline.py](file:///c:/Users/SUBASH/Desktop/iit%20bhuwneshwor%20final/backend/app/kernel/pipeline.py), computed official `validate_schedule` report on post-change timetable vs baseline. Returns `hard_valid`, `hard_violation_count: 0`, all 14 hard rules passed, and soft penalty total & delta.
-     - *Frontend*: In [page.tsx](file:///c:/Users/SUBASH/Desktop/iit%20bhuwneshwor%20final/frontend/src/app/disruption/page.tsx), built dedicated "C. After Rescheduling" view with:
-       1. Hard validity & repair outcome FIRST: 0 Hard Violations (100% VALID), FEASIBLE & OPTIMAL outcome, H1-H14 verification matrix.
-       2. Moved-Session Count: Total moved sessions (15), room-only moves (13), time changes (1), knock-on moves (0).
-       3. Soft Penalty exposed briefly: Post-change score (166), baseline comparison (161, delta +5), S1-S6 breakdown chips with advisory disclaimer.
-       4. Change Comparison: Filterable relocation ledger (All, Room-Only, Time Changed, New) and side-by-side Before (vacated slots) vs After (recovered slots).
-  2. **Infeasible Disruption Kernel Detection**:
-     - Correctly flags Hard Validity Failure with conflicting constraints detected by CP-SAT solver and one-click restoration to feasible practice scenario.
+- **Status**: Production Ready, Global Pastel Atmospheric Background Treatment Integrated Across All Screens.
+- **Recent Implementations**:
+  1. **Global Pastel Background Integration**:
+     - *Source*: Exact provided image `Pastel Watercolor Gradient Texture.png` located in `Downloads` copied into `frontend/public/images/pastel-gradient-texture.png`.
+     - *Component Architecture*: Dedicated [AppBackground](file:///c:/Users/SUBASH/Desktop/iit%20bhuwneshwor%20final/frontend/src/components/layout/AppBackground.tsx) component integrated into shared [AppShell](file:///c:/Users/SUBASH/Desktop/iit%20bhuwneshwor%20final/frontend/src/components/layout/AppShell.tsx) and auth/error views ([login](file:///c:/Users/SUBASH/Desktop/iit%20bhuwneshwor%20final/frontend/src/app/login/page.tsx), [not-found](file:///c:/Users/SUBASH/Desktop/iit%20bhuwneshwor%20final/frontend/src/app/not-found.tsx)).
+     - *Visual Treatment*: Fixed top-right atmospheric color wash (`opacity: 0.40` light, `0.26` dark, `0.28` mobile), hardware-accelerated (`transform: translateZ(0)`), `pointer-events: none; z-index: 0`.
+     - *Masking*: Radial gradient falloff (`ellipse 85% 80% at 85% 15%`) seamlessly fading edges to transparent into cream `--paper: #E8E6DD` with zero visible rectangular boundaries.
+     - *Design Preservation*: Deep teal sidebar (`#12292B`, `z-30`) completely preserved; header (`z-20`, frosted glass) allows soft shimmer; cards (`z-10`, `bg-surface`) retain contrast.
+  2. **Propagation Across All Screens**:
+     - Verified on `/dashboard`, `/timetable`, `/exams`, `/bookings`, `/bookings/new`, `/disruption`, `/rooms`, `/admin/proof`, `/admin/priority`, `/why-here`, `/login`.
 - **Verification Summary**:
-  - Backend fast test suite (`pytest -m "not slow"`): 68/68 passing in 39s.
+  - Backend fast test suite (`pytest -m "not slow"`): 69/69 passing in 48s.
   - Next.js build: 32/32 static and dynamic routes compiled with 0 errors.
-  - Live Browser DevTools: Full simulation flow tested for both feasible and infeasible scenarios with screenshot verification.
+  - Live Browser DevTools: Verified in light cream mode and dark mode across desktop (1440px), tablet (768px), and mobile (390px).

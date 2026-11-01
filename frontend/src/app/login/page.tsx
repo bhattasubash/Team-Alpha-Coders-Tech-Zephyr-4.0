@@ -9,6 +9,7 @@ import { CITLogo } from '@/components/ui/Icons';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ChilikaPainting } from '@/components/auth/ChilikaPainting';
+import { AppBackground } from '@/components/layout/AppBackground';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -138,9 +139,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-mesh flex items-center justify-center p-4 sm:p-6 lg:p-8 select-none">
+    <div className="min-h-screen bg-paper flex items-center justify-center p-4 sm:p-6 lg:p-8 select-none relative overflow-hidden">
+      {/* Global Pastel Atmospheric Background Wash */}
+      <AppBackground />
+
       {/* Centred 1040x600 Glass Card */}
-      <div className="w-full max-w-[1040px] md:h-[600px] glass-panel rounded-panel overflow-hidden grid grid-cols-1 md:grid-cols-2 shadow-2xl">
+      <div className="w-full max-w-[1040px] md:h-[600px] glass-panel rounded-panel overflow-hidden grid grid-cols-1 md:grid-cols-2 shadow-2xl relative z-10">
         
         {/* Left Half: Generative Stipple Painting of Chilika Lagoon (160px band below 640px) */}
         <div className="relative h-[160px] md:h-full bg-[#0E1F21] border-b md:border-b-0 md:border-r border-[#1C3739] overflow-hidden flex flex-col justify-between">

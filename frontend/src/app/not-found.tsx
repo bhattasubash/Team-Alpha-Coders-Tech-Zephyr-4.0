@@ -1,9 +1,13 @@
 import Link from 'next/link';
+import { AppBackground } from '@/components/layout/AppBackground';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-mesh text-ink flex flex-col items-center justify-center p-6 text-center select-none">
-      <div className="max-w-md p-8 glass-panel rounded-panel space-y-4 shadow-xl">
+    <div className="min-h-screen bg-paper text-ink flex flex-col items-center justify-center p-6 text-center select-none relative overflow-hidden">
+      {/* Global Pastel Atmospheric Background Wash */}
+      <AppBackground />
+
+      <div className="max-w-md p-8 glass-panel rounded-panel space-y-4 shadow-xl relative z-10">
         <span className="text-[12px] font-mono text-violet bg-violet/15 px-2.5 py-1 rounded-pill border border-violet/30">
           Error 404
         </span>
