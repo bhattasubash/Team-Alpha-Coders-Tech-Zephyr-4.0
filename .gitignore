@@ -10,7 +10,7 @@ __pycache__/
 *.db-wal
 .next/
 dist/
-exports/*_report.json
+exports/*report*.json
 .ruff_cache/
 .mypy_cache/
 .pytest_cache/

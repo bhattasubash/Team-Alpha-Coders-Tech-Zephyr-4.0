@@ -513,13 +513,13 @@ export default function NewBookingPage() {
 
   // Raw Prompt State
   const [promptText, setPromptText] = useState(
-    'Auditorium chahiye kal shaam 6 baje se 9 baje tak, 200 logon ke liye dance rehearsal ke liye'
+    'Auditorium chahiye 4 Nov, 6 baje se 9 baje tak, 200 logon ke liye dance rehearsal ke liye'
   );
 
   // Form Fields
   const [title, setTitle] = useState("Spectra '27 Dance Society Rehearsal");
   const [venueId, setVenueId] = useState<string>('AUD');
-  const [day, setDay] = useState<Day>('TUE');
+  const [day, setDay] = useState<Day>('WED');
   const [selectedPeriods, setSelectedPeriods] = useState<number[]>([10, 11, 12]);
   const [attendees, setAttendees] = useState<number>(200);
   const [category, setCategory] = useState<string>('club_event');
@@ -534,15 +534,15 @@ export default function NewBookingPage() {
   const [provenanceMap, setProvenanceMap] = useState<Record<string, string>>({
     title: 'Inferred from "dance rehearsal ke liye".',
     venue: 'Inferred from "Auditorium chahiye".',
-    day: 'Inferred from "kal" (relative to current demo calendar).',
-    periods: 'Periods P10 to P12 inferred from "shaam 6 baje se 9 baje tak".',
+    day: 'Inferred from "4 Nov" (Wednesday).',
+    periods: 'Periods P10 to P12 inferred from "6 baje se 9 baje tak".',
     attendees: 'Inferred from "200 logon ke liye".',
     wheelchair: 'Defaulted to campus standard accessibility compliance.',
   });
 
   const samplePrompts = [
     {
-      text: 'Auditorium chahiye kal shaam 6 baje se 9 baje tak, 200 logon ke liye dance rehearsal ke liye',
+      text: 'Auditorium chahiye 4 Nov, 6 baje se 9 baje tak, 200 logon ke liye dance rehearsal ke liye',
       category: 'Fest Rehearsal',
     },
     {
@@ -1116,7 +1116,7 @@ export default function NewBookingPage() {
                       handleParsePrompt(promptText);
                     }
                   }}
-                  placeholder="Auditorium chahiye kal shaam 6 baje se 9 baje tak, 200 logon ke liye"
+                  placeholder="Auditorium chahiye 4 Nov, 6 baje se 9 baje tak, 200 logon ke liye dance rehearsal ke liye"
                   className="w-full p-3.5 bg-raised border border-line-strong rounded-[6px] font-serif italic text-[16px] leading-relaxed text-ink placeholder:text-ink-2/60 focus:outline-none focus:border-ink transition-colors"
                 />
 
